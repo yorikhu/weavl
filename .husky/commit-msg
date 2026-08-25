@@ -1,0 +1,2 @@
+# 提交信息校验：严格 Conventional Commits（commitlint.config.mjs）
+npx --no -- commitlint --edit "$1"

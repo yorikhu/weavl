@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { ThemeProvider } from "@/components/theme-provider";
-import "./globals.css";
+import { ThemeProvider } from "@/provider/ThemeProvider";
+import "@/styles/globals.scss";
 
 export const metadata: Metadata = {
   title: "织光 · Weavl",
@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="dark" suppressHydrationWarning>
-      <body className="antialiased">
+      <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

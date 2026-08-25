@@ -1,0 +1,180 @@
+// 画布 · Canvas（节点流示意，从项目列表进入）
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titleIcon {
+  color: var(--accent);
+}
+
+.sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ghostBtn {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border: 1px solid var(--subcard-border);
+  border-radius: 12px;
+  background: var(--subcard);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+  }
+}
+
+.publishBtn {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-foreground);
+  cursor: pointer;
+  transition: filter 0.2s;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
+// 画布板
+.board {
+  position: relative;
+  height: 620px;
+  border: 1px solid var(--canvas-border);
+  border-radius: 24px;
+  background: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  user-select: none;
+  overflow: hidden;
+}
+
+.gridBg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background: radial-gradient(var(--surface-hover-border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.flow {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 48px;
+}
+
+.node {
+  width: 224px;
+  padding: 16px;
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+
+  &.accent {
+    box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+}
+
+.nodeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.nodeTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+
+  &.accentText {
+    color: var(--accent);
+  }
+
+  &.successText {
+    color: var(--success);
+  }
+}
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--subcard-border);
+  border-radius: 10px;
+  background: var(--subcard);
+  font-size: 11px;
+
+  & + & {
+    margin-top: 8px;
+  }
+}
+
+.nodeKey {
+  color: var(--muted-foreground);
+}
+
+.edge {
+  position: relative;
+  width: 32px;
+  height: 2px;
+  background: var(--surface-hover-border);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 6px;
+    height: 6px;
+    transform: translateY(-50%) rotate(45deg);
+    background: var(--muted-foreground);
+  }
+}

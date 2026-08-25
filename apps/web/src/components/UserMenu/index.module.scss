@@ -1,0 +1,228 @@
+// UserMenu · 头像 Popover（Radix 行为层 + 玻璃拟态）
+
+.trigger {
+  position: relative;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: linear-gradient(to top right, #6b6b74, #8a8a92);
+  color: #fff;
+  transition: box-shadow 0.2s;
+}
+
+.trigger[data-state="open"] .avatar,
+.trigger:hover .avatar {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
+}
+
+.avatarDot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--success);
+  border: 2px solid var(--background);
+}
+
+// ---- Radix 内容层（玻璃拟态） ----
+.content {
+  min-width: 256px;
+  border-radius: 16px;
+  padding: 6px;
+  z-index: 100;
+  animation: popover-in 0.16s ease-out;
+}
+
+// 会员头卡
+.profileCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 4px 8px;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.profileLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profileAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: linear-gradient(to top right, #6b6b74, #8a8a92);
+  color: #fff;
+}
+
+.profileName {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profilePlan {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  margin: 2px 0 0;
+}
+
+.upgradeBtn {
+  padding: 4px 8px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: rgba(245, 158, 11, 0.2);
+  }
+}
+
+// 积分/存储统计行
+.statsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.statLabel {
+  color: var(--muted-foreground);
+}
+
+.statValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.statDivider {
+  width: 1px;
+  height: 12px;
+  background: var(--surface-hover-border);
+}
+
+// 菜单条目（Radix Item）
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--foreground);
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s;
+
+  &:hover,
+  &:focus {
+    background: var(--glass);
+  }
+
+  &.danger {
+    color: #f87171;
+    &:hover,
+    &:focus {
+      background: rgba(248, 113, 113, 0.1);
+    }
+  }
+}
+
+.itemLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.itemIcon {
+  color: var(--muted-foreground);
+}
+
+.itemHint {
+  font-size: 10px;
+  color: var(--faint-foreground);
+}
+
+.separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--glass-border);
+}
+
+// 深色模式 Switch 行
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+// Radix Switch
+.switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &[data-state="checked"] {
+    background: rgba(245, 158, 11, 0.75);
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+}
+
+.switchThumb {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fff;
+  transform: translateY(-50%);
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  &[data-state="checked"] {
+    left: 18px;
+  }
+}

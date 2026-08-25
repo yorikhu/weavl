@@ -3,12 +3,12 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+  '@parcel/watcher': set this to true or false
 
 # pnpm 11+ 设置已从 package.json 的 pnpm 字段迁移至此
 onlyBuiltDependencies:
   - sharp
   - unrs-resolver
+  - "@parcel/watcher"
 
 verifyDepsBeforeRun: false

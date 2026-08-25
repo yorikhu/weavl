@@ -1,5 +1,6 @@
-import { AppShell } from "@/components/app-shell";
 import { Coins } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
+import styles from "./page.module.scss";
 
 const MARKET_ITEMS = [
   { title: "35mm 胶片质感调色 Skill", type: "Skill", author: "ColorLab", uses: "14.2k", price: 0, desc: "模拟柯达经典暖调胶片颗粒与色散" },
@@ -13,47 +14,32 @@ const MARKET_ITEMS = [
 export default function MarketPage() {
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1400px] space-y-6">
+      <div className={styles.container}>
         <div>
-          <h2 className="text-lg font-bold">织光资源市场 (Market)</h2>
-          <p className="text-xs text-muted-foreground">
-            精选高质感提示词 (Prompts) 与垂直工程技能 (Skills)
-          </p>
+          <h2 className={styles.title}>织光资源市场 (Market)</h2>
+          <p className={styles.sub}>精选高质感提示词 (Prompts) 与垂直工程技能 (Skills)</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className={styles.grid}>
           {MARKET_ITEMS.map((item) => (
-            <div
-              key={item.title}
-              className="flex flex-col justify-between space-y-4 rounded-2xl border border-border bg-card p-5 transition-all hover:border-border-strong hover:bg-card-hover"
-            >
+            <div key={item.title} className={styles.card}>
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      item.type === "Skill"
-                        ? "border border-blue-500/20 bg-blue-500/10 text-blue-400"
-                        : "border border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                    }`}
-                  >
+                <div className={styles.cardHead}>
+                  <span className={item.type === "Skill" ? styles.tagSkill : styles.tagPrompt}>
                     {item.type}
                   </span>
-                  <div className="flex items-center gap-1 text-xs font-bold text-[var(--accent)]">
-                    {item.price > 0 && <Coins className="h-3 w-3" />}
-                    <span>{item.price > 0 ? `${item.price} 积分` : "免费"}</span>
-                  </div>
+                  <span className={styles.price}>
+                    {item.price > 0 && <Coins size={12} />}
+                    {item.price > 0 ? `${item.price} 积分` : "免费"}
+                  </span>
                 </div>
-                <h4 className="mb-1 text-sm font-bold">{item.title}</h4>
-                <p className="text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
+                <h4 className={styles.cardTitle}>{item.title}</h4>
+                <p className={styles.cardDesc}>{item.desc}</p>
               </div>
 
-              <div className="flex items-center justify-between border-t border-border pt-3 text-xs">
-                <span className="text-muted-foreground">
-                  {item.author} · {item.uses} 次使用
-                </span>
-                <button className="rounded-xl border border-border-strong bg-[var(--foreground)] px-3 py-1.5 font-medium text-[var(--background)] transition-all hover:opacity-90">
-                  立即使用
-                </button>
+              <div className={styles.cardFoot}>
+                <span>{item.author} · {item.uses} 次使用</span>
+                <button className={styles.useBtn}>立即使用</button>
               </div>
             </div>
           ))}

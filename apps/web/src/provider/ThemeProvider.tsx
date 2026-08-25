@@ -16,6 +16,7 @@ const ThemeContext = createContext<{
   toggle: () => void;
 }>({ theme: "dark", toggle: () => {} });
 
+/** 主题 Provider：黑白切换 + localStorage 持久化（默认暗色） */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 

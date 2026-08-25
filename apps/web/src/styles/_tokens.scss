@@ -1,0 +1,143 @@
+// ============================================================
+// Weavl 织光 · 设计令牌（_tokens.scss）
+// Deep Obsidian：炭黑底、冷灰微边框、精细字阶、
+// 紧凑信息密度、低饱和琥珀光效、磨砂玻璃
+// 暗色 = 纯中性灰调（去蓝），亮色 = 云白灰阶
+// ============================================================
+
+:root {
+  // ---- 亮色主题 ----
+  --background: #f4f5f8;
+  --foreground: #1a1d24;
+
+  --header: rgba(255, 255, 255, 0.9);
+  --header-border: #e2e5ec;
+
+  --sider: #fafafc;
+  --sider-border: #e6e9f0;
+
+  --surface: #ffffff;
+  --surface-border: #e5e8f0;
+  --surface-hover: #f8fafc;
+  --surface-hover-border: #cbd5e1;
+
+  --subcard: #f8fafc;
+  --subcard-border: #e2e8f0;
+
+  --input: #f1f3f7;
+  --input-border: #dfe3ec;
+
+  --badge: #ffffff;
+  --badge-border: #dee3ed;
+  --badge-border-hover: #cbd5e1;
+
+  --pill: #1e293b;
+  --pill-border: transparent;
+  --pill-inactive: #52607a;
+  --pill-inactive-hover: #e9edf5;
+
+  --nav-active: #ffffff;
+  --nav-active-border: #e2e8f0;
+  --nav-hover: #f1f5f9;
+  --nav-text: #3d4a63; // 提亮：菜单未选中态
+
+  --pro-border: #e2e8f0;
+  --btn: #1e293b;
+  --btn-border: transparent;
+  --btn-hover: #0f172a;
+  --btn-foreground: #ffffff;
+
+  --canvas: #f8fafc;
+  --canvas-border: #e2e8f0;
+  --monitor: #f8fafc;
+  --monitor-border: #e2e8f0;
+
+  --muted-foreground: #64748b;
+  --faint-foreground: #94a3b8;
+
+  --accent: #d97706;
+  --accent-foreground: #ffffff;
+  --accent-soft: rgba(217, 119, 6, 0.12);
+  --success: #059669;
+
+  --glass: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-strong: rgba(255, 255, 255, 0.97);
+}
+
+.dark {
+  // ---- 暗色主题（纯中性灰，R=G=B） ----
+  --background: #0d0d0f;
+  --foreground: #e6e8ec;
+
+  --header: rgba(20, 20, 22, 0.72);
+  --header-border: #232326;
+
+  --sider: #111113;
+  --sider-border: #1f1f23;
+
+  --surface: #161618;
+  --surface-border: #242428;
+  --surface-hover: #1b1b1f;
+  --surface-hover-border: #34343a;
+
+  --subcard: #1a1a1e;
+  --subcard-border: #27272c;
+
+  --input: #17171a;
+  --input-border: #27272c;
+
+  --badge: #17171a;
+  --badge-border: #26262b;
+  --badge-border-hover: #3a3a41;
+
+  --pill: #26262b;
+  --pill-border: #3a3a41;
+  --pill-inactive: #9d9da6;
+  --pill-inactive-hover: #1f1f24;
+
+  --nav-active: #1e1e23;
+  --nav-active-border: #303036;
+  --nav-hover: #16161a;
+  --nav-text: #a8a8b2; // 提亮：菜单未选中态
+
+  --pro-border: #25252a;
+  --btn: #232328;
+  --btn-border: #323238;
+  --btn-hover: #2d2d33;
+  --btn-foreground: #ffffff;
+
+  --canvas: #101012;
+  --canvas-border: #202024;
+  --monitor: #121215;
+  --monitor-border: #1e1e22;
+
+  --muted-foreground: #8a8a92;
+  --faint-foreground: #5e5e66;
+
+  --accent: #f59e0b;
+  --accent-foreground: #1a1205;
+  --accent-soft: rgba(245, 158, 11, 0.12);
+  --success: #34d399;
+
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-strong: rgba(26, 26, 29, 0.96);
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-feature-settings: "tnum";
+  transition: background-color 0.3s, color 0.3s;
+}

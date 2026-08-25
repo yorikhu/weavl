@@ -1,0 +1,2 @@
+# 提交前：全 workspace 类型检查 + lint（快速失败，防止带病提交）
+pnpm -r run typecheck

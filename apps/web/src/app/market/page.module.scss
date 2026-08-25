@@ -1,0 +1,123 @@
+// 市场 · Market
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  background: var(--surface);
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+    background: var(--surface-hover);
+  }
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.tagSkill {
+  padding: 2px 8px;
+  border: 1px solid var(--accent-soft);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.tagPrompt {
+  padding: 2px 8px;
+  border: 1px solid var(--surface-hover-border);
+  border-radius: 999px;
+  background: var(--subcard);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.cardTitle {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+.cardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--surface-border);
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.useBtn {
+  padding: 6px 12px;
+  border: 1px solid var(--btn-border);
+  border-radius: 10px;
+  background: var(--btn);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--btn-foreground);
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--btn-hover);
+  }
+}

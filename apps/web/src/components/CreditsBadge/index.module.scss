@@ -1,0 +1,33 @@
+// CreditsBadge · 积分徽章
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--badge-border);
+  border-radius: 999px;
+  background: var(--badge);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: var(--badge-border-hover);
+  }
+}
+
+.icon {
+  color: var(--accent);
+}
+
+.label {
+  color: var(--muted-foreground);
+}
+
+.amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}

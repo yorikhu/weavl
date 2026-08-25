@@ -1,0 +1,153 @@
+// ============================================================
+// Weavl 织光 · 全局样式（globals.scss）
+// 玻璃拟态 / 磨砂 / 滚动条 / 通用动效 —— 仅放全局性样式，
+// 组件样式一律走同目录 *.module.scss
+// ============================================================
+
+@use "./tokens" as *;
+
+// ============================================================
+// CSS Reset（Tailwind 已卸载，此处补齐 preflight 等效层）
+// ============================================================
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+// 去链接默认样式
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+// 列表去符号
+ul,
+ol {
+  list-style: none;
+}
+
+// 图片/媒体块级化
+img,
+video,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+// 按钮基础重置
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+// 输入控件字体继承
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+// 标题字号交由组件控制，去除浏览器默认加粗间距差异
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+// 表格默认
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+
+// ---- 磨砂玻璃顶栏 ----
+.frost-header {
+  background: var(--header);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+// ---- 玻璃拟态层 ----
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+}
+
+.glass-strong {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+}
+
+// 玻璃卡片顶部高光
+.glass-sheen {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), transparent 40%);
+    pointer-events: none;
+  }
+}
+
+// ---- 低饱和琥珀光晕 ----
+.accent-glow {
+  box-shadow: 0 0 16px var(--accent-soft);
+}
+
+// ---- Popover 入场 ----
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+// ---- 细滚动条 ----
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-hover-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

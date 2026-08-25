@@ -1,0 +1,111 @@
+// 项目列表 · Projects
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.newBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--btn-border);
+  border-radius: 12px;
+  background: var(--btn);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--btn-foreground);
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--btn-hover);
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+    background: var(--surface-hover);
+
+    .cardTitle {
+      color: var(--accent);
+    }
+  }
+}
+
+.cardCover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 130px;
+  border-radius: 12px;
+  background: linear-gradient(to bottom right, var(--pill-inactive-hover), var(--sider));
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  transition: color 0.2s;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.cardTime {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
