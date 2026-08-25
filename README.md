@@ -1,13 +1,13 @@
-# loom
+# weavl
 
-> 内部代号 **loom** · 对外品牌 **织光 (Zhiguang)** · The Loom is the loom.
+> **weavl** · 对外品牌 **织光 (Zhiguang)** — Weave the light. 织光，成作品。
 
 AIGC content production studio. Every template is a declarative, model-agnostic workflow pack — add a new vertical by shipping data, not code.
 
 ## 架构
 
 ```
-loom/
+weavl/
 ├── apps/
 │   ├── web/          # Next.js — 织光台（工作台 / 模板商店 / 结果展示）
 │   └── api/          # Nest.js — 编排层（工作流运行时 / 队列 / 模型抽象）

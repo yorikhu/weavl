@@ -1,5 +1,5 @@
 {
-  "name": "loom",
+  "name": "weavl",
   "version": "0.1.0",
   "private": true,
   "description": "AIGC content production studio. Every template is a declarative, model-agnostic workflow pack — add a new vertical by shipping data, not code.",
@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
-    "dev:web": "pnpm -F @loom/web dev",
-    "dev:api": "pnpm -F @loom/api dev",
+    "dev:web": "pnpm -F @weavl/web dev",
+    "dev:api": "pnpm -F @weavl/api dev",
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
     "clean": "pnpm -r exec rm -rf dist .next node_modules"

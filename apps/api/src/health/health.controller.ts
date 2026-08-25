@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { verticalOf, validateSteps } from '@loom/shared';
+import { verticalOf, validateSteps } from '@weavl/shared';
 
 @Controller('health')
 export class HealthController {
@@ -13,7 +13,7 @@ export class HealthController {
     ]);
     return {
       ok: true,
-      service: 'loom-api',
+      service: 'weavl-api',
       verticalDemo: vertical,
       stepsValidation: stepsOk === null ? 'passed' : stepsOk,
       timestamp: new Date().toISOString(),

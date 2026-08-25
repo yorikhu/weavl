@@ -1,5 +1,5 @@
 {
-  "name": "@loom/api",
+  "name": "@weavl/api",
   "version": "0.1.0",
   "private": true,
   "description": "Nest.js orchestration layer — workflow runtime / queue / model abstraction",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@loom/shared": "workspace:*",
+    "@weavl/shared": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-express": "^11.1.6",

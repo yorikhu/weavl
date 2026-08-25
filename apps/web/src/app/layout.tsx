@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "织光 · loom",
+  title: "织光 · Weavl",
   description:
     "AIGC content production studio. Every template is a declarative, model-agnostic workflow pack.",
 };

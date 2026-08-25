@@ -10,9 +10,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@loom/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@nestjs/common':
         specifier: ^11.1.6
         version: 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -22,6 +19,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.1.6
         version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1)
+      '@weavl/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -44,7 +44,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@loom/shared':
+      '@weavl/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       next:

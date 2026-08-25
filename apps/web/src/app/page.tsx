@@ -1,4 +1,4 @@
-import { verticalOf, type TemplateManifest } from "@loom/shared";
+import { verticalOf, type TemplateManifest } from "@weavl/shared";
 
 // 第一个花样的 manifest 雏形 —— 后续将移入模板包注册中心
 const firstTemplate: Pick<
@@ -20,7 +20,7 @@ export default function Home() {
       <div className="flex flex-col items-center gap-3">
         <h1 className="text-5xl font-semibold tracking-wide">织光</h1>
         <p className="text-sm opacity-60">
-          The Loom is the loom · 把 AI 之光，一梭一梭织成作品
+          Weave the light · 把 AI 之光，一梭一梭织成作品
         </p>
       </div>
 
