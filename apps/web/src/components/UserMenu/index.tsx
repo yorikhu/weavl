@@ -68,7 +68,8 @@ export function UserMenu() {
               <span className={styles.statLabel}>积分</span>
               <span className={styles.statValue}>0</span>
             </span>
-            <span className={styles.statDivider} />
+          </div>
+          <div className={styles.statsRow}>
             <span className={styles.stat}>
               <span className={styles.statLabel}>存储</span>
               <span className={styles.statValue}>2.1G / 10G</span>
