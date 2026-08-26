@@ -64,7 +64,7 @@ export default function HomePage() {
       <div className={styles.container}>
         {/* Hero */}
         <section className={styles.hero}>
-          <div>
+          <div className={styles.heroIntro}>
             <h1 className={styles.heroTitle}>你好，织光师</h1>
             <p className={styles.heroSub}>
               今天想创造点什么呢？让灵感流动，让想象发光。
