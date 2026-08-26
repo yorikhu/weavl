@@ -33,7 +33,7 @@ import { UserMenu } from "@/components/UserMenu";
 import styles from "./index.module.scss";
 
 const NAV_ITEMS = [
-  { href: "/", label: "首页", icon: LayoutGrid },
+  { href: "/home", label: "首页", icon: LayoutGrid },
   { href: "/projects", label: "项目", icon: Layers },
   { href: "/agent", label: "Agent 对话", icon: Bot },
   { href: "/market", label: "市场", icon: ShoppingBag },
@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : (
             // 展开态：logo+标题 + 常显收起按钮
             <div className={styles.brandRow}>
-              <Link href="/" className={styles.brand}>
+              <Link href="/home" className={styles.brand}>
                 <StarburstLogo size={22} />
                 <span className={styles.brandText}>
                   <span className={styles.brandName}>Weavl</span>
