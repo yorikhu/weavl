@@ -17,6 +17,7 @@
   border-right: 1px solid var(--sider-border);
   background: var(--sider);
   transition: width 0.3s ease;
+  overflow: hidden;
   user-select: none;
 
   &.collapsed {
@@ -193,8 +194,10 @@
 }
 
 .navLabel {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 // ---- 我的空间 ----
@@ -229,6 +232,13 @@
     background: var(--nav-hover);
     color: var(--foreground);
   }
+
+  & > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 // ---- 底部帮助 ----
@@ -254,6 +264,13 @@
   &:hover {
     background: var(--nav-hover);
     color: var(--foreground);
+  }
+
+  & > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .collapsed & {
