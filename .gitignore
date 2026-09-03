@@ -40,3 +40,6 @@ next-env.d.ts
 *.local
 .turbo
 _tmp_*
+
+# workbuddy workspace memory (local only)
+.workbuddy/
