@@ -551,6 +551,13 @@
   gap: 8px;
 }
 
+/* v36：图片版输入行（输入框 + 发送按钮同行） */
+.imageEditInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .videoEditAttatchment {
   display: inline-flex;
   flex-direction: column;
@@ -672,6 +679,8 @@
 
 .imageEditInput {
   width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   padding: 8px 10px;
   border-radius: 10px;
@@ -1040,7 +1049,7 @@
 
 // =============== TextNode（基础文本） ===============
 .textNode {
-  width: 440px; /* v8：默认宽一倍 */
+  width: 220px; /* v35：默认宽度减半（原 440） */
   padding: 12px 14px;
   border-radius: 14px;
   background: #161618;
