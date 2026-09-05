@@ -1,180 +1,1846 @@
-// 画布 · Canvas（节点流示意，从项目列表进入）
+// 画布 v4 · 全屏暗色版（LibTV 真实视觉：Card + Image 双节点 + 选中工具胶囊 + 简化底部）
 
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
+.shell {
+  position: fixed;
+  inset: 0;
+  background: #0d0d0f;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  color: #e6e8ec;
+  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.head {
+// =============== 顶部栏 ===============
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 0.5px solid #232326;
+  background: rgba(20, 20, 22, 0.72);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+  z-index: 10;
 }
 
-.title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+.topbarLeft, .topbarRight {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.titleIcon {
-  color: var(--accent);
-}
-
-.sub {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-
-.headActions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ghostBtn {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  border: 1px solid var(--subcard-border);
-  border-radius: 12px;
-  background: var(--subcard);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--foreground);
+.iconBtn {
+  width: 30px;
+  height: 28px;
+  border-radius: 10px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #a8a8b2;
   cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: var(--surface-hover-border);
-  }
-}
-
-.publishBtn {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 12px;
-  background: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent-foreground);
-  cursor: pointer;
-  transition: filter 0.2s;
-
-  &:hover {
-    filter: brightness(1.08);
-  }
-}
-
-// 画布板
-.board {
-  position: relative;
-  height: 620px;
-  border: 1px solid var(--canvas-border);
-  border-radius: 24px;
-  background: var(--canvas);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 32px;
-  user-select: none;
+  transition: color 0.15s, border-color 0.15s;
+  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+}
+
+.canvasName { font-size: 12px; font-weight: 400; color: #a8a8b2; }
+.canvasSep { font-size: 11px; color: #5e5e66; }
+.canvasStatus { font-size: 12px; font-weight: 500; color: #e6e8ec; }
+.canvasSwitch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+  border-radius: 10px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #8a8a92;
+  cursor: pointer;
+  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+}
+
+.creditPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 0.5px solid rgba(245, 158, 11, 0.32);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  &:hover { background: rgba(245, 158, 11, 0.18); }
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #26262b;
+  color: #e6e8ec;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// =============== 节点选中工具胶囊（按 LibTV 模式） ===============
+.nodeToolbar {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(20, 20, 22, 0.92);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #232326;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { transform: translate(-50%, -8px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.nodeToolbarItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: #a8a8b2;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+  &:hover {
+    color: #e6e8ec;
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+// =============== 画布主区 ===============
+.board {
+  position: relative;
+  flex: 1;
+  background: #101012;
   overflow: hidden;
 }
 
-.gridBg {
-  position: absolute;
-  inset: 0;
-  opacity: 0.15;
-  background: radial-gradient(var(--surface-hover-border) 1px, transparent 1px);
-  background-size: 24px 24px;
+.flowRoot { background: #101012; width: 100%; height: 100%; }
+.bg :global(.react-flow__background-pattern.dots) { fill: rgba(255, 255, 255, 0.12); }
+
+.controls :global(button) {
+  background: #161618;
+  border-color: #242428;
+  color: #a8a8b2;
+  border-bottom: 0.5px solid #242428;
+  &:hover { background: #1a1a1e; color: #e6e8ec; }
+  svg { fill: currentColor; }
 }
 
-.flow {
+.minimap {
+  background: rgba(20, 20, 22, 0.72);
+  border: 0.5px solid #232326;
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+// =============== Card 节点（数据/逻辑） ===============
+.card {
   position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 48px;
+  width: 260px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  user-select: none;
+  font-family: inherit;
 }
 
-.node {
-  width: 224px;
-  padding: 16px;
-  border: 1px solid var(--surface-border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-
-  &.accent {
-    box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 24px rgba(0, 0, 0, 0.25);
-  }
+.cardAccent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 3px;
+  border-top-left-radius: 14px;
+  // 颜色由 inline style 注入
 }
 
-.nodeHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.nodeTitle {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-
-  &.accentText {
-    color: var(--accent);
-  }
-
-  &.successText {
-    color: var(--success);
-  }
-}
-
-.nodeRow {
+.cardHead {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--subcard-border);
-  border-radius: 10px;
-  background: var(--subcard);
-  font-size: 11px;
+  margin-bottom: 10px;
+}
 
-  & + & {
-    margin-top: 8px;
+.cardCategory {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.cardType {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 0.5px solid;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(20, 20, 22, 0.5);
+}
+
+.cardFields { display: flex; flex-direction: column; gap: 4px; }
+
+.cardField {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.cardFieldLabel { color: #f59e0b; font-weight: 500; text-align: right; opacity: 0.8; }
+.cardFieldValue { color: #a8a8b2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* v26：handle 加大、加 hover 可见度，便于拖线对准 */
+.cardHandle {
+  width: 12px;
+  height: 12px;
+  background: #5e5e66;
+  border: 2px solid #2d2d33;
+  border-radius: 50%;
+  opacity: 0.45;
+  cursor: crosshair;
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+}
+.cardHandle:hover {
+  opacity: 1;
+  background: #b5d4f4;
+  transform: scale(1.3);
+}
+/* 节点 hover 时把两个 handle 都提到全可见 */
+.imageNodeWrap:hover .cardHandle,
+.textNode:hover .cardHandle,
+.card:hover .cardHandle {
+  opacity: 0.85;
+}
+/* React Flow 选中节点 → handle 始终全亮 */
+:global(.react-flow__node.selected) .cardHandle {
+  opacity: 1;
+}
+/* v32：拖线三态预览 */
+:global(.react-flow__connection-path) {
+  stroke: #b5d4f4;
+  stroke-width: 2;
+  stroke-dasharray: 0;
+  filter: drop-shadow(0 0 4px rgba(181, 212, 244, 0.6));
+}
+/* 不可连态：prepend a class on the connection svg via custom logic */
+
+/* v32：拖线中目标节点合法时的连接线 */
+:global(.react-flow__connection.connectable .react-flow__connection-path) {
+  stroke: #b5d4f4;
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 6px rgba(181, 212, 244, 0.85));
+}
+/* v32：拖线中目标节点不合法时的连接线 */
+:global(.react-flow__connection.blocked .react-flow__connection-path) {
+  stroke: #e24b4a;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  filter: none;
+  opacity: 0.7;
+}
+
+/* v32：拖线中目标节点高亮 / 灰显 */
+:global(.react-flow__node.connectable-target) {
+  outline: 1.5px solid #b5d4f4;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px rgba(181, 212, 244, 0.15), 0 8px 24px rgba(181, 212, 244, 0.25);
+  transform: scale(1.02);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+:global(.react-flow__node.blocked-target) {
+  outline: 0.5px dashed #3a3a41;
+  outline-offset: 4px;
+  opacity: 0.5;
+  transition: opacity 0.18s ease;
+}
+
+/* v32：新边 success 描绘动画 —— dashoffset 从大到 0（绘出），然后关键帧末尾 dasharray 变 0 让全长实线 */
+@keyframes edgeDraw {
+  0% { stroke-dasharray: 220; stroke-dashoffset: 220; }
+  85% { stroke-dasharray: 220; stroke-dashoffset: 0; }
+  100% { stroke-dasharray: 1000; stroke-dashoffset: 0; }
+}
+:global(.react-flow__edge.success-draw .react-flow__edge-path) {
+  animation: edgeDraw 0.32s ease-out forwards;
+}
+
+/* v32：失败边 shake */
+@keyframes edgeShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+:global(.react-flow__edge.blocked-shake .react-flow__edge-path) {
+  stroke: #e24b4a !important;
+  animation: edgeShake 0.2s ease-in-out;
+}
+
+/* v32：目标节点闪光 */
+@keyframes nodeFlash {
+  0% {
+    background: rgba(181, 212, 244, 0.3);
+    border-color: #b5d4f4;
+    box-shadow: 0 0 0 4px rgba(181, 212, 244, 0.2);
+  }
+  100% {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
   }
 }
-
-.nodeKey {
-  color: var(--muted-foreground);
+:global(.react-flow__node.node-flash) {
+  animation: nodeFlash 0.4s ease-out;
+}
+/* React Flow 拖线时握把处高亮 */
+:global(.react-flow__handle.connectingfrom),
+:global(.react-flow__handle.connectingto) {
+  background: #b5d4f4 !important;
+  border-color: #b5d4f4 !important;
 }
 
-.edge {
-  position: relative;
-  width: 32px;
-  height: 2px;
-  background: var(--surface-hover-border);
+/* v27：edge 整体加亮 + 选中/hover 时变蓝 */
+:global(.react-flow__edge-path),
+:global(.react-flow__connection-path) {
+  stroke-linecap: round;
+}
+/* v30：边放在所有节点之上，避免被卡片遮住 */
+/* v33：必须给真实尺寸！该 div 默认 0×0，只加 z-index 会被提升成 0×0 合成层，
+   在 transformed viewport 内整个 svg 被 Chromium 剔除不绘制（拖线可见、松手消失的根因） */
+:global(.react-flow__edges) {
+  z-index: 1000 !important;
+  width: 100%;
+  height: 100%;
+}
+:global(.react-flow__edge:hover .react-flow__edge-path),
+:global(.react-flow__edge.selected .react-flow__edge-path) {
+  stroke: #b5d4f4 !important;
+  stroke-width: 2 !important;
+}
+:global(.react-flow__edge .react-flow__edge-path) {
+  stroke: #9a9aa3;
+  stroke-width: 1.8;
+}
 
+// =============== Image 节点（图像/视频） ===============
+.imageNodeWrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.imageNodeTitleAbove {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #a8a8b2;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  svg { pointer-events: none; }
+  span, input { pointer-events: auto; }
+}
+
+/* v23：编辑态标题输入 —— 与静态标题视觉一致（透明无边框），focus 才露微弱底色 */
+.imageNodeTitleInput {
+  padding: 1px 4px;
+  margin: -1px -4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  min-width: 60px;
+  width: 12em;
+  &::placeholder { color: #5e5e66; }
+  &:focus { background: rgba(255, 255, 255, 0.06); }
+}
+
+/* v18：节点选中态默认样式统一为无边框高亮 */
+:global(.react-flow__node.selected) {
+  /* 去掉 React Flow 默认的选中轮廓 */
+  outline: none;
+}
+:global(.react-flow__node.selected) :global(.react-flow__handle) {
+  opacity: 1;
+}
+
+.imageNode {
+  position: relative;
+  padding: 0;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  user-select: none;
+  font-family: inherit;
+  overflow: hidden;
+}
+
+.imagePreview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imagePlaceholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(20, 20, 22, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.imageCaption {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(20, 20, 22, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.imageCategory {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.imageTitle { font-size: 11px; }
+
+/* 普通态已上传真图 */
+.imageReal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+// =============== ImageNode 默认态尝试区（v22：仅保留左下角 chips） ===============
+
+.imageTryChips {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.imageTryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 0.5px solid #2d2d33;
+  background: rgba(20, 20, 22, 0.92);
+  backdrop-filter: blur(8px);
+  color: #e6e8ec;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  svg { color: #a8a8b2; flex-shrink: 0; }
+  &:hover { border-color: #3a3a41; background: rgba(26, 26, 30, 0.95); svg { color: #e6e8ec; } }
+}
+
+// =============== ImageNodeEditor（v22：原卡片不动 + 底部追加编辑栏） ===============
+.imageNodeEditWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: auto;
+  font-family: inherit;
+  /* v34：编辑栏已外置到屏底，这里只渲染卡片本体 */
+}
+
+/* v34.1：图片节点编辑栏 — 由 React Portal 挂到 document.body，position fixed + transform 跟手
+   transition 默认 none（拖动跟手）；编辑节点切换时由组件一次性 200ms 过渡 */
+.imageEditPanel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1100;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid #27272c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 拖动中不启用 transition（避免 200ms 粘滞）；切换编辑节点时由 JS 临时启用 200ms */
+  transition: none;
+  /* 启用 GPU 加速，translate3d 写入避免重排 */
+  will-change: transform;
+  font-family: inherit;
+}
+
+/* v34.2：视频版输入行（左侧视频附件占位 + 右侧输入框） */
+.videoEditInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.videoEditAttatchment {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 0.5px solid #27272c;
+  background: #202023;
+  color: #a8a8b2;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  &:hover { border-color: #3a3a41; background: #1a1a1e; color: #e6e8ec; }
+  svg { color: #a8a8b2; }
+}
+
+/* v34.2：视频版发送按钮（白色 —— 与图片版橙色形成视觉区分） */
+.videoEditSend {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #e6e8ec;
+  color: #0d0d0f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &:hover { filter: brightness(1.05); }
+}
+
+/* 编辑态卡片列：完全复用默认态卡片尺寸，居中 */
+.imageNodeEditCardCol {
+  display: inline-flex;
+  flex-direction: column;
+  align-self: center;
+}
+
+/* v22：旧编辑卡样式已删除（卡片复用默认态组件） */
+
+/* v25：视频卡片左下角的「尝试」文字（与 chip 区分） */
+.imageTryRefreshInline {
+  font-size: 11px;
+  color: #6f6f76;
+  pointer-events: none;
+}
+
+// =============== 图片编辑指令栏（v22） ===============
+.imageEditBar {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid #27272c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.imageEditBarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.imageEditBarTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.imageEditTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  border: 0.5px solid #27272c;
+  background: #202023;
+  color: #e6e8ec;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { border-color: #3a3a41; background: #1a1a1e; }
+  svg { color: #a8a8b2; }
+}
+
+.imageEditTagIcon {
+  margin-left: 2px;
+  color: #7f77dd;
+}
+
+.imageEditExpand {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  color: #a8a8b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &:hover { color: #e6e8ec; background: rgba(255, 255, 255, 0.05); border-color: #3a3a41; }
+}
+
+.imageEditInputWrap {
+  border-radius: 10px;
+}
+
+.imageEditInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 0.5px solid #27272c;
+  background: #0d0d0f;
+  color: #e6e8ec;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  &::placeholder { color: #5e5e66; }
+  &:focus { border-color: rgba(245, 158, 11, 0.45); }
+}
+
+.imageEditParams {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.imageEditModelWrap {
+  position: relative;
+}
+
+.imageEditModel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 11px;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.04); }
+  svg { color: #d4537e; }
+}
+
+.imageEditParamSep {
+  width: 0.5px;
+  height: 12px;
+  background: #27272c;
+}
+
+.imageEditRatioWrap {
+  position: relative;
+}
+
+.imageEditParam {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 11px;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.04); }
+  svg { color: #a8a8b2; }
+}
+
+.imageEditRatioMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 140px;
+  background: rgba(22, 22, 24, 0.97);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #2d2d33;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 40;
+}
+
+.imageEditRatioMenuHead {
+  font-size: 10px;
+  color: #5e5e66;
+  font-weight: 500;
+  padding: 4px 8px 2px;
+}
+
+.imageEditRatioItem {
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.05); color: #e6e8ec; }
+}
+
+.imageEditRatioItemActive {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.imageEditParamIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #a8a8b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: rgba(255, 255, 255, 0.05); color: #e6e8ec; }
+}
+
+.imageEditCost {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #a8a8b2;
+  font-size: 11px;
+  svg { color: #f59e0b; }
+}
+
+.imageEditSend {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: #f59e0b;
+  color: #1a1205;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &:hover { filter: brightness(1.08); }
+}
+
+// =============== 空态引导 ===============
+.guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+  > * { pointer-events: auto; }
+}
+
+.guideBubble {
+  position: relative;
+  background: rgba(20, 20, 22, 0.92);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #232326;
+  border-radius: 12px;
+  padding: 12px 18px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   &::after {
     content: "";
     position: absolute;
-    top: 50%;
-    right: 0;
-    width: 6px;
-    height: 6px;
-    transform: translateY(-50%) rotate(45deg);
-    background: var(--muted-foreground);
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 12px;
+    height: 12px;
+    background: rgba(20, 20, 22, 0.92);
+    border-right: 0.5px solid #232326;
+    border-bottom: 0.5px solid #232326;
   }
 }
+
+.guideTitle { font-size: 13px; font-weight: 500; color: #e6e8ec; margin-bottom: 4px; }
+.guideSub { font-size: 11px; color: #8a8a92; }
+
+.guideLoad {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 0.5px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover:not(:disabled) { background: rgba(245, 158, 11, 0.2); }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+// =============== 底部布局（5 工具按钮 + chat-bar） ===============
+.bottom {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-top: 0.5px solid #232326;
+  background: rgba(20, 20, 22, 0.6);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+
+.bottomLeft, .bottomRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.toolBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0.5px solid transparent;
+  color: #8a8a92;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  &:hover {
+    color: #e6e8ec;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: #26262b;
+  }
+}
+
+.toolBtnActive {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.zoomLabel {
+  font-size: 11px;
+  color: #a8a8b2;
+  font-weight: 500;
+  min-width: 36px;
+  text-align: center;
+  margin-left: 4px;
+}
+
+// =============== chat-bar（含图片缩略） ===============
+.chatBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  background: #161618;
+  border: 0.5px solid #232326;
+  border-radius: 14px;
+  transition: border-color 0.15s, background 0.15s;
+  &:focus-within {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: #1a1a1e;
+  }
+}
+
+.chatPlus {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid #26262b;
+  color: #a8a8b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+}
+
+.chatThumb {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 0.5px solid #3a3a41;
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.chatThumbClose {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(13, 13, 15, 0.85);
+  border: none;
+  color: #e6e8ec;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: #161618; }
+}
+
+.chatInput {
+  flex: 1;
+  height: 32px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-family: inherit;
+  &::placeholder { color: #5e5e66; }
+}
+
+.chatModel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  border: 0.5px solid #26262b;
+  border-radius: 8px;
+  color: #a8a8b2;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+}
+
+.chatSend {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0.5px solid #26262b;
+  color: #5e5e66;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.chatSendActive {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  border-color: transparent;
+  color: #1a1205;
+  cursor: pointer;
+  &:hover { filter: brightness(1.08); }
+}
+
+// =============== TextNode（基础文本） ===============
+.textNode {
+  width: 440px; /* v8：默认宽一倍 */
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid #27272c;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  user-select: none;
+  font-family: inherit;
+  /* v9：退出编辑后框大小与编辑态一致 —— 同样 flex 列布局 + 定高时正文填充 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.textNodeHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f7c1c1;
+  margin-bottom: 8px;
+  cursor: grab; /* 编辑态拖节点时小手 */
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.textNodeTitleInput {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  margin: -2px 0;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f7c1c1;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  &:focus {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.textNodeBody {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e6e8ec;
+  white-space: pre-wrap;
+  min-height: 40px;
+  max-height: 120px; /* 默认紧凑态最大高度 */
+  flex: 1; /* 容器定高时正文填充 */
+  overflow: hidden; /* v12：默认紧凑态，文本过长截断 */
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  &:empty::before {
+    content: "输入文本内容…";
+    color: #5e5e66;
+  }
+}
+
+.textNodeEditing {
+  /* v18：编辑态不做高亮变化，仅可编辑 */
+  border-color: #27272c;
+  border-width: 0.5px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  cursor: text;
+  user-select: text;
+  /* v9：宽高都可以拉；容器定高时正文区弹性填充 */
+  display: flex;
+  flex-direction: column;
+  resize: both;
+  min-width: 300px;
+  max-width: 720px;
+  min-height: 120px;
+  max-height: 560px;
+  overflow: hidden;
+  /* 右下角 resize handle：琥珀色双斜杠风格 */
+  &::-webkit-resizer {
+    background:
+      linear-gradient(135deg, transparent 0 54%, rgba(245, 158, 11, 0.65) 54% 60%, transparent 60% 72%, rgba(245, 158, 11, 0.65) 72% 78%, transparent 78% 100%);
+    border-radius: 0 0 12px 0;
+    cursor: nwse-resize;
+  }
+}
+
+.textNodeBodyEdit {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #e6e8ec;
+  min-height: 60px;
+  flex: 1; /* 容器被拉高时正文区跟随变高 */
+  outline: none;
+  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  overflow-x: hidden;
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
+  }
+  &:empty::before {
+    content: "输入内容…（⌘+Enter 保存，ESC 取消）";
+    color: #5e5e66;
+  }
+}
+
+// =============== VideoNode 播放按钮 ===============
+.videoPlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.85;
+}
+
+// =============== v7 聚焦编辑模式：顶部工具栏 + 左侧面板 ===============
+
+.floatingToolbar {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(20, 20, 22, 0.94);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #2d2d33;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  z-index: 30;
+  animation: toolbarDrop 0.22s ease;
+}
+
+@keyframes toolbarDrop {
+  from { transform: translate(-50%, -10px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.tbSelect, .tbSelectNarrow {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 28px;
+  padding: 0 22px 0 10px;
+  border: 0.5px solid #2d2d33;
+  border-radius: 8px;
+  background: #232326;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M1 1 L4 4 L7 1' stroke='%238a8a92' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  &:hover { border-color: #3a3a41; }
+  &:focus { outline: none; border-color: rgba(245, 158, 11, 0.45); }
+}
+
+.tbSelectNarrow { min-width: 56px; padding: 0 22px 0 10px; }
+
+.tbSep {
+  width: 0.5px;
+  height: 18px;
+  background: #2d2d33;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.tbBtn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0.5px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+  &:hover {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.10);
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+}
+
+.tbColor {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  &::-webkit-color-swatch-wrapper { padding: 0; }
+  &::-webkit-color-swatch { border: 0.5px solid #3a3a41; border-radius: 6px; }
+}
+
+// （v10 移除左侧完成/取消面板 —— 点击编辑节点外部自动保存；样式块已删）
+
+// =============== 右键菜单 & 添加弹层 ===============
+.contextMenu {
+  position: absolute;
+  z-index: 30;
+  min-width: 140px;
+  padding: 4px;
+  background: rgba(20, 20, 22, 0.96);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #232326;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: fade 0.12s ease;
+}
+
+.contextMenuHead {
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #5e5e66;
+  letter-spacing: 0.3px;
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #a8a8b2;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+  &:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.contextMenuSep {
+  height: 0.5px;
+  background: #232326;
+  margin: 4px 6px;
+}
+
+.contextMenuBadge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: rgba(127, 119, 221, 0.18);
+  color: #7f77dd;
+}
+
+.contextMenuBadgeNew {
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+}
+
+/* v32：连线失败 toast */
+.connectError {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(20, 20, 22, 0.96);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #e24b4a;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color: #f7c1c1;
+  font-size: 12px;
+  z-index: 50;
+  animation: toastDrop 0.2s ease;
+}
+@keyframes toastDrop {
+  from { transform: translate(-50%, -8px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+// 底部添加弹层（复用 contextMenu 视觉）
+.addWrap {
+  position: relative;
+}
+
+.addMenu {
+  position: absolute;
+  bottom: 44px;
+  left: 0;
+  min-width: 150px;
+  padding: 4px;
+  background: rgba(20, 20, 22, 0.96);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #232326;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: fade 0.12s ease;
+  z-index: 40;
+}
+
+.addMenuSep {
+  height: 0.5px;
+  background: #232326;
+  margin: 4px 6px;
+}
+
+// =============== 节点内编辑态（双击原地放大） ===============
+.nodeEditor {
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(22, 22, 24, 0.98);
+  border: 1px solid;
+  border-radius: 16px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  animation: nodeGrow 0.18s ease;
+  z-index: 5;
+}
+
+@keyframes nodeGrow {
+  from { transform: scale(0.92); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.nodeEditorHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid #232326;
+}
+
+.nodeEditorCategory {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.10);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.nodeEditorTitle {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e6e8ec;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeEditorTitleInput {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0.5px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  &::placeholder { color: #5e5e66; }
+  &:focus {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.nodeEditorBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #8a8a92;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+  &:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+}
+
+.nodeEditorArea {
+  min-height: 180px;
+  max-height: 320px;
+  padding: 14px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: vertical;
+  color: #e6e8ec;
+  font-size: 12px;
+  line-height: 1.8;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  &::placeholder { color: #5e5e66; }
+}
+
+.nodeEditorFoot {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-top: 0.5px solid #232326;
+  font-size: 10px;
+  color: #5e5e66;
+}
+
+// =============== 双击编辑浮层（旧版，已废弃改节点内编辑） ===============
+.editOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 13, 15, 0.55);
+  backdrop-filter: blur(2px);
+  animation: fade 0.15s ease;
+}
+
+.editPanel {
+  width: 640px;
+  max-width: 92vw;
+  max-height: 76vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 22, 0.98);
+  border: 0.5px solid #2d2d33;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  animation: popIn 0.18s ease;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.editHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid #232326;
+}
+
+.editCategory {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.editTitle {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e6e8ec;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #a8a8b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+}
+
+.editClose {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #8a8a92;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+}
+
+// 格式化工具条
+.formatBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid #232326;
+  background: rgba(13, 13, 15, 0.4);
+  overflow-x: auto;
+}
+
+.formatBtn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+  &:hover {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.10);
+  }
+}
+
+.formatSep {
+  width: 0.5px;
+  height: 16px;
+  background: #2d2d33;
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.editArea {
+  flex: 1;
+  min-height: 220px;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: #e6e8ec;
+  font-size: 13px;
+  line-height: 1.8;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  &::placeholder { color: #5e5e66; }
+}
+
+.editFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 0.5px solid #232326;
+}
+
+.editCount {
+  font-size: 11px;
+  color: #5e5e66;
+}
+
+.editFootBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.editCancel {
+  padding: 7px 16px;
+  border-radius: 10px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+}
+
+.editSave {
+  padding: 7px 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: #1a1205;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { filter: brightness(1.08); }
+}
+
+// =============== 节点库基础区 ===============
+.librarySectionLabel {
+  font-size: 11px;
+  color: #5e5e66;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.basicGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.basicItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px 10px;
+  border-radius: 12px;
+  border: 0.5px solid #26262b;
+  background: #161618;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  &:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: #1a1a1e;
+  }
+}
+
+.basicIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(217, 75, 75, 0.12);
+  color: #f7c1c1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.basicImage {
+  background: rgba(212, 83, 126, 0.12);
+  color: #f4c0d1;
+}
+
+.basicVideo {
+  background: rgba(55, 138, 221, 0.12);
+  color: #b5d4f4;
+}
+
+.basicHint {
+  font-size: 9px;
+  font-weight: 400;
+  color: #5e5e66;
+}
+
+// =============== 节点库弹层 ===============
+.libraryBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fade 0.15s ease;
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.library {
+  background: #161618;
+  border: 0.5px solid #232326;
+  border-radius: 16px;
+  padding: 18px;
+  width: 540px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.libraryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e6e8ec;
+  button {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    color: #8a8a92;
+    cursor: pointer;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    &:hover { background: #1a1a1e; color: #e6e8ec; }
+  }
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.libraryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 0.5px solid;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: transform 0.1s, box-shadow 0.15s;
+  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+}
+
+.libraryTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.libraryCategory {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.libraryType { font-size: 12px; font-weight: 500; }
+.libraryMeta { font-size: 10px; }
+
+.libraryFields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.libraryField {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 6px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.libraryFieldLabel { color: #f59e0b; opacity: 0.7; text-align: right; }
+.libraryFieldValue { color: #8a8a92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

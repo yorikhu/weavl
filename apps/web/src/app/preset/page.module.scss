@@ -1,4 +1,4 @@
-// 预设 · Preset（表单 + 步骤监控）
+// 预设 · Preset（Schema 驱动表单 + 确认门 + 内容包）
 
 .container {
   max-width: 1400px;
@@ -42,6 +42,15 @@
   color: var(--accent);
 }
 
+.errorBar {
+  padding: 10px 16px;
+  border: 1px solid rgba(226, 75, 74, 0.4);
+  border-radius: 12px;
+  background: rgba(226, 75, 74, 0.08);
+  color: #e24b4a;
+  font-size: 12px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: 5fr 7fr;
@@ -60,6 +69,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 400px;
 }
 
 .cardHead {
@@ -113,37 +123,11 @@
   }
 }
 
-.fieldRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.sliderRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sliderHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-}
-
-.sliderLabel {
-  color: var(--muted-foreground);
-}
-
-.sliderValue {
-  font-weight: 500;
-}
-
-.slider {
-  width: 100%;
-  accent-color: var(--accent);
-  cursor: pointer;
+.textarea {
+  composes: input;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.6;
 }
 
 .generateBtn {
@@ -172,136 +156,201 @@
   }
 }
 
-// ---- 步骤监控 ----
-.steps {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.stepRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px;
-  border: 1px solid var(--subcard-border);
-  border-radius: 16px;
+// ---- 进度 ----
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
   background: var(--subcard);
-  transition: all 0.3s;
-
-  &.active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    animation: step-pulse 1.2s ease-in-out infinite;
-  }
+  overflow: hidden;
 }
 
-@keyframes step-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.72;
-  }
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(to right, #f59e0b, #f97316);
+  transition: width 0.6s ease;
 }
 
-.stepLeft {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stepIndex {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.stepName {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.stepMeta {
-  margin: 2px 0 0;
-  font-size: 10px;
-  color: var(--muted-foreground);
-}
-
-.stepActions {
+.gateBanner {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.iconBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border: 1px solid var(--surface-border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted-foreground);
-  cursor: pointer;
-  transition: color 0.2s;
-
-  &:hover {
-    color: var(--foreground);
-  }
-}
-
-// ---- 产物预览 ----
-.output {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border: 1px solid var(--monitor-border);
-  border-radius: 16px;
-  background: var(--monitor);
-}
-
-.outputLeft {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.outputIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
+  padding: 12px 14px;
   border: 1px solid var(--accent-soft);
   border-radius: 12px;
   background: var(--accent-soft);
   color: var(--accent);
-}
-
-.outputTitle {
-  margin: 0;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.outputMeta {
-  margin: 2px 0 0;
+.gateWait {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--subcard);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  animation: step-pulse 1.4s ease-in-out infinite;
+}
+
+.decisions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.decisionRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: var(--muted-foreground);
 }
 
+// ---- 候选确认 ----
+.candidateList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 520px;
+}
+
+.candidate {
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--subcard-border);
+  border-radius: 16px;
+  background: var(--subcard);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+  }
+}
+
+.candidateActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.candidateHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.candidateIndex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.candidateTag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.candidateContent {
+  margin: 0;
+  max-height: 180px;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--muted-foreground);
+}
+
+.gateActions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirmBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(to right, #f59e0b, #f97316);
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1205;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.regenerateBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ---- 内容包 ----
+.pkgField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pkgLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.pkgValue {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--subcard-border);
+  border-radius: 12px;
+  background: var(--subcard);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
 .downloadBtn {
-  padding: 8px 16px;
+  padding: 12px;
   border: none;
   border-radius: 12px;
   background: var(--foreground);
@@ -313,5 +362,29 @@
 
   &:hover {
     opacity: 0.9;
+  }
+}
+
+// ---- 空状态 ----
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.8;
+}
+
+@keyframes step-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
   }
 }

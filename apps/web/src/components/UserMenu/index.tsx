@@ -4,6 +4,7 @@ import {
   DropdownMenu as DropdownMenuPrimitive,
   Switch as SwitchPrimitive,
 } from "radix-ui";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   Coins,
@@ -15,6 +16,7 @@ import {
   Settings,
   Terminal,
   User,
+  UserCircle2,
 } from "lucide-react";
 import { useTheme } from "@/provider/ThemeProvider";
 import styles from "./index.module.scss";
@@ -25,6 +27,7 @@ const SwitchThumb = SwitchPrimitive.Thumb;
 
 /** 头像下拉菜单：会员/积分/存储/个人中心/订阅发票/CLI/通知/主题 Switch/退出 */
 export function UserMenu() {
+  const router = useRouter();
   const { theme, toggle } = useTheme();
   const isDark = theme === "dark";
 
@@ -78,9 +81,12 @@ export function UserMenu() {
 
           <DM.Separator className={styles.separator} />
 
-          <DM.Item className={styles.item}>
+          <DM.Item
+            className={styles.item}
+            onSelect={() => router.push("/profile")}
+          >
             <span className={styles.itemLeft}>
-              <Settings size={14} className={styles.itemIcon} />
+              <UserCircle2 size={14} className={styles.itemIcon} />
               个人中心
             </span>
           </DM.Item>
