@@ -28,6 +28,10 @@ export interface TemplateManifest {
   inputs: InputDef[];
   /** 工作流编排（模型无关） */
   steps: Step[];
+  /** 人工确认点：运行到 gate.afterStep 后暂停等待决策 */
+  gates?: ConfirmationGate[];
+  /** 输出规范：内容包如何组装（channel → 字段映射） */
+  output?: OutputSpec;
   /** 单次运行预估成本（¥）—— 定价与毛利依据 */
   cost: { min: number; max: number };
   price: 'free' | 'standard' | 'premium';
@@ -90,22 +94,104 @@ export type ModelAlias =
 export type RunStatus =
   | 'pending'
   | 'running'
+  /** 前进到确认门，等待用户选择候选或要求重生成 */
+  | 'awaiting_confirmation'
   | 'succeeded'
   | 'failed'
   | 'cancelled';
+
+/* -------------------------------- 确认门 v2 -------------------------------- */
+
+/**
+ * 确认门 = 工作流中的"人工确认点"。
+ * 步骤产出 candidates 后暂停，直到用户 confirm / edit-confirm / regenerate。
+ */
+export interface ConfirmationGate {
+  /** 引用 steps 中某一步的 id —— 该步执行完即暂停 */
+  afterStep: string;
+  /** 展示名，如 '确认选题方向' */
+  title: string;
+  /** 用户可读的说明 */
+  description?: string;
+  /** 候选数量（默认 3） */
+  candidates?: number;
+}
+
+/* --------------------------------- 候选产物 -------------------------------- */
+
+/** 一个候选 = 一步的一次可选项（抽卡的一张） */
+export interface CandidateArtifact {
+  id: string;
+  stepId: string;
+  /** 文本类候选的内容；图片类为占位描述 */
+  kind: 'text' | 'image' | 'structured';
+  content: string;
+  /** 差异点标注，如 '测评型' */
+  variantLabel?: string;
+  createdAt: string;
+}
+
+/** 用户对确认门的一次决策 */
+export interface ConfirmationDecision {
+  gate: string;
+  /** 采纳的候选 id；regenerate 时为空 */
+  action: 'confirm' | 'edit-confirm' | 'regenerate';
+  candidateId?: string;
+  /** edit-confirm 时的修改稿 / regenerate 时的反馈意见 */
+  note?: string;
+  decidedAt: string;
+}
+
+/* --------------------------------- 内容包 ---------------------------------- */
+
+/** 输出规范：从步骤产物映射为渠道内容包字段 */
+export interface OutputSpec {
+  channel: string;
+  fields: { key: string; label: string; kind: PackageField['kind']; fromStep: string }[];
+}
+
+/** 内容包 = 面向渠道的最终交付物（版本化） */
+export interface ContentPackage {
+  id: string;
+  runId: string;
+  templateId: string;
+  /** 渠道，如 'xiaohongshu' —— 决定输出规范 */
+  channel: string;
+  version: number;
+  fields: PackageField[];
+  /** 导出物清单（文件名 → 内容或 URL） */
+  files: { name: string; kind: 'text' | 'image' | 'pdf'; content: string }[];
+  createdAt: string;
+}
+
+/** 内容包里的一个组成字段 */
+export interface PackageField {
+  key: string;
+  label: string;
+  kind: 'title' | 'body' | 'cover' | 'image' | 'topic' | 'script' | 'advice';
+  value: string;
+}
 
 /** 一次开织（运行）的对外视图 */
 export interface RunView {
   id: string;
   templateId: string;
   status: RunStatus;
+  /** 当前等待用户决策的确认门（afterStep id），无则空 */
+  awaitingGate?: string;
   /** 已完成的一梭数 */
   completedSteps: number;
   totalSteps: number;
+  /** 当前确认门的候选列表 */
+  candidates?: CandidateArtifact[];
   /** 织品（成片/成品）URL */
   artifactUrls?: string[];
   /** 实际成本（¥），运行结束后回填 */
   actualCost?: number;
+  /** 组装完成的内容包 */
+  contentPackage?: ContentPackage;
+  /** 决策历史（人机协作留痕） */
+  decisions?: ConfirmationDecision[];
   error?: string;
   createdAt: string;
   updatedAt: string;
@@ -126,6 +212,25 @@ export function validateSteps(steps: Step[]): string | null {
     if (!step.id) return `step id 不能为空: ${JSON.stringify(step)}`;
     if (seen.has(step.id)) return `step id 重复: ${step.id}`;
     seen.add(step.id);
+  }
+  return null;
+}
+
+/** 校验 gates 引用的 afterStep 都存在于 steps 中（null = 通过） */
+export function validateGates(steps: Step[], gates: ConfirmationGate[]): string | null {
+  const ids = new Set(steps.map((s) => s.id));
+  for (const g of gates) {
+    if (!ids.has(g.afterStep)) return `gate "${g.title}" 引用了不存在的 step: ${g.afterStep}`;
+  }
+  return null;
+}
+
+/** 校验 output.fields 引用的 fromStep 都存在于 steps 中（null = 通过） */
+export function validateOutput(steps: Step[], output?: OutputSpec): string | null {
+  if (!output) return null;
+  const ids = new Set(steps.map((s) => s.id));
+  for (const f of output.fields) {
+    if (!ids.has(f.fromStep)) return `输出字段 "${f.key}" 引用了不存在的 step: ${f.fromStep}`;
   }
   return null;
 }

@@ -1,192 +1,342 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import type { InputDef, RunView, CandidateArtifact } from "@weavl/shared";
 import {
   CheckCircle2,
   Coins,
-  Lock,
-  Play,
+  FileCheck2,
   RefreshCw,
   Sparkles,
+  ClipboardList,
+  PackageCheck,
 } from "lucide-react";
 import styles from "./page.module.scss";
 
-const SHOTS = [
-  { shot: "镜头 1", name: "商品特写与质感光泽", duration: "3.5s" },
-  { shot: "镜头 2", name: "模特法式街景动态走秀", duration: "4.0s" },
-  { shot: "镜头 3", name: "面料纽扣微距细节展示", duration: "3.5s" },
-  { shot: "镜头 4", name: "品牌 LOGO 与优惠字幕定格", duration: "4.0s" },
-] as const;
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
+type Phase = "form" | "running" | "done" | "error";
 
 export default function PresetPage() {
-  const [title, setTitle] = useState("法式复古亚麻衬衫·春夏新品大片");
-  const [intensity, setIntensity] = useState(85);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatingShot, setGeneratingShot] = useState(-1);
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [template, setTemplate] = useState<{
+    id: string;
+    name: string;
+    inputs: InputDef[];
+    gates: { afterStep: string; title: string; description?: string }[];
+    totalSteps: number;
+    cost: { min: number; max: number };
+  } | null>(null);
+  const [run, setRun] = useState<RunView | null>(null);
+  const [phase, setPhase] = useState<Phase>("form");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
 
-  const startGenerate = () => {
-    if (isGenerating) return;
-    setIsGenerating(true);
-    let step = 0;
-    const timer = setInterval(() => {
-      step += 1;
-      setGeneratingShot(step);
-      if (step >= SHOTS.length) {
-        clearInterval(timer);
-        setIsGenerating(false);
-        setGeneratingShot(-1);
+  useEffect(() => {
+    fetch(`${API}/templates`)
+      .then((r) => r.json())
+      .then((list: {
+        id: string;
+        name: string;
+        inputs: InputDef[];
+        gates: { afterStep: string; title: string; description?: string }[];
+        totalSteps: number;
+        cost: { min: number; max: number };
+      }[]) => {
+        const t = list?.[0];
+        if (!t) return;
+        setTemplate(t);
+        const init: Record<string, string> = {};
+        t.inputs.forEach((d: InputDef) => {
+          if (d.type === "select" && d.options[0]) init[d.name] = d.options[0].value;
+          else if (d.type === "number" && d.default != null) init[d.name] = String(d.default);
+          else init[d.name] = "";
+        });
+        setInputs(init);
+      })
+      .catch(() => setError("无法连接 API（localhost:3001），请先启动 pnpm dev:api"));
+  }, []);
+
+  const startRun = useCallback(async () => {
+    if (!template) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id, inputs }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "创建失败");
+      setRun(data);
+      setPhase(data.status === "succeeded" ? "done" : "running");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }, [template, inputs]);
+
+  const decide = useCallback(
+    async (action: "confirm" | "regenerate") => {
+      if (!run) return;
+      setBusy(true);
+      try {
+        const res = await fetch(`${API}/runs/${run.id}/decide`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, candidateId: selected ?? undefined }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message ?? "操作失败");
+        setRun(data);
+        setSelected(null);
+        setPhase(data.status === "succeeded" ? "done" : "running");
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setBusy(false);
       }
-    }, 900);
-  };
+    },
+    [run, selected],
+  );
+
+  const gate = template?.gates.find((g) => g.afterStep === run?.awaitingGate);
+  const candidates: CandidateArtifact[] = run?.candidates ?? [];
+  const pkg = run?.contentPackage;
 
   return (
     <AppShell>
       <div className={styles.container}>
         <div className={styles.head}>
           <div>
-            <h2 className={styles.title}>预设 Web UI</h2>
+            <h2 className={styles.title}>{template?.name ?? "预设加载中…"}</h2>
             <p className={styles.sub}>
-              面向普通创作者：底层复杂工作流已封装为表单填空与全流程步骤监控
+              表单填写业务信息 → 系统生成 → 关键节点人工确认 → 交付内容包
             </p>
           </div>
-          <div className={styles.costHint}>
-            <span>预计消耗:</span>
-            <span className={styles.costValue}>
-              <Coins size={14} />
-              40 积分
-            </span>
-          </div>
-        </div>
-
-        <div className={styles.grid}>
-          {/* 左列：表单 */}
-          <div className={styles.card}>
-            <div className={styles.cardHead}>
-              <h3 className={styles.cardTitle}>Step 1/3: 基础设置</h3>
-              <span className={styles.cardBadge}>电商短视频预设 v2.1</span>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>创作主题 / 核心卖点</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className={styles.input}
-              />
-            </div>
-
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label className={styles.label}>风格滤镜</label>
-                <select className={styles.select}>
-                  <option>Film Vintage 35mm</option>
-                  <option>Cyberpunk Neon</option>
-                  <option>Clean Studio Minimal</option>
-                  <option>Cinematic Sunset</option>
-                </select>
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>合作类型</label>
-                <select className={styles.select}>
-                  <option>Orgw-K 英文</option>
-                  <option>CN 国风定制</option>
-                  <option>EU 欧洲极简</option>
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.sliderRow}>
-              <div className={styles.sliderHead}>
-                <span className={styles.sliderLabel}>画质精细度 (Steps)</span>
-                <span className={styles.sliderValue}>{intensity} / 100</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={100}
-                value={intensity}
-                onChange={(e) => setIntensity(Number(e.target.value))}
-                className={styles.slider}
-              />
-            </div>
-
-            <button
-              onClick={startGenerate}
-              disabled={isGenerating}
-              className={styles.generateBtn}
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCw size={16} className="spin" />
-                  全流程流水线生成中... (预计 45s)
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  立即开始生成 (消耗 40 积分)
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* 右列：步骤监控 */}
-          <div className={styles.card}>
-            <div className={styles.cardHead}>
-              <h3 className={styles.cardTitle}>流水线步骤监控 (Step Monitor)</h3>
+          {template && (
+            <div className={styles.costHint}>
+              <span>预计成本:</span>
               <span className={styles.costValue}>
-                <CheckCircle2 size={14} />
-                就绪状态
+                <Coins size={14} />
+                ¥{template.cost.min}–{template.cost.max}
               </span>
             </div>
+          )}
+        </div>
 
-            <div className={styles.steps}>
-              {SHOTS.map((step, idx) => {
-                const active = isGenerating && generatingShot === idx;
-                return (
-                  <div
-                    key={step.shot}
-                    className={`${styles.stepRow} ${active ? styles.active : ""}`}
-                  >
-                    <div className={styles.stepLeft}>
-                      <span className={styles.stepIndex}>{idx + 1}</span>
-                      <div>
-                        <h4 className={styles.stepName}>
-                          {step.shot} · {step.name}
-                        </h4>
-                        <p className={styles.stepMeta}>
-                          {step.duration} · 阶段状态: {active ? "正在渲染中..." : "已就绪"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={styles.stepActions}>
-                      <button className={styles.iconBtn} title="局部重生成该镜头">
-                        <RefreshCw size={14} />
-                      </button>
-                      <button className={styles.iconBtn} title="锁定下游避免污染">
-                        <Lock size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        {error && <div className={styles.errorBar}>{error}</div>}
 
-            <div className={styles.output}>
-              <div className={styles.outputLeft}>
-                <span className={styles.outputIcon}>
-                  <Play size={20} />
-                </span>
-                <div>
-                  <h5 className={styles.outputTitle}>预设最终产物 (合成 4K 视频)</h5>
-                  <p className={styles.outputMeta}>
-                    15.0s · 1080x1920 · 60fps · 带自动配乐与字幕
-                  </p>
+        <div className={styles.grid}>
+          {/* 左列：Schema 驱动表单 / 进度 */}
+          <div className={styles.card}>
+            {phase === "form" && (
+              <>
+                <div className={styles.cardHead}>
+                  <h3 className={styles.cardTitle}>第 1 步 · 填写商品信息</h3>
+                  <span className={styles.cardBadge}>
+                    {template?.totalSteps ?? "-"} 个后台步骤 · {template?.gates.length ?? "-"} 个人工确认点
+                  </span>
                 </div>
+                {template?.inputs.map((def) => (
+                  <div key={def.name} className={styles.field}>
+                    <label className={styles.label}>
+                      {def.label}
+                      {def.required ? " *" : ""}
+                    </label>
+                    {def.type === "textarea" ? (
+                      <textarea
+                        className={styles.textarea}
+                        rows={3}
+                        placeholder={"placeholder" in def ? def.placeholder : undefined}
+                        maxLength={"maxLength" in def ? def.maxLength : undefined}
+                        value={inputs[def.name] ?? ""}
+                        onChange={(e) => setInputs((s) => ({ ...s, [def.name]: e.target.value }))}
+                      />
+                    ) : def.type === "select" ? (
+                      <select
+                        className={styles.select}
+                        value={inputs[def.name] ?? ""}
+                        onChange={(e) => setInputs((s) => ({ ...s, [def.name]: e.target.value }))}
+                      >
+                        {def.options.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={def.type === "number" ? "number" : "text"}
+                        className={styles.input}
+                        placeholder={"placeholder" in def ? def.placeholder : undefined}
+                        maxLength={"maxLength" in def ? def.maxLength : undefined}
+                        value={inputs[def.name] ?? ""}
+                        onChange={(e) => setInputs((s) => ({ ...s, [def.name]: e.target.value }))}
+                      />
+                    )}
+                  </div>
+                ))}
+                <button className={styles.generateBtn} disabled={busy} onClick={startRun}>
+                  {busy ? (
+                    <>
+                      <RefreshCw size={16} className="spin" />
+                      正在启动…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      开始生成内容包
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+
+            {phase === "running" && (
+              <>
+                <div className={styles.cardHead}>
+                  <h3 className={styles.cardTitle}>任务进行中</h3>
+                  <span className={styles.cardBadge}>
+                    {run?.completedSteps}/{run?.totalSteps} 步
+                  </span>
+                </div>
+                <div className={styles.progressTrack}>
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${((run?.completedSteps ?? 0) / (run?.totalSteps || 1)) * 100}%` }}
+                  />
+                </div>
+                {gate ? (
+                  <div className={styles.gateBanner}>
+                    <ClipboardList size={16} />
+                    等待确认：{gate.title}
+                    {gate.description ? ` — ${gate.description}` : ""}
+                  </div>
+                ) : (
+                  <div className={styles.gateWait}>后台执行中…</div>
+                )}
+                {run?.decisions && run.decisions.length > 0 && (
+                  <div className={styles.decisions}>
+                    {run.decisions.map((d, i) => (
+                      <div key={i} className={styles.decisionRow}>
+                        <CheckCircle2 size={12} />
+                        已确认 {d.gate}（{d.action}）
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {phase === "done" && pkg && (
+              <>
+                <div className={styles.cardHead}>
+                  <h3 className={styles.cardTitle}>
+                    <PackageCheck size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
+                    内容包已就绪
+                  </h3>
+                  <span className={styles.cardBadge}>
+                    {pkg.channel} · v{pkg.version} · 实际成本 ¥{run?.actualCost}
+                  </span>
+                </div>
+                {pkg.fields.map((f) => (
+                  <div key={f.key} className={styles.pkgField}>
+                    <div className={styles.pkgLabel}>{f.label}</div>
+                    <pre className={styles.pkgValue}>{f.value}</pre>
+                  </div>
+                ))}
+                <button
+                  className={styles.downloadBtn}
+                  onClick={() => {
+                    const blob = new Blob(
+                      [pkg.fields.map((f) => `【${f.label}】\n${f.value}`).join("\n\n———\n\n")],
+                      { type: "text/plain;charset=utf-8" },
+                    );
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `${pkg.id}.txt`;
+                    a.click();
+                  }}
+                >
+                  导出内容包（TXT）
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* 右列：候选确认 / 结果 */}
+          <div className={styles.card}>
+            {phase === "running" && gate && (
+              <>
+                <div className={styles.cardHead}>
+                  <h3 className={styles.cardTitle}>{gate.title} · 选择一个候选</h3>
+                  <span className={styles.cardBadge}>{candidates.length} 个候选</span>
+                </div>
+                <div className={styles.candidateList}>
+                  {candidates.map((c, i) => (
+                    <button
+                      key={c.id}
+                      className={`${styles.candidate} ${selected === c.id ? styles.candidateActive : ""}`}
+                      onClick={() => setSelected(c.id)}
+                    >
+                      <div className={styles.candidateHead}>
+                        <span className={styles.candidateIndex}>{i + 1}</span>
+                        <span className={styles.candidateTag}>{c.variantLabel}</span>
+                      </div>
+                      <pre className={styles.candidateContent}>{c.content}</pre>
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.gateActions}>
+                  <button
+                    className={styles.confirmBtn}
+                    disabled={!selected || busy}
+                    onClick={() => decide("confirm")}
+                  >
+                    <CheckCircle2 size={14} />
+                    采纳并继续
+                  </button>
+                  <button className={styles.regenerateBtn} disabled={busy} onClick={() => decide("regenerate")}>
+                    <RefreshCw size={14} />
+                    换一批
+                  </button>
+                </div>
+              </>
+            )}
+
+            {phase === "running" && !gate && (
+              <div className={styles.emptyState}>
+                <FileCheck2 size={32} />
+                <p>正在执行后台步骤，下一个确认点出现后会在这里展示候选</p>
               </div>
-              <button className={styles.downloadBtn}>下载高清大片</button>
-            </div>
+            )}
+
+            {phase === "form" && (
+              <div className={styles.emptyState}>
+                <Sparkles size={32} />
+                <p>
+                  填写左侧表单并开始后，生成结果会在这里出现。
+                  <br />
+                  流程包含 3 个人工确认点：选题方向 → 文案 → 封面
+                </p>
+              </div>
+            )}
+
+            {phase === "done" && (
+              <div className={styles.emptyState}>
+                <PackageCheck size={32} />
+                <p>
+                  任务完成，全部决策已留痕（{run?.decisions?.length ?? 0} 次）。
+                  <br />
+                  左侧为最终内容包，可导出后发布到{pkg?.channel}。
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
