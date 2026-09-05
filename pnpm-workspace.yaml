@@ -3,9 +3,9 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  '@parcel/watcher': set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+  '@parcel/watcher': true
+  sharp: true
+  unrs-resolver: true
 
 # pnpm 11+ 设置已从 package.json 的 pnpm 字段迁移至此
 onlyBuiltDependencies:

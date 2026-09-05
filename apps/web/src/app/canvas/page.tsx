@@ -57,12 +57,12 @@ import {
   Crop,
   CheckCircle2,
   Type as TypeIcon,
+  Type as TypeGlyph,
   ImagePlus,
   Upload,
   Tag,
   Palette,
   MonitorPlay,
-  Type as TypeGlyph,
   SlidersHorizontal,
   Zap,
   Strikethrough,
@@ -462,18 +462,11 @@ function ImageEditPanel() {
     };
   }, [node?.id, node?.position.x, node?.position.y, rf.tx, rf.ty, rf.zoom]);
 
-  /* 编辑节点切换时启用一次 200ms 过渡（让 panel 从上一个节点中心平滑滑动到新节点中心） */
+  /* v36：去掉飞入动画 —— 始终 opacity:1，compute() 失败也不影响可见性 */
   useEffect(() => {
     const el = panelRef.current;
     if (!el) return;
-    el.style.transition = "transform 200ms ease-out, width 200ms ease-out";
-    const t = window.setTimeout(() => {
-      if (el) el.style.transition = "none";
-    }, 220);
-    return () => {
-      window.clearTimeout(t);
-      if (el) el.style.transition = "none";
-    };
+    el.style.opacity = "1";
   }, [edit.editingId]);
 
   /* v34.2：只在编辑图片节点时渲染（early return 必须在所有 hooks 之后） */
@@ -490,6 +483,7 @@ function ImageEditPanel() {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* 顶部标签行：参考 / 标记 / 风格 */}
       <div className={styles.imageEditPanelHead}>
         <div className={styles.imageEditBarTags}>
           <button className={styles.imageEditTag} title="上传参考图（通过卡片左下角图生图）">
@@ -511,6 +505,7 @@ function ImageEditPanel() {
         </button>
       </div>
 
+      {/* 中间输入框：编辑提示词 */}
       <input
         className={`${styles.imageEditInput} nodrag`}
         placeholder="描述想生成的图片，或对当前图片输入修改指令…"
@@ -529,6 +524,7 @@ function ImageEditPanel() {
         }}
       />
 
+      {/* 底部参数行：模型 / 比例画质张数 / 工具 / 发送 */}
       <div className={styles.imageEditParams}>
         <div className={styles.imageEditModelWrap}>
           <button
@@ -602,9 +598,6 @@ function ImageEditPanel() {
         <span className={styles.imageEditParamSep} />
         <button className={styles.imageEditParamIcon} title="生成参数">
           <SlidersHorizontal size={11} />
-        </button>
-        <button className={styles.imageEditParamIcon} title="文字样式">
-          <TypeGlyph size={11} />
         </button>
         <span className={styles.imageEditCost}>
           <Zap size={10} />
@@ -821,8 +814,9 @@ function VideoCardStatic({
 }) {
   const edit = useContext(EnterEditContext);
   const tint = d.tint ?? "rgba(55, 138, 221, 0.20)";
-  const w = d.size?.w ?? 420;
-  const h = d.size?.h ?? 240;
+  /* v35：视频节点默认尺寸与图片节点保持一致（300×200） */
+  const w = d.size?.w ?? 300;
+  const h = d.size?.h ?? 200;
   const displayTitle = d.title || "视频节点";
   const url = overrideUrl ?? d.url;
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -1020,12 +1014,19 @@ function VideoEditPanel() {
     raf = window.requestAnimationFrame(loop);
     return () => { window.removeEventListener('resize', onResize); window.cancelAnimationFrame(raf); };
   }, [node?.id, node?.position.x, node?.position.y, rf.tx, rf.ty, rf.zoom]);
+  /* v36：移除飞入动画 —— 挂载时透明，首次定位后立即显示（无位移过渡） */
   useEffect(() => {
     const el = panelRef.current;
     if (!el) return;
-    el.style.transition = 'transform 200ms ease-out, width 200ms ease-out';
-    const t = window.setTimeout(() => { if (el) el.style.transition = 'none'; }, 220);
-    return () => { window.clearTimeout(t); if (el) el.style.transition = 'none'; };
+    el.style.opacity = '0';
+    let raf = window.requestAnimationFrame(function show() {
+      if (el.style.transform !== '') {
+        el.style.opacity = '1';
+      } else {
+        raf = window.requestAnimationFrame(show);
+      }
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, [edit.editingId]);
   /* v34.2：只在编辑视频节点时渲染（early return 必须在所有 hooks 之后） */
   if (!edit.editingId || !isVideo) return null;
@@ -1040,6 +1041,7 @@ function VideoEditPanel() {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* 顶部标签行：参考 / 标记 / 特效 / 角色库 / 运镜 */}
       <div className={styles.imageEditPanelHead}>
         <div className={styles.imageEditBarTags}>
           <button className={styles.imageEditTag}>
@@ -1070,6 +1072,7 @@ function VideoEditPanel() {
         </button>
       </div>
 
+      {/* 中间输入行：左侧视频附件缩略 + 右侧输入框 */}
       <div className={styles.videoEditInputRow}>
         <button className={styles.videoEditAttatchment} title="上传视频素材">
           <VideoIcon size={11} />
@@ -1082,7 +1085,7 @@ function VideoEditPanel() {
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            if (e.key === "Enter") {
               e.preventDefault();
               onGenerate();
             }
@@ -1094,6 +1097,7 @@ function VideoEditPanel() {
         />
       </div>
 
+      {/* 底部参数行：模型 / 全能参考 / 比例·画质·时长·张数 / 工具按钮 / 发送 */}
       <div className={styles.imageEditParams}>
         <div className={styles.imageEditModelWrap}>
           <button
@@ -1216,7 +1220,7 @@ function VideoEditPanel() {
           <Zap size={10} />
           {cost}
         </span>
-        <button className={styles.videoEditSend} onClick={onGenerate} title="生成（⌘+Enter）">
+        <button className={styles.videoEditSend} onClick={onGenerate} title="生成（Enter）">
           <Send size={12} />
         </button>
       </div>
@@ -1259,6 +1263,8 @@ const nodeTypes = { card: CardNode, image: ImageNode, text: TextNode, video: Vid
    - composingRef 跟踪 IME 输入态，composition 期间不动 buffer，避免打断中文输入 */
 interface EditCtx {
   editingId: string | null;
+  /* v35：当前编辑节点的 nodeKind（text/card/image/video），供工具栏按类型隐藏 */
+  editingKind: string | null;
   buffer: { title: string; text: string };
   setBuffer: (b: { title: string; text: string }) => void;
   enterEdit: (id: string) => void;
@@ -1288,6 +1294,7 @@ interface EditCtx {
 }
 const EnterEditContext = React.createContext<EditCtx>({
   editingId: null,
+  editingKind: null,
   buffer: { title: "", text: "" },
   setBuffer: () => {},
   enterEdit: () => {},
@@ -1308,6 +1315,8 @@ const EnterEditContext = React.createContext<EditCtx>({
 function FloatingToolbar() {
   const edit = useContext(EnterEditContext);
   if (!edit.focusMode.nodeId) return null;
+  /* v35：图片/视频节点编辑态不显示富文本工具栏（改名走节点上方标题输入框） */
+  if (edit.editingKind === "image" || edit.editingKind === "video") return null;
   const apply = (cmd: string, value?: string) => edit.onApplyFormat(cmd, value);
 
   return (
@@ -1898,6 +1907,8 @@ function CanvasInner() {
       if (target.closest(`.${styles.textNodeEditing}`)) return;
       /* 点在图片编辑节点内部（卡片 + 底部编辑栏）→ 不处理 */
       if (target.closest(`.${styles.imageNodeEditWrap}`)) return;
+      /* v36：图片/视频编辑栏（Portal 到 body 的 panel）→ 不处理 —— 这里有 prompt 输入框 */
+      if (target.closest(`.${styles.imageEditPanel}`)) return;
       /* 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
       if (target.closest(`.${styles.floatingToolbar}`)) return;
       e.preventDefault();
@@ -1907,7 +1918,7 @@ function CanvasInner() {
     /* 用 pointerdown 捕获阶段，抢在画布平移/节点选择之前 */
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [editingId, commitEdit, styles.textNodeEditing, styles.floatingToolbar, styles.imageNodeEditWrap]);
+  }, [editingId, commitEdit, styles.textNodeEditing, styles.floatingToolbar, styles.imageNodeEditWrap, styles.imageEditPanel]);
 
   /* 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
@@ -1954,7 +1965,7 @@ function CanvasInner() {
               title: "视频",
               category: "视频",
               tint: "rgba(55, 138, 221, 0.20)",
-              size: { w: 320, h: 180 },
+              size: { w: 300, h: 200 },
             } satisfies VideoNodeData,
           },
         ];
@@ -2259,18 +2270,18 @@ function CanvasInner() {
       if (!connectMenu) return;
       const newId = nextId();
       const { flowPos, sourceNodeId } = connectMenu;
-      const w = 280;
       const meta = (() => {
         if (kind === "text") return { type: "text", data: { nodeKind: "text", title: "新文本节点", text: "双击编辑内容…" } satisfies TextNodeData };
         if (kind === "image") return { type: "image", data: { nodeKind: "image", kind: "image", title: "图片节点", category: "图片", tint: "rgba(212, 83, 126, 0.18)", size: { w: 300, h: 200 } } satisfies ImageNodeData };
-        return { type: "video", data: { nodeKind: "video", title: "视频节点", category: "视频", tint: "rgba(55, 138, 221, 0.20)", size: { w: 420, h: 240 } } satisfies VideoNodeData };
+        return { type: "video", data: { nodeKind: "video", title: "视频节点", category: "视频", tint: "rgba(55, 138, 221, 0.20)", size: { w: 300, h: 200 } } satisfies VideoNodeData };
       })();
       setNodes((ns) => [
         ...ns,
         {
           id: newId,
           type: meta.type,
-          position: { x: flowPos.x - w / 2, y: flowPos.y - 60 },
+          /* v37：新节点左边缘对齐线尾（松手点），节点出现在连线末端右侧 */
+          position: { x: flowPos.x, y: flowPos.y - 60 },
           data: meta.data,
         },
       ]);
@@ -2316,6 +2327,9 @@ function CanvasInner() {
     <EnterEditContext.Provider
       value={{
         editingId,
+        editingKind: editingId
+          ? ((nodes.find((n) => n.id === editingId)?.data as Record<string, unknown> | undefined)?.nodeKind as string | undefined ?? null)
+          : null,
         buffer: editBuffer,
         setBuffer: setEditBuffer,
         enterEdit,
