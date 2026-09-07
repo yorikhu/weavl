@@ -1469,7 +1469,8 @@
   justify-content: center;
   flex-shrink: 0;
   transition: color 0.12s, border-color 0.12s;
-  &:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+  &:hover:not(:disabled) { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+  &:disabled { color: #4a4a52; cursor: not-allowed; border-color: #1f1f23; }
 }
 
 .nodeEditorArea {
@@ -1853,3 +1854,325 @@
 
 .libraryFieldLabel { color: #f59e0b; opacity: 0.7; text-align: right; }
 .libraryFieldValue { color: #8a8a92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+// =============== v38：+ 圆角块位于左下角缩放控件右侧（不动缩放控件默认位置） ===============
+.bottomLeftDock {
+  position: absolute;
+  left: 64px;
+  bottom: 15px;
+  z-index: 30;
+}
+
+.addFab {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #1f1f23;
+  border: 0.5px solid #3a3a41;
+  color: #e6e8ec;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: #26262c; border-color: #4a4a52; }
+}
+
+.addFabActive {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #f59e0b;
+}
+
+// =============== v38：Agent 右侧抽屉 ===============
+.agentAvatarBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #26262c;
+  border: 0.5px solid #3a3a41;
+  color: #e6e8ec;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: #2d2d33; }
+}
+
+.agentAvatarBtnActive {
+  background: #534ab7;
+  border-color: #7f77dd;
+  color: #fff;
+}
+
+.agentDrawer {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  bottom: 16px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(22, 22, 24, 0.97);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #2d2d33;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  z-index: 60;
+  overflow: hidden;
+  animation: drawerIn 0.16s ease;
+}
+
+@keyframes drawerIn {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.agentDrawerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid #27272c;
+  flex-shrink: 0;
+}
+
+.agentDrawerHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agentDrawerAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: #534ab7;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agentDrawerTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.agentDrawerName {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e6e8ec;
+}
+
+.agentDrawerModel {
+  font-size: 10px;
+  color: #5e5e66;
+}
+
+.agentDrawerClose {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #8a8a92;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: rgba(255, 255, 255, 0.05); color: #e6e8ec; }
+}
+
+.agentDrawerMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agentBubbleRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.agentBubbleRowUser {
+  align-items: flex-end;
+}
+
+.agentBubble {
+  max-width: 85%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #202023;
+  color: #e6e8ec;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.agentBubbleUser {
+  background: #2b2b5e;
+}
+
+.agentBubbleThumb {
+  max-width: 120px;
+  border-radius: 8px;
+  border: 0.5px solid #2d2d33;
+}
+
+.agentDrawerInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 0.5px solid #27272c;
+  flex-shrink: 0;
+}
+
+.agentDrawerInput {
+  flex: 1;
+  min-width: 0;
+  background: #0d0d0f;
+  border: 0.5px solid #27272c;
+  border-radius: 10px;
+  padding: 7px 10px;
+  color: #e6e8ec;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  &::placeholder { color: #5e5e66; }
+  &:focus { border-color: rgba(83, 74, 183, 0.6); }
+}
+
+// =============== v39：积分悬停弹窗 ===============
+.creditWrap {
+  position: relative;
+}
+
+.creditPopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 340px;
+  background: rgba(22, 22, 24, 0.97);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #2d2d33;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  padding: 12px 0 6px;
+  z-index: 70;
+  animation: creditIn 0.14s ease;
+}
+
+@keyframes creditIn {
+  from { transform: translateY(-4px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.creditMemberCard {
+  margin: 0 12px 10px;
+  padding: 12px 14px;
+  background: #0d0d0f;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.creditMemberIcon {
+  color: #f59e0b;
+}
+
+.creditMemberLabel {
+  color: #e6e8ec;
+  font-size: 13px;
+}
+
+.creditMemberBtn {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: none;
+  background: #f59e0b;
+  color: #1a1205;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { filter: brightness(1.08); }
+}
+
+.creditBalanceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 4px;
+}
+
+.creditBalanceLabel {
+  color: #e6e8ec;
+  font-size: 13px;
+  b { font-weight: 500; }
+}
+
+.creditRecharge {
+  border: none;
+  background: transparent;
+  color: #f59e0b;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  &:hover { background: rgba(245, 158, 11, 0.1); }
+}
+
+.creditDetailList {
+  padding: 4px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.creditDetailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #a8a8b2;
+  font-size: 12px;
+  span:last-child { color: #e6e8ec; }
+}
+
+.creditMenuSep {
+  height: 0.5px;
+  background: #27272c;
+  margin: 0 6px;
+}
+
+.creditMenuList {
+  padding: 4px 0;
+}
+
+.creditMenuItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  &:hover { background: rgba(255, 255, 255, 0.04); }
+  svg { color: #5e5e66; }
+}

@@ -1,0 +1,58 @@
+"use client";
+
+import { createContext, type MutableRefObject } from "react";
+
+/**
+ * 画布编辑态共享 context：
+ * - editingId / editingKind：当前编辑的节点
+ * - buffer：编辑中的临时数据（标题 + 文本）
+ * - enterEdit/saveEdit/commitEdit：进入、保存、提交
+ * - commitImageEdit / commitVideoEdit：图片/视频节点编辑提交
+ * - editorElRef / composingRef：contentEditable DOM 引用 + IME 状态
+ * - imageEditStateRef / videoEditStateRef：图片/视频编辑面板的实时 ref（点外部保存时取最新值）
+ */
+export interface EditCtx {
+  editingId: string | null;
+  editingKind: string | null;
+  buffer: { title: string; text: string };
+  setBuffer: (b: { title: string; text: string }) => void;
+  enterEdit: (id: string) => void;
+  saveEdit: (id: string, title: string, text: string) => void;
+  commitEdit: () => void;
+  commitImageEdit: ((id: string, payload: {
+    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
+  }) => void) | null;
+  commitVideoEdit: ((id: string, payload: {
+    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
+  }) => void) | null;
+  exitEdit: () => void;
+  focusMode: { nodeId: string | null };
+  onApplyFormat: (cmd: string, value?: string) => void;
+  editorElRef: MutableRefObject<HTMLDivElement | null>;
+  composingRef: MutableRefObject<boolean>;
+  imageEditStateRef: MutableRefObject<{
+    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
+  } | null>;
+  videoEditStateRef: MutableRefObject<{
+    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
+  } | null>;
+}
+
+export const EnterEditContext = createContext<EditCtx>({
+  editingId: null,
+  editingKind: null,
+  buffer: { title: "", text: "" },
+  setBuffer: () => {},
+  enterEdit: () => {},
+  saveEdit: () => {},
+  commitEdit: () => {},
+  commitImageEdit: null,
+  commitVideoEdit: null,
+  exitEdit: () => {},
+  focusMode: { nodeId: null },
+  onApplyFormat: () => {},
+  editorElRef: { current: null },
+  composingRef: { current: false },
+  imageEditStateRef: { current: null },
+  videoEditStateRef: { current: null },
+});

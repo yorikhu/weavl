@@ -4,6 +4,8 @@ import React from "react";
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { toast } from "@/hooks/useToast";
 import {
   ReactFlow,
   Background,
@@ -24,24 +26,19 @@ import {
   ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useRouter } from "next/navigation";
 import type { RunView } from "@weavl/shared";
 import {
-  ArrowLeft,
   RefreshCw,
   X,
   ChevronDown,
+  ChevronRight,
   Coins,
   Share2,
-  Settings,
-  User as UserIcon,
-  Files,
   Sliders,
   User,
-  HelpCircle,
+  User as UserIcon,
   Plus,
   Send,
-  MousePointer2,
   Link2,
   Layers,
   Bot,
@@ -65,11 +62,9 @@ import {
   MonitorPlay,
   SlidersHorizontal,
   Zap,
-  Strikethrough,
   Code,
   Quote,
   Minus,
-  Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
   Highlighter,
   Pilcrow,
@@ -79,98 +74,13 @@ import {
   Volume2,
 } from "lucide-react";
 import styles from "./page.module.scss";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-
-/* ---------------- 类型 ---------------- */
-
-type NodeKind = "llm" | "image" | "video" | "output";
-
-const KIND_META: Record<NodeKind, {
-  badge: string;
-  icon: React.ReactNode;
-  color: { bg: string; stroke: string; text: string; soft: string };
-}> = {
-  llm: {
-    badge: "LLM",
-    icon: <Wand2 size={10} />,
-    color: { bg: "rgba(217, 75, 75, 0.06)", stroke: "rgba(217, 75, 75, 0.45)", text: "#f7c1c1", soft: "rgba(217, 75, 75, 0.6)" },
-  },
-  image: {
-    badge: "图像",
-    icon: <ImageIcon size={10} />,
-    color: { bg: "rgba(212, 83, 126, 0.06)", stroke: "rgba(212, 83, 126, 0.45)", text: "#f4c0d1", soft: "rgba(212, 83, 126, 0.6)" },
-  },
-  video: {
-    badge: "视频",
-    icon: <VideoIcon size={10} />,
-    color: { bg: "rgba(55, 138, 221, 0.06)", stroke: "rgba(55, 138, 221, 0.45)", text: "#b5d4f4", soft: "rgba(55, 138, 221, 0.6)" },
-  },
-  output: {
-    badge: "产物",
-    icon: <Sparkles size={10} />,
-    color: { bg: "rgba(245, 158, 11, 0.06)", stroke: "rgba(245, 158, 11, 0.5)", text: "#fac775", soft: "rgba(245, 158, 11, 0.65)" },
-  },
-};
+import { API } from "@/lib/env";
+import { EnterEditContext } from "@/features/canvas/editContext";
+import { KIND_META } from "@/features/canvas/types/kindMeta";
+import type { AnyNodeData, CardField, CardNodeData, ImageNodeData, NodeKind, TextNodeData, VideoNodeData } from "@/features/canvas/types/nodes";
+import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "@/features/canvas/constants";
 
 /* ---------------- 节点定义 ---------------- */
-
-interface CardField {
-  label: string;
-  value: string;
-}
-
-interface CardNodeData {
-  nodeKind: "card";
-  kind: NodeKind;
-  title: string;
-  category: string;
-  fields: CardField[];
-  isGate?: boolean;
-}
-
-interface ImageNodeData {
-  nodeKind: "image";
-  kind: "image" | "video";
-  title: string;
-  category: string;
-  // 占位：实际图（base64/url/灰底模拟）
-  url?: string;
-  // 缩略图（节点缩小版，mock 用渐变背景）
-  tint: string;
-  size?: { w: number; h: number };
-  /* v14：生图指令 + 参数（编辑栏） */
-  prompt?: string;
-  ratio?: string;       // 1:1 / 16:9 / 9:16 / 4:3 / 3:4
-  quality?: string;     // 标准 / 高清 / 2K
-  count?: number;       // 生成张数
-  model?: string;       // 生图模型
-}
-
-interface TextNodeData {
-  nodeKind: "text";
-  title: string;
-  text: string;
-  width?: number;
-  height?: number;
-}
-
-interface VideoNodeData {
-  nodeKind: "video";
-  title: string;
-  category: string;
-  url?: string;
-  tint: string;
-  size?: { w: number; h: number };
-  prompt?: string;
-  ratio?: string;
-  quality?: string;
-  duration?: number;
-  count?: number;
-  model?: string;
-}
-
-type AnyNodeData = CardNodeData | ImageNodeData | TextNodeData | VideoNodeData;
 
 function CardNode({ data, selected, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
@@ -1292,24 +1202,6 @@ interface EditCtx {
     prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
   } | null>;
 }
-const EnterEditContext = React.createContext<EditCtx>({
-  editingId: null,
-  editingKind: null,
-  buffer: { title: "", text: "" },
-  setBuffer: () => {},
-  enterEdit: () => {},
-  saveEdit: () => {},
-  commitEdit: () => {},
-  commitImageEdit: null,
-  commitVideoEdit: null,
-  exitEdit: () => {},
-  focusMode: { nodeId: null },
-  onApplyFormat: () => {},
-  editorElRef: { current: null },
-  composingRef: { current: false },
-  imageEditStateRef: { current: null },
-  videoEditStateRef: { current: null },
-});
 
 /* 富文本工具栏按钮（v7：顶部浮动，节点聚焦时才显示） */
 function FloatingToolbar() {
@@ -1441,7 +1333,7 @@ function NodeEditor({
   };
   const copyAll = () => {
     void navigator.clipboard?.writeText(text);
-    alert("已复制到剪贴板");
+    toast("已复制到剪贴板", "success");
   };
 
   const FB = ({ label, title: t, onClick, bold, italic, strike }: {
@@ -1481,7 +1373,7 @@ function NodeEditor({
           placeholder="标题"
           aria-label="节点标题"
         />
-        <button className={styles.nodeEditorBtn} title="AI 重写（即将上线）" onClick={() => alert("AI 重写：即将上线")}>
+        <button className={styles.nodeEditorBtn} title="AI 重写（即将上线）" disabled>
           <Sparkles size={12} />
         </button>
         <button className={styles.nodeEditorBtn} title="保存（⌘+Enter）" onClick={() => onSave(title, text)}>
@@ -1530,81 +1422,9 @@ function NodeEditor({
   );
 }
 
-/* ---------------- 节点库（4 个能力） ---------------- */
-
-const NODE_LIBRARY: Array<
-  | { kind: "llm"; title: string; meta: string; nodeKind: "card"; fields: CardField[]; category: string }
-  | { kind: "image"; title: string; meta: string; nodeKind: "image"; tint: string; size?: { w: number; h: number }; category: string }
-  | { kind: "video"; title: string; meta: string; nodeKind: "image"; tint: string; size?: { w: number; h: number }; category: string }
-> = [
-  {
-    kind: "llm", title: "故事脚本生成", meta: "LLM · 60-90秒", nodeKind: "card", category: "脚本",
-    fields: [
-      { label: "类型", value: "古风/穿越" },
-      { label: "时长建议", value: "60-90秒" },
-      { label: "基调", value: "热血×盛唐传奇感" },
-      { label: "【字幕】", value: "对话+氛围" },
-    ],
-  },
-  {
-    kind: "image", title: "角色三视图", meta: "图像 · 形象锁定", nodeKind: "image", category: "多角度",
-    tint: "rgba(212, 83, 126, 0.20)", size: { w: 280, h: 180 },
-  },
-  {
-    kind: "image", title: "封面方案", meta: "图像 · 3:4", nodeKind: "image", category: "封面",
-    tint: "rgba(212, 83, 126, 0.18)", size: { w: 200, h: 260 },
-  },
-  {
-    kind: "video", title: "全能参考生视频", meta: "视频 · 30s", nodeKind: "image", category: "成片",
-    tint: "rgba(55, 138, 221, 0.20)", size: { w: 320, h: 180 },
-  },
-];
-
-/* ---------------- 节点被选中时浮出的工具胶囊 ---------------- */
-
-const NODE_TOOLBAR: Record<string, { label: string; icon: React.ReactNode }[]> = {
-  // 角色/图像类
-  image: [
-    { label: "人像质感调节", icon: <Sliders size={12} /> },
-    { label: "全景", icon: <Crop size={12} /> },
-    { label: "多角度", icon: <Grid3x3 size={12} /> },
-    { label: "打光", icon: <Sun size={12} /> },
-    { label: "九宫格", icon: <Grid3x3 size={12} /> },
-    { label: "HD高清", icon: <Sparkles size={12} /> },
-    { label: "元素编辑", icon: <Wand2 size={12} /> },
-    { label: "图层分离", icon: <Layers size={12} /> },
-    { label: "音轨切分", icon: <Music size={12} /> },
-  ],
-  // LLM 脚本
-  llm: [
-    { label: "重新生成", icon: <RefreshCw size={12} /> },
-    { label: "复制变体", icon: <Layers size={12} /> },
-    { label: "导出", icon: <Download size={12} /> },
-  ],
-  // 视频
-  video: [
-    { label: "运镜控制", icon: <Film size={12} /> },
-    { label: "HD高清", icon: <Sparkles size={12} /> },
-    { label: "导出", icon: <Download size={12} /> },
-  ],
-};
-
 /* ---------------- 画布主体 ---------------- */
 
-let idSeq = 0;
-const nextId = () => `n_${Date.now()}_${++idSeq}`;
-
-const STAGE_TITLES: Record<string, string> = {
-  topics: "选题生成",
-  copywriting: "文案生成",
-  "cover-concept": "封面方案",
-  cover: "封面生成",
-  check: "质量检查",
-  package: "内容包",
-};
-
 function CanvasInner() {
-  const router = useRouter();
   const { screenToFlowPosition, setCenter } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -1616,9 +1436,31 @@ function CanvasInner() {
         : es,
     );
   }, [setEdges]);
-  const [toolbar, setToolbar] = useState<"select" | "connect">("select");
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  /* v39：积分悬停弹窗（hover 200ms 开、离开 150ms 缓冲关） */
+  const [creditHover, setCreditHover] = useState(false);
+  const creditOpenTimer = useRef<number | null>(null);
+  const creditCloseTimer = useRef<number | null>(null);
+  const openCredit = useCallback(() => {
+    if (creditCloseTimer.current) { window.clearTimeout(creditCloseTimer.current); creditCloseTimer.current = null; }
+    if (creditHover) return;
+    creditOpenTimer.current = window.setTimeout(() => setCreditHover(true), 200);
+  }, [creditHover]);
+  const closeCredit = useCallback(() => {
+    if (creditOpenTimer.current) { window.clearTimeout(creditOpenTimer.current); creditOpenTimer.current = null; }
+    if (!creditHover) return;
+    creditCloseTimer.current = window.setTimeout(() => setCreditHover(false), 150);
+  }, [creditHover]);
+  useEffect(() => () => {
+    if (creditOpenTimer.current) window.clearTimeout(creditOpenTimer.current);
+    if (creditCloseTimer.current) window.clearTimeout(creditCloseTimer.current);
+  }, []);
+  /* v38：Agent 抽屉（右上角头像展开）+ 气泡消息流 */
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agentMessages, setAgentMessages] = useState<{ role: "user" | "agent"; text: string; thumb?: string | null }[]>([
+    { role: "agent", text: "你好，我是织光 Agent。告诉我想要的内容，我来帮你编排画布。" },
+  ]);
   const [chatInput, setChatInput] = useState("");
   const [chatThumb, setChatThumb] = useState<string | null>(null);
   const [chatModel] = useState("Weavl LLM");
@@ -1635,6 +1477,13 @@ function CanvasInner() {
     clientX: 0,
     clientY: 0,
   });
+  /* v40：click-outside-to-close —— 给 + 添加菜单 / Agent 抽屉 / 节点库提供 ref，
+     在 useClickOutside 里统一判断「pointerdown 在白名单外则关闭」。 */
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
+  const addFabBtnRef = useRef<HTMLButtonElement | null>(null);
+  const agentDrawerRef = useRef<HTMLDivElement | null>(null);
+  const agentBtnRef = useRef<HTMLButtonElement | null>(null);
+  const libraryRef = useRef<HTMLDivElement | null>(null);
 
   /* 进入编辑：初始化 buffer + 平移居中 + 稍微放大（v11：退出时不再复位视口，所以无需保存） */
   const enterEdit = useCallback(
@@ -1920,6 +1769,23 @@ function CanvasInner() {
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [editingId, commitEdit, styles.textNodeEditing, styles.floatingToolbar, styles.imageNodeEditWrap, styles.imageEditPanel]);
 
+  /* v40.1：click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
+  useClickOutside(
+    showAddMenu,
+    [addMenuRef, addFabBtnRef],
+    () => setShowAddMenu(false),
+  );
+  useClickOutside(
+    agentOpen,
+    [agentDrawerRef, agentBtnRef],
+    () => setAgentOpen(false),
+  );
+  useClickOutside(
+    showLibrary,
+    [libraryRef],
+    () => setShowLibrary(false),
+  );
+
   /* 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
     (kind: "text" | "image" | "video", position?: { x: number; y: number }) => {
@@ -1929,7 +1795,7 @@ function CanvasInner() {
           return [
             ...ns,
             {
-              id: nextId(),
+              id: nextNodeId(),
               type: "text",
               position: pos,
               data: { nodeKind: "text", title: "文本", text: "" } satisfies TextNodeData,
@@ -1940,7 +1806,7 @@ function CanvasInner() {
           return [
             ...ns,
             {
-              id: nextId(),
+              id: nextNodeId(),
               type: "image",
               position: pos,
               data: {
@@ -1957,7 +1823,7 @@ function CanvasInner() {
         return [
           ...ns,
           {
-            id: nextId(),
+            id: nextNodeId(),
             type: "video",
             position: pos,
             data: {
@@ -2002,7 +1868,7 @@ function CanvasInner() {
         setNodes((ns) => [
           ...ns,
           {
-            id: nextId(),
+            id: nextNodeId(),
             type: "image",
             position: { x: baseX, y: baseY },
             data: {
@@ -2019,7 +1885,7 @@ function CanvasInner() {
         setNodes((ns) => [
           ...ns,
           {
-            id: nextId(),
+            id: nextNodeId(),
             type: "card",
             position: { x: baseX, y: baseY },
             data: {
@@ -2268,7 +2134,7 @@ function CanvasInner() {
   const addNodeFromConnect = useCallback(
     (kind: "text" | "image" | "video") => {
       if (!connectMenu) return;
-      const newId = nextId();
+      const newId = nextNodeId();
       const { flowPos, sourceNodeId } = connectMenu;
       const meta = (() => {
         if (kind === "text") return { type: "text", data: { nodeKind: "text", title: "新文本节点", text: "双击编辑内容…" } satisfies TextNodeData };
@@ -2300,10 +2166,15 @@ function CanvasInner() {
     [connectMenu, setNodes, setEdges],
   );
 
-  /* chat 提交 */
+  /* v38：Agent 抽屉提交 —— 追加用户气泡 + Agent 占位回复（后续接真 API） */
   const submitChat = useCallback(() => {
     if (!chatInput.trim() && !chatThumb) return;
-    alert(`Agent 即将上线 · 收到指令："${chatInput || "图片"}"`);
+    const userText = chatInput.trim();
+    setAgentMessages((ms) => [
+      ...ms,
+      { role: "user", text: userText || "（图片）", thumb: chatThumb },
+      { role: "agent", text: "已收到你的指令。编排能力即将上线，我会根据画布内容生成对应节点。" },
+    ]);
     setChatInput("");
     setChatThumb(null);
   }, [chatInput, chatThumb]);
@@ -2347,34 +2218,131 @@ function CanvasInner() {
       }}
     >
     <div className={styles.shell}>
-      {/* 顶部栏 */}
+      {/* v39 顶部栏：积分（悬停弹窗）+ Agent 圆头像并列右上角 */}
       <div className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <button
-            className={styles.iconBtn}
-            onClick={() => router.push("/projects")}
-            title="返回项目"
-            aria-label="返回项目"
-          >
-            <ArrowLeft size={14} />
-          </button>
-          <span className={styles.canvasName}>未命名工作区</span>
-          <span className={styles.canvasSep}>·</span>
-          <span className={styles.canvasStatus}>画布 1</span>
-          <button className={styles.canvasSwitch}>
-            <ChevronDown size={12} />
-          </button>
-        </div>
+        <div className={styles.topbarLeft} />
         <div className={styles.topbarRight}>
-          <button className={styles.iconBtn} title="分享"><Share2 size={14} /></button>
-          <button className={styles.iconBtn} title="设置"><Settings size={14} /></button>
-          <button className={styles.creditPill}>
-            <Coins size={12} />
-            45
+          <div
+            className={styles.creditWrap}
+            onMouseEnter={openCredit}
+            onMouseLeave={closeCredit}
+          >
+            <button className={styles.creditPill} title="积分">
+              <Coins size={12} />
+              100
+            </button>
+            {creditHover && (
+              <div className={styles.creditPopover} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
+                <div className={styles.creditMemberCard}>
+                  <Coins size={14} className={styles.creditMemberIcon} />
+                  <span className={styles.creditMemberLabel}>个人非会员</span>
+                  <button className={styles.creditMemberBtn}>开通会员</button>
+                </div>
+                <div className={styles.creditBalanceRow}>
+                  <span className={styles.creditBalanceLabel}>积分余额：<b>100点</b></span>
+                  <button className={styles.creditRecharge}>充值</button>
+                </div>
+                <div className={styles.creditDetailList}>
+                  <div className={styles.creditDetailRow}><span>会员订阅积分</span><span>0点</span></div>
+                  <div className={styles.creditDetailRow}><span>通用充值积分</span><span>0点</span></div>
+                  <div className={styles.creditDetailRow}><span>模型卡积分</span><span>0点</span></div>
+                  <div className={styles.creditDetailRow}><span>免费积分</span><span>100点</span></div>
+                </div>
+                <div className={styles.creditMenuSep} />
+                <div className={styles.creditMenuList}>
+                  <button className={styles.creditMenuItem} onClick={() => toast("订阅管理：即将上线", "info")}>
+                    <span>订阅管理</span><ChevronRight size={13} />
+                  </button>
+                  <button className={styles.creditMenuItem} onClick={() => toast("积分管理：即将上线", "info")}>
+                    <span>积分管理</span><ChevronRight size={13} />
+                  </button>
+                  <button className={styles.creditMenuItem} onClick={() => toast("积分消耗顺序设置：即将上线", "info")}>
+                    <span>积分消耗顺序设置</span><ChevronRight size={13} />
+                  </button>
+                  <button className={styles.creditMenuItem} onClick={() => toast("联系客服：即将上线", "info")}>
+                    <span>联系客服</span><ChevronRight size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button
+            ref={agentBtnRef}
+            className={`${styles.agentAvatarBtn} ${agentOpen ? styles.agentAvatarBtnActive : ""}`}
+            title="织光 Agent"
+            aria-label="织光 Agent"
+            onClick={() => setAgentOpen((v) => !v)}
+          >
+            <Bot size={15} />
           </button>
-          <div className={styles.avatar}><UserIcon size={14} /></div>
         </div>
       </div>
+
+      {/* v38：Agent 右侧抽屉 —— 气泡式对话 */}
+      {agentOpen && (
+        <div ref={agentDrawerRef} className={styles.agentDrawer}>
+          <div className={styles.agentDrawerHead}>
+            <div className={styles.agentDrawerHeadLeft}>
+              <div className={styles.agentDrawerAvatar}><Bot size={13} /></div>
+              <div className={styles.agentDrawerTitle}>
+                <span className={styles.agentDrawerName}>织光 Agent</span>
+                <span className={styles.agentDrawerModel}>✦ {chatModel}</span>
+              </div>
+            </div>
+            <button className={styles.agentDrawerClose} onClick={() => setAgentOpen(false)} aria-label="收起">
+              <X size={13} />
+            </button>
+          </div>
+          <div className={styles.agentDrawerMessages}>
+            {agentMessages.map((m, i) => (
+              <div key={i} className={`${styles.agentBubbleRow} ${m.role === "user" ? styles.agentBubbleRowUser : ""}`}>
+                {m.thumb && <img src={m.thumb} alt="参考图" className={styles.agentBubbleThumb} />}
+                <div className={`${styles.agentBubble} ${m.role === "user" ? styles.agentBubbleUser : ""}`}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.agentDrawerInputRow}>
+            <label className={styles.chatPlus} title="添加参考图">
+              <Plus size={14} />
+              <input type="file" accept="image/*" hidden onChange={handleThumb} />
+            </label>
+            {chatThumb && (
+              <div className={styles.chatThumb}>
+                <img src={chatThumb} alt="参考图" />
+                <button className={styles.chatThumbClose} onClick={() => setChatThumb(null)} aria-label="移除">
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+            <input
+              className={styles.agentDrawerInput}
+              placeholder="告诉 Agent 想做什么…"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submitChat();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setAgentOpen(false);
+                }
+              }}
+            />
+            <button
+              className={`${styles.chatSend} ${chatInput.trim() || chatThumb ? styles.chatSendActive : ""}`}
+              onClick={submitChat}
+              disabled={!chatInput.trim() && !chatThumb}
+              title="发送"
+            >
+              <Send size={13} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 选中节点的浮出工具胶囊（按 LibTV 模式） */}
       {selectedNode && !editingId && (
@@ -2534,103 +2502,46 @@ function CanvasInner() {
       </div>
 
       {/* 底部：5 个工具图标（简化版） + 中央 chat-bar */}
-      <div className={styles.bottom}>
-        <div className={styles.bottomLeft}>
-          {/* 添加节点：hover/点击弹 3 类基础节点 */}
-          <div className={styles.addWrap}>
-            <button
-              className={`${styles.toolBtn} ${showAddMenu ? styles.toolBtnActive : ""}`}
-              title="添加节点"
-              onClick={() => { setShowAddMenu((v) => !v); setShowLibrary(false); }}
-            >
-              <Plus size={16} />
-            </button>
-            {showAddMenu && (
-              <div className={styles.addMenu}>
-                <div className={styles.contextMenuHead}>基础节点</div>
-                <button className={styles.contextMenuItem} onClick={() => { addBasicNode("text"); setShowAddMenu(false); }}>
-                  <TypeIcon size={13} />
-                  文本
-                </button>
-                <button className={styles.contextMenuItem} onClick={() => { addBasicNode("image"); setShowAddMenu(false); }}>
-                  <ImageIcon size={13} />
-                  图片
-                </button>
-                <button className={styles.contextMenuItem} onClick={() => { addBasicNode("video"); setShowAddMenu(false); }}>
-                  <VideoIcon size={13} />
-                  视频
-                </button>
-                <div className={styles.addMenuSep} />
-                <button className={styles.contextMenuItem} onClick={() => { setShowLibrary(true); setShowAddMenu(false); }}>
-                  <Sparkles size={13} />
-                  业务能力…
-                </button>
-              </div>
-            )}
-          </div>
-          <button className={styles.toolBtn} title="资产管理"><Files size={16} /></button>
-          <button className={styles.toolBtn} title="配置"><Sliders size={16} /></button>
-          <button className={styles.toolBtn} title="用户"><User size={16} /></button>
+      {/* v38 底部：仅左下角 + 圆角块（点击弹节点菜单），其余工具与聊天栏全部移除 */}
+      <div className={styles.bottomLeftDock}>
+        <div className={styles.addWrap}>
           <button
-            className={`${styles.toolBtn} ${toolbar === "connect" ? styles.toolBtnActive : ""}`}
-            title="连线"
-            onClick={() => setToolbar("connect")}
+            ref={addFabBtnRef}
+            className={`${styles.addFab} ${showAddMenu ? styles.addFabActive : ""}`}
+            title="添加节点"
+            onClick={() => { setShowAddMenu((v) => !v); setShowLibrary(false); }}
           >
-            <Link2 size={16} />
+            <Plus size={16} />
           </button>
-          <span className={styles.zoomLabel}>100%</span>
-        </div>
-
-        <div className={styles.chatBar}>
-          {/* 左侧 + 上传缩略 */}
-          <label className={styles.chatPlus} title="添加参考图">
-            <Plus size={14} />
-            <input type="file" accept="image/*" hidden onChange={handleThumb} />
-          </label>
-          {chatThumb && (
-            <div className={styles.chatThumb}>
-              <img src={chatThumb} alt="参考图" />
-              <button className={styles.chatThumbClose} onClick={() => setChatThumb(null)} aria-label="移除">
-                <X size={10} />
+          {showAddMenu && (
+            <div ref={addMenuRef} className={styles.addMenu}>
+              <div className={styles.contextMenuHead}>基础节点</div>
+              <button className={styles.contextMenuItem} onClick={() => { addBasicNode("text"); setShowAddMenu(false); }}>
+                <TypeIcon size={13} />
+                文本
+              </button>
+              <button className={styles.contextMenuItem} onClick={() => { addBasicNode("image"); setShowAddMenu(false); }}>
+                <ImageIcon size={13} />
+                图片
+              </button>
+              <button className={styles.contextMenuItem} onClick={() => { addBasicNode("video"); setShowAddMenu(false); }}>
+                <VideoIcon size={13} />
+                视频
+              </button>
+              <div className={styles.addMenuSep} />
+              <button className={styles.contextMenuItem} onClick={() => { setShowLibrary(true); setShowAddMenu(false); }}>
+                <Sparkles size={13} />
+                业务能力…
               </button>
             </div>
           )}
-          <input
-            className={styles.chatInput}
-            placeholder="告诉 AI 接下来要做什么…（如：根据我上传的脚本生成完整故事脚本）"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submitChat();
-              }
-            }}
-          />
-          <button className={styles.chatModel}>
-            <Bot size={12} />
-            {chatModel}
-            <ChevronDown size={10} />
-          </button>
-          <button
-            className={`${styles.chatSend} ${chatInput.trim() || chatThumb ? styles.chatSendActive : ""}`}
-            onClick={submitChat}
-            disabled={!chatInput.trim() && !chatThumb}
-            title="发送"
-          >
-            <Send size={14} />
-          </button>
-        </div>
-
-        <div className={styles.bottomRight}>
-          <button className={styles.toolBtn} title="帮助"><HelpCircle size={16} /></button>
         </div>
       </div>
 
       {/* 节点库弹层（基础节点 + 业务能力双区） */}
       {showLibrary && (
         <div className={styles.libraryBackdrop} onClick={() => setShowLibrary(false)}>
-          <div className={styles.library} onClick={(e) => e.stopPropagation()}>
+          <div ref={libraryRef} className={styles.library} onClick={(e) => e.stopPropagation()}>
             <div className={styles.libraryHead}>
               <span>节点库</span>
               <button onClick={() => setShowLibrary(false)} aria-label="关闭">
