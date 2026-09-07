@@ -4,6 +4,8 @@ import React from "react";
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useClickOutside } from "@/hooks/useClickOutside";
+import { toast } from "@/hooks/useToast";
 import {
   ReactFlow,
   Background,
@@ -72,98 +74,13 @@ import {
   Volume2,
 } from "lucide-react";
 import styles from "./page.module.scss";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-
-/* ---------------- 类型 ---------------- */
-
-type NodeKind = "llm" | "image" | "video" | "output";
-
-const KIND_META: Record<NodeKind, {
-  badge: string;
-  icon: React.ReactNode;
-  color: { bg: string; stroke: string; text: string; soft: string };
-}> = {
-  llm: {
-    badge: "LLM",
-    icon: <Wand2 size={10} />,
-    color: { bg: "rgba(217, 75, 75, 0.06)", stroke: "rgba(217, 75, 75, 0.45)", text: "#f7c1c1", soft: "rgba(217, 75, 75, 0.6)" },
-  },
-  image: {
-    badge: "图像",
-    icon: <ImageIcon size={10} />,
-    color: { bg: "rgba(212, 83, 126, 0.06)", stroke: "rgba(212, 83, 126, 0.45)", text: "#f4c0d1", soft: "rgba(212, 83, 126, 0.6)" },
-  },
-  video: {
-    badge: "视频",
-    icon: <VideoIcon size={10} />,
-    color: { bg: "rgba(55, 138, 221, 0.06)", stroke: "rgba(55, 138, 221, 0.45)", text: "#b5d4f4", soft: "rgba(55, 138, 221, 0.6)" },
-  },
-  output: {
-    badge: "产物",
-    icon: <Sparkles size={10} />,
-    color: { bg: "rgba(245, 158, 11, 0.06)", stroke: "rgba(245, 158, 11, 0.5)", text: "#fac775", soft: "rgba(245, 158, 11, 0.65)" },
-  },
-};
+import { API } from "@/lib/env";
+import { EnterEditContext } from "@/features/canvas/editContext";
+import { KIND_META } from "@/features/canvas/types/kindMeta";
+import type { AnyNodeData, CardField, CardNodeData, ImageNodeData, NodeKind, TextNodeData, VideoNodeData } from "@/features/canvas/types/nodes";
+import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "@/features/canvas/constants";
 
 /* ---------------- 节点定义 ---------------- */
-
-interface CardField {
-  label: string;
-  value: string;
-}
-
-interface CardNodeData {
-  nodeKind: "card";
-  kind: NodeKind;
-  title: string;
-  category: string;
-  fields: CardField[];
-  isGate?: boolean;
-}
-
-interface ImageNodeData {
-  nodeKind: "image";
-  kind: "image" | "video";
-  title: string;
-  category: string;
-  // 占位：实际图（base64/url/灰底模拟）
-  url?: string;
-  // 缩略图（节点缩小版，mock 用渐变背景）
-  tint: string;
-  size?: { w: number; h: number };
-  /* v14：生图指令 + 参数（编辑栏） */
-  prompt?: string;
-  ratio?: string;       // 1:1 / 16:9 / 9:16 / 4:3 / 3:4
-  quality?: string;     // 标准 / 高清 / 2K
-  count?: number;       // 生成张数
-  model?: string;       // 生图模型
-}
-
-interface TextNodeData {
-  nodeKind: "text";
-  title: string;
-  text: string;
-  width?: number;
-  height?: number;
-}
-
-interface VideoNodeData {
-  nodeKind: "video";
-  title: string;
-  category: string;
-  url?: string;
-  tint: string;
-  size?: { w: number; h: number };
-  prompt?: string;
-  ratio?: string;
-  quality?: string;
-  duration?: number;
-  count?: number;
-  model?: string;
-}
-
-type AnyNodeData = CardNodeData | ImageNodeData | TextNodeData | VideoNodeData;
 
 function CardNode({ data, selected, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
@@ -1285,24 +1202,6 @@ interface EditCtx {
     prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
   } | null>;
 }
-const EnterEditContext = React.createContext<EditCtx>({
-  editingId: null,
-  editingKind: null,
-  buffer: { title: "", text: "" },
-  setBuffer: () => {},
-  enterEdit: () => {},
-  saveEdit: () => {},
-  commitEdit: () => {},
-  commitImageEdit: null,
-  commitVideoEdit: null,
-  exitEdit: () => {},
-  focusMode: { nodeId: null },
-  onApplyFormat: () => {},
-  editorElRef: { current: null },
-  composingRef: { current: false },
-  imageEditStateRef: { current: null },
-  videoEditStateRef: { current: null },
-});
 
 /* 富文本工具栏按钮（v7：顶部浮动，节点聚焦时才显示） */
 function FloatingToolbar() {
@@ -1434,7 +1333,7 @@ function NodeEditor({
   };
   const copyAll = () => {
     void navigator.clipboard?.writeText(text);
-    alert("已复制到剪贴板");
+    toast("已复制到剪贴板", "success");
   };
 
   const FB = ({ label, title: t, onClick, bold, italic, strike }: {
@@ -1474,7 +1373,7 @@ function NodeEditor({
           placeholder="标题"
           aria-label="节点标题"
         />
-        <button className={styles.nodeEditorBtn} title="AI 重写（即将上线）" onClick={() => alert("AI 重写：即将上线")}>
+        <button className={styles.nodeEditorBtn} title="AI 重写（即将上线）" disabled>
           <Sparkles size={12} />
         </button>
         <button className={styles.nodeEditorBtn} title="保存（⌘+Enter）" onClick={() => onSave(title, text)}>
@@ -1523,78 +1422,7 @@ function NodeEditor({
   );
 }
 
-/* ---------------- 节点库（4 个能力） ---------------- */
-
-const NODE_LIBRARY: Array<
-  | { kind: "llm"; title: string; meta: string; nodeKind: "card"; fields: CardField[]; category: string }
-  | { kind: "image"; title: string; meta: string; nodeKind: "image"; tint: string; size?: { w: number; h: number }; category: string }
-  | { kind: "video"; title: string; meta: string; nodeKind: "image"; tint: string; size?: { w: number; h: number }; category: string }
-> = [
-  {
-    kind: "llm", title: "故事脚本生成", meta: "LLM · 60-90秒", nodeKind: "card", category: "脚本",
-    fields: [
-      { label: "类型", value: "古风/穿越" },
-      { label: "时长建议", value: "60-90秒" },
-      { label: "基调", value: "热血×盛唐传奇感" },
-      { label: "【字幕】", value: "对话+氛围" },
-    ],
-  },
-  {
-    kind: "image", title: "角色三视图", meta: "图像 · 形象锁定", nodeKind: "image", category: "多角度",
-    tint: "rgba(212, 83, 126, 0.20)", size: { w: 280, h: 180 },
-  },
-  {
-    kind: "image", title: "封面方案", meta: "图像 · 3:4", nodeKind: "image", category: "封面",
-    tint: "rgba(212, 83, 126, 0.18)", size: { w: 200, h: 260 },
-  },
-  {
-    kind: "video", title: "全能参考生视频", meta: "视频 · 30s", nodeKind: "image", category: "成片",
-    tint: "rgba(55, 138, 221, 0.20)", size: { w: 320, h: 180 },
-  },
-];
-
-/* ---------------- 节点被选中时浮出的工具胶囊 ---------------- */
-
-const NODE_TOOLBAR: Record<string, { label: string; icon: React.ReactNode }[]> = {
-  // 角色/图像类
-  image: [
-    { label: "人像质感调节", icon: <Sliders size={12} /> },
-    { label: "全景", icon: <Crop size={12} /> },
-    { label: "多角度", icon: <Grid3x3 size={12} /> },
-    { label: "打光", icon: <Sun size={12} /> },
-    { label: "九宫格", icon: <Grid3x3 size={12} /> },
-    { label: "HD高清", icon: <Sparkles size={12} /> },
-    { label: "元素编辑", icon: <Wand2 size={12} /> },
-    { label: "图层分离", icon: <Layers size={12} /> },
-    { label: "音轨切分", icon: <Music size={12} /> },
-  ],
-  // LLM 脚本
-  llm: [
-    { label: "重新生成", icon: <RefreshCw size={12} /> },
-    { label: "复制变体", icon: <Layers size={12} /> },
-    { label: "导出", icon: <Download size={12} /> },
-  ],
-  // 视频
-  video: [
-    { label: "运镜控制", icon: <Film size={12} /> },
-    { label: "HD高清", icon: <Sparkles size={12} /> },
-    { label: "导出", icon: <Download size={12} /> },
-  ],
-};
-
 /* ---------------- 画布主体 ---------------- */
-
-let idSeq = 0;
-const nextId = () => `n_${Date.now()}_${++idSeq}`;
-
-const STAGE_TITLES: Record<string, string> = {
-  topics: "选题生成",
-  copywriting: "文案生成",
-  "cover-concept": "封面方案",
-  cover: "封面生成",
-  check: "质量检查",
-  package: "内容包",
-};
 
 function CanvasInner() {
   const { screenToFlowPosition, setCenter } = useReactFlow();
@@ -1941,31 +1769,22 @@ function CanvasInner() {
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [editingId, commitEdit, styles.textNodeEditing, styles.floatingToolbar, styles.imageNodeEditWrap, styles.imageEditPanel]);
 
-  /* v40：click-outside-to-close — 三个弹窗统一监听
-     - capture 阶段抢在画布平移之前触发
-     - 点击目标是弹窗/触发按钮之一时跳过；其他情况关闭对应弹窗
-     - 弹窗内部点击会先被弹窗 onPointerDown stopPropagation 处理（如果设置了），但这里走的是捕获阶段
-       ——所以这里再单独判断 target.closest() 是否在白名单内更稳 */
-  useEffect(() => {
-    if (!showAddMenu && !agentOpen && !showLibrary) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      /* 任一弹窗或其触发按钮被点 → 不关（让 toggle onClick 处理） */
-      if (addMenuRef.current?.contains(target)) return;
-      if (addFabBtnRef.current?.contains(target)) return;
-      if (agentDrawerRef.current?.contains(target)) return;
-      if (agentBtnRef.current?.contains(target)) return;
-      if (libraryRef.current?.contains(target)) return;
-      /* 点节点库遮罩（libraryBackdrop）也已在自身 onClick 里关闭 —— 这里兜底 */
-      if (showAddMenu) setShowAddMenu(false);
-      if (agentOpen) setAgentOpen(false);
-      if (showLibrary) setShowLibrary(false);
-    };
-    /* 用 capture 抢在 React Flow pane 之前判断，避免后续 onPaneClick 互相打架 */
-    window.addEventListener("pointerdown", onPointerDown, true);
-    return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [showAddMenu, agentOpen, showLibrary]);
+  /* v40.1：click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
+  useClickOutside(
+    showAddMenu,
+    [addMenuRef, addFabBtnRef],
+    () => setShowAddMenu(false),
+  );
+  useClickOutside(
+    agentOpen,
+    [agentDrawerRef, agentBtnRef],
+    () => setAgentOpen(false),
+  );
+  useClickOutside(
+    showLibrary,
+    [libraryRef],
+    () => setShowLibrary(false),
+  );
 
   /* 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
@@ -1976,7 +1795,7 @@ function CanvasInner() {
           return [
             ...ns,
             {
-              id: nextId(),
+              id: nextNodeId(),
               type: "text",
               position: pos,
               data: { nodeKind: "text", title: "文本", text: "" } satisfies TextNodeData,
@@ -1987,7 +1806,7 @@ function CanvasInner() {
           return [
             ...ns,
             {
-              id: nextId(),
+              id: nextNodeId(),
               type: "image",
               position: pos,
               data: {
@@ -2004,7 +1823,7 @@ function CanvasInner() {
         return [
           ...ns,
           {
-            id: nextId(),
+            id: nextNodeId(),
             type: "video",
             position: pos,
             data: {
@@ -2049,7 +1868,7 @@ function CanvasInner() {
         setNodes((ns) => [
           ...ns,
           {
-            id: nextId(),
+            id: nextNodeId(),
             type: "image",
             position: { x: baseX, y: baseY },
             data: {
@@ -2066,7 +1885,7 @@ function CanvasInner() {
         setNodes((ns) => [
           ...ns,
           {
-            id: nextId(),
+            id: nextNodeId(),
             type: "card",
             position: { x: baseX, y: baseY },
             data: {
@@ -2315,7 +2134,7 @@ function CanvasInner() {
   const addNodeFromConnect = useCallback(
     (kind: "text" | "image" | "video") => {
       if (!connectMenu) return;
-      const newId = nextId();
+      const newId = nextNodeId();
       const { flowPos, sourceNodeId } = connectMenu;
       const meta = (() => {
         if (kind === "text") return { type: "text", data: { nodeKind: "text", title: "新文本节点", text: "双击编辑内容…" } satisfies TextNodeData };
@@ -2431,16 +2250,16 @@ function CanvasInner() {
                 </div>
                 <div className={styles.creditMenuSep} />
                 <div className={styles.creditMenuList}>
-                  <button className={styles.creditMenuItem} onClick={() => alert("订阅管理：即将上线")}>
+                  <button className={styles.creditMenuItem} onClick={() => toast("订阅管理：即将上线", "info")}>
                     <span>订阅管理</span><ChevronRight size={13} />
                   </button>
-                  <button className={styles.creditMenuItem} onClick={() => alert("积分管理：即将上线")}>
+                  <button className={styles.creditMenuItem} onClick={() => toast("积分管理：即将上线", "info")}>
                     <span>积分管理</span><ChevronRight size={13} />
                   </button>
-                  <button className={styles.creditMenuItem} onClick={() => alert("积分消耗顺序设置：即将上线")}>
+                  <button className={styles.creditMenuItem} onClick={() => toast("积分消耗顺序设置：即将上线", "info")}>
                     <span>积分消耗顺序设置</span><ChevronRight size={13} />
                   </button>
-                  <button className={styles.creditMenuItem} onClick={() => alert("联系客服：即将上线")}>
+                  <button className={styles.creditMenuItem} onClick={() => toast("联系客服：即将上线", "info")}>
                     <span>联系客服</span><ChevronRight size={13} />
                   </button>
                 </div>

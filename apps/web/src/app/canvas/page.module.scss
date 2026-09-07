@@ -1469,7 +1469,8 @@
   justify-content: center;
   flex-shrink: 0;
   transition: color 0.12s, border-color 0.12s;
-  &:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+  &:hover:not(:disabled) { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+  &:disabled { color: #4a4a52; cursor: not-allowed; border-color: #1f1f23; }
 }
 
 .nodeEditorArea {
