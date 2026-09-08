@@ -5,190 +5,258 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Bot,
-  Heart,
-  ImageIcon,
+  Clock,
   Layers,
-  Play,
-  Sparkles,
-  Video,
-  Wand2,
+  Plus,
+  Workflow,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import styles from "./page.module.scss";
 
-const QUICK_STARTS = [
+/* 工作流模板（mock，后续接 templates API） */
+const TEMPLATES = [
   {
-    title: "图片生成",
-    desc: "AI 智能生成精美图片",
-    icon: ImageIcon,
-    href: "/preset",
-  },
-  { title: "视频生成", desc: "AI 智能生成视频", icon: Video, href: "/preset" },
-  {
-    title: "画布创作",
-    desc: "可视化工作流创作",
-    icon: Layers,
-    href: "/projects",
+    name: "小红书种草图文",
+    desc: "6 节点 · 选题→封面→正文",
+    tag: "图文",
+    uses: "12.4k",
+    flow: ["llm", "image", "output"] as const,
   },
   {
-    title: "Agent 对话",
-    desc: "与 AI 助手对话创作",
-    icon: Bot,
-    href: "/agent",
+    name: "电商主图流水线",
+    desc: "4 节点 · 批量出图",
+    tag: "图片",
+    uses: "8.2k",
+    flow: ["llm", "image"] as const,
+  },
+  {
+    name: "短剧分镜工作台",
+    desc: "8 节点 · 分支剧情",
+    tag: "视频",
+    uses: "6.7k",
+    flow: ["llm", "output", "image", "llm"] as const,
+  },
+  {
+    name: "古风视频成片",
+    desc: "5 节点 · 脚本→配音→成片",
+    tag: "视频",
+    uses: "5.1k",
+    flow: ["image", "output"] as const,
   },
 ] as const;
 
-const GALLERY = [
-  { title: "星尘之旅", author: "织光创作者", likes: 128 },
-  { title: "梦境花园", author: "AI 艺术家", likes: 256 },
-  { title: "未来城市", author: "数字设计师", likes: 189 },
-  { title: "光影诗篇", author: "视觉艺术家", likes: 167 },
-  { title: "机械之心", author: "概念设计师", likes: 203 },
+/* 节点色（与画布 KIND_META 对齐） */
+const FLOW_COLORS: Record<string, string> = {
+  llm: "#d44b7e",
+  image: "#d4537e",
+  output: "#f59e0b",
+};
+
+/* 最近画布（mock，后续接 projects API） */
+const RECENT = [
+  { name: "法式穿搭大片", meta: "3 分钟前编辑 · 6 节点", flow: ["image", "video", "output"] },
+  { name: "夏日海边宣传片", meta: "昨天编辑 · 4 节点", flow: ["video", "output"] },
+  { name: "国风水墨分镜", meta: "3 天前编辑 · 8 节点", flow: ["llm", "output", "video", "llm"] },
 ] as const;
 
-const MY_WORKS = [
-  { name: "法式穿搭大片 01", type: "图片", date: "今天" },
-  { name: "夏日海边宣传片", type: "视频", date: "昨天" },
-  { name: "国风水墨动画分镜", type: "视频", date: "3天前" },
-  { name: "赛博朋克夜景渲染", type: "图片", date: "5天前" },
-  { name: "极简产品海报编排", type: "预设", date: "上周" },
-  { name: "电商主图批量流水线", type: "画布", date: "2周前" },
+/* 我的 Agent（mock） */
+const MY_AGENTS = [
+  { name: "种草文案手", runs: 23, hue: "#534ab7" },
+  { name: "分镜师", runs: 11, hue: "#0F6E56" },
 ] as const;
+
+const HOT_TAGS = ["古风视频", "电商主图", "小红书图文", "短剧分镜"] as const;
 
 export default function HomePage() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
 
+  /* Hero 提交：带 prompt 进画布并自动唤起 Agent */
+  const startAgent = () => {
+    const q = prompt.trim();
+    if (q) {
+      sessionStorage.setItem("weavl:agent-prompt", q);
+      router.push("/canvas?agent=1");
+    } else {
+      router.push("/canvas");
+    }
+  };
+
   return (
     <AppShell>
       <div className={styles.container}>
-        {/* Hero */}
+        {/* ---- Hero：Agent 主入口 ---- */}
         <section className={styles.hero}>
-          <div className={styles.heroIntro}>
-            <h1 className={styles.heroTitle}>你好，织光师</h1>
-            <p className={styles.heroSub}>
-              今天想创造点什么呢？让灵感流动，让想象发光。
-            </p>
+          <h1 className={styles.heroTitle}>你好，织光师</h1>
+          <p className={styles.heroSub}>描述你想做的事，Agent 为你编排画布工作流</p>
+          <div className={styles.promptBar}>
+            <span className={styles.promptBotIcon}><Bot size={14} /></span>
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && startAgent()}
+              placeholder="帮我做一支古风穿搭种草视频，从脚本到成片…"
+              className={styles.promptInput}
+            />
+            <button
+              className={styles.promptPlus}
+              title="添加参考素材"
+              aria-label="添加参考素材"
+            >
+              <Plus size={13} />
+            </button>
+            <button className={styles.promptGo} onClick={startAgent}>
+              开始创作
+            </button>
           </div>
-
-          <div>
-            <div className={styles.promptWrap}>
-              <input
-                type="text"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && prompt && router.push("/preset")
-                }
-                placeholder="描述你的想法，按 Enter 生成"
-                className={styles.promptInput}
-              />
+          <div className={styles.hotTags}>
+            {HOT_TAGS.map((t) => (
               <button
-                onClick={() => prompt && router.push("/preset")}
-                className={styles.promptBtn}
-                aria-label="生成"
+                key={t}
+                className={styles.hotTag}
+                onClick={() => {
+                  setPrompt(`帮我做${t}相关内容`);
+                }}
               >
-                <Sparkles size={16} />
+                {t}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ---- 三入口卡 ---- */}
+        <section className={styles.entries}>
+          <button
+            className={`${styles.entryCard} ${styles.entryCardPrimary}`}
+            onClick={() => router.push("/canvas")}
+          >
+            <span className={styles.entryIconPrimary}><Workflow size={16} /></span>
+            <span className={styles.entryTexts}>
+              <span className={styles.entryTitle}>新建空白画布</span>
+              <span className={styles.entryDesc}>从零搭建你的工作流 · 空画布起步</span>
+            </span>
+            <ArrowRight size={15} className={styles.entryArrow} />
+          </button>
+          <button className={styles.entryCard} onClick={() => router.push("/agent")}>
+            <span className={styles.entryIcon}><Bot size={14} /></span>
+            <span className={styles.entryTexts}>
+              <span className={styles.entryTitle}>找 Agent</span>
+              <span className={styles.entryDesc}>对话式创建</span>
+            </span>
+          </button>
+          <button className={styles.entryCard} onClick={() => router.push("/projects")}>
+            <span className={styles.entryIcon}><Layers size={14} /></span>
+            <span className={styles.entryTexts}>
+              <span className={styles.entryTitle}>导入工作流</span>
+              <span className={styles.entryDesc}>JSON / 模板文件</span>
+            </span>
+          </button>
+        </section>
+
+        {/* ---- 工作流模板 ---- */}
+        <section>
+          <div className={styles.sectionHead}>
+            <h3 className={styles.sectionTitle}>
+              工作流模板
+              <span className={styles.sectionBadge}>新品</span>
+            </h3>
+            <button className={styles.moreLink}>全部模板 <ArrowRight size={11} /></button>
+          </div>
+          <div className={styles.tplGrid}>
+            {TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.name}
+                className={styles.tplCard}
+                onClick={() => router.push(`/preset/detail?id=${encodeURIComponent(tpl.name)}`)}
+              >
+                <div className={styles.tplCover}>
+                  <span className={styles.tplFlow}>
+                    {tpl.flow.map((kind, i) => (
+                      <span key={i} className={styles.tplFlowWrap}>
+                        {i > 0 && <span className={styles.tplFlowLine}>──▶</span>}
+                        <span
+                          className={styles.tplFlowNode}
+                          style={{ background: `${FLOW_COLORS[kind]}55`, borderColor: `${FLOW_COLORS[kind]}70` }}
+                        />
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <div className={styles.tplBody}>
+                  <h4 className={styles.tplName}>{tpl.name}</h4>
+                  <p className={styles.tplDesc}>{tpl.desc}</p>
+                  <div className={styles.tplMeta}>
+                    <span className={styles.tplTag}>{tpl.tag}</span>
+                    <span className={styles.tplUses}>{tpl.uses} 使用</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ---- 最近画布 + 我的 Agent ---- */}
+        <section className={styles.bottomSplit}>
+          <div className={styles.recentCol}>
+            <div className={styles.sectionHead}>
+              <h3 className={styles.sectionTitle}>最近画布</h3>
+              <button className={styles.moreLink} onClick={() => router.push("/projects")}>
+                全部项目 <ArrowRight size={11} />
               </button>
             </div>
-
-            <div className={styles.quickTags}>
-              {[
-                { label: "生成图片", icon: ImageIcon, href: "/preset" },
-                { label: "生成视频", icon: Video, href: "/preset" },
-                { label: "从预设开始", icon: Wand2, href: "/preset" },
-                { label: "打开项目", icon: Layers, href: "/projects" },
-                { label: "Agent 对话", icon: Bot, href: "/agent" },
-              ].map((tag) => (
+            <div className={styles.recentList}>
+              {RECENT.map((r) => (
                 <button
-                  key={tag.label}
-                  onClick={() => router.push(tag.href)}
-                  className={styles.tag}
+                  key={r.name}
+                  className={styles.recentRow}
+                  onClick={() => router.push("/canvas")}
                 >
-                  <tag.icon size={12} />
-                  {tag.label}
+                  <span className={styles.recentThumb}>
+                    {r.flow.map((kind, i) => (
+                      <span
+                        key={i}
+                        className={styles.recentNode}
+                        style={{ background: `${FLOW_COLORS[kind]}66` }}
+                      />
+                    ))}
+                  </span>
+                  <span className={styles.recentTexts}>
+                    <span className={styles.recentName}>{r.name}</span>
+                    <span className={styles.recentMeta}>
+                      <Clock size={9} />
+                      {r.meta}
+                    </span>
+                  </span>
+                  <span className={styles.recentGo}>继续编辑</span>
                 </button>
               ))}
             </div>
           </div>
-        </section>
 
-        {/* 快捷开始 */}
-        <section>
-          <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>快捷开始</h3>
-          </div>
-          <div className={styles.quickGrid}>
-            {QUICK_STARTS.map((item) => (
-              <button
-                key={item.title}
-                onClick={() => router.push(item.href)}
-                className={styles.quickCard}
-              >
-                <div className={styles.quickInfo}>
-                  <h4 className={styles.quickTitle}>{item.title}</h4>
-                  <p className={styles.quickDesc}>{item.desc}</p>
-                </div>
-                <span className={styles.quickIcon}>
-                  <item.icon size={16} />
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 灵感广场 */}
-        <section>
-          <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>灵感广场</h3>
-            <button className={styles.moreLink}>
-              查看更多 <ArrowRight size={12} />
-            </button>
-          </div>
-          <div className={styles.galleryGrid}>
-            {GALLERY.map((card) => (
-              <div key={card.title} className={styles.galleryCard}>
-                <div className={styles.galleryCover}>
-                  <span className={styles.galleryPlay}>
-                    <Play size={14} />
+          <div className={styles.agentCol}>
+            <div className={styles.sectionHead}>
+              <h3 className={styles.sectionTitle}>我的 Agent</h3>
+              <button className={styles.moreLink}>管理 <ArrowRight size={11} /></button>
+            </div>
+            <div className={styles.agentGrid}>
+              {MY_AGENTS.map((a) => (
+                <button key={a.name} className={styles.agentCard}>
+                  <span
+                    className={styles.agentAvatar}
+                    style={{ background: `linear-gradient(135deg, ${a.hue}, ${a.hue}cc)` }}
+                  >
+                    {a.name.slice(0, 1)}
                   </span>
-                </div>
-                <div className={styles.galleryBody}>
-                  <h4 className={styles.galleryTitle}>{card.title}</h4>
-                  <div className={styles.galleryMeta}>
-                    <span>{card.author}</span>
-                    <span className={styles.galleryLikes}>
-                      <Heart size={10} />
-                      {card.likes}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 我的创作 */}
-        <section>
-          <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>我的创作</h3>
-            <button className={styles.moreLink}>
-              全部作品 <ArrowRight size={12} />
-            </button>
-          </div>
-          <div className={styles.worksGrid}>
-            {MY_WORKS.map((work) => (
-              <div key={work.name} className={styles.workCard}>
-                <div className={styles.workCover}>
-                  <Sparkles size={16} />
-                </div>
-                <h5 className={styles.workName}>{work.name}</h5>
-                <div className={styles.workMeta}>
-                  <span>{work.type}</span>
-                  <span>{work.date}</span>
-                </div>
-              </div>
-            ))}
+                  <span className={styles.agentName}>{a.name}</span>
+                  <span className={styles.agentRuns}>运行 {a.runs} 次</span>
+                </button>
+              ))}
+              <button className={styles.agentCardAdd}>
+                <span className={styles.agentAddIcon}><Plus size={13} /></span>
+                <span className={styles.agentAddText}>创建 Agent</span>
+              </button>
+            </div>
           </div>
         </section>
       </div>

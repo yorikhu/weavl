@@ -1,0 +1,2047 @@
+// 工作流编辑器（/workflow）—— 全屏独占页面，去 AppShell · 100vh
+//
+//   顶栏（标题 / tab / 发布） + 中间节点流 + 底部工具条
+
+.fullscreen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  z-index: 1000; /* 覆盖 AppShell */
+}
+
+.loadingWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loadingText {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+/* ============================ 顶栏 ============================ */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.backBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 16px;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--foreground);
+    background: var(--subcard);
+  }
+}
+
+.titleWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--faint-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--foreground);
+    background: var(--subcard);
+  }
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.tabActive {
+  background: var(--subcard);
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.costPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  font-size: 10.5px;
+  color: var(--foreground);
+
+  svg {
+    color: var(--accent);
+  }
+}
+
+.publishBtn {
+  padding: 5px 18px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.06);
+  }
+}
+
+/* ============================ 中间画布 ============================ */
+.canvasArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.canvasHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.canvasName {
+  font-size: 11.5px;
+  color: var(--foreground);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvasDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.flowWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, var(--surface-border) 1px, transparent 0) 0 0 / 24px 24px;
+  position: relative;
+  user-select: none;
+  touch-action: none; /* 禁用浏览器默认的触控板手势 */
+}
+
+/* 鼠标模式：cursor grab */
+.flowWrapMouse {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* 触控板模式：cursor 默认 */
+.flowWrapTrackpad {
+  cursor: default;
+}
+
+.flow {
+  display: block;
+  position: relative;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* SVG 连线层（铺在节点下方；尺寸/偏移由 JSX inline 指定以覆盖负坐标区） */
+.flowEdges {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.edgeGroup {
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:hover .edgePath {
+    stroke: var(--foreground);
+    stroke-width: 1.8;
+    opacity: 1;
+  }
+
+  &:hover .edgeArrow {
+    fill: var(--foreground);
+    opacity: 1;
+  }
+}
+
+/* 选中态：加粗黑线（按 Delete 删除） */
+.edgeGroupSelected .edgePath {
+  stroke: var(--foreground);
+  stroke-width: 2;
+  opacity: 1;
+}
+
+.edgeGroupSelected .edgeArrow {
+  fill: var(--foreground);
+  opacity: 1;
+}
+
+.edgePath {
+  fill: none;
+  stroke: var(--muted-foreground);
+  stroke-width: 2;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.edgeArrow {
+  fill: var(--muted-foreground);
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* 透明加宽命中区（点边删除） */
+.edgeHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+}
+
+/* 拉线中的临时虚线（黑白灰：深灰） */
+.edgePending {
+  fill: none;
+  stroke: #5e5e66;
+  stroke-width: 1.6;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+  transition: stroke 0.12s, stroke-width 0.12s;
+}
+
+/* 拉线命中有效节点：主画布风格的浅蓝实线（#b5d4f4） */
+.edgePendingValid {
+  stroke: #b5d4f4;
+  stroke-width: 2;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 4px rgba(181, 212, 244, 0.6));
+}
+
+/* 拉线命中无效（自身 / 重复 / 空白）：红色提示不可连 */
+.edgePendingInvalid {
+  stroke: #ef4444;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.4));
+}
+
+/* 拉线命中目标节点时：节点卡边框变蓝（主画布预览高亮态） */
+.nodeCardConnecting {
+  border-color: #7eb6f0 !important;
+  box-shadow: 0 0 0 2px rgba(126, 182, 240, 0.25), 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* 拉线命中目标节点时：输入端口变蓝发光 */
+.nodePortConnecting {
+  background: #7eb6f0 !important;
+  box-shadow: 0 0 0 4px rgba(126, 182, 240, 0.35) !important;
+  transform: translateY(-50%) scale(1.6);
+}
+
+/* 成功建边：目标节点闪光动画（主画布 success-draw + node-flash） */
+@keyframes nodeFlash {
+  0% { box-shadow: 0 0 0 0 rgba(126, 182, 240, 0.7); }
+  100% { box-shadow: 0 0 0 14px rgba(126, 182, 240, 0); }
+}
+
+.nodeCardFlash {
+  animation: nodeFlash 0.45s ease-out;
+}
+
+.flowEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--faint-foreground);
+  font-size: 12px;
+}
+
+/* ====================== 节点卡（黑白灰 · 参考主画布结构） ====================== */
+.nodeCard {
+  position: absolute;
+  width: 230px;
+  height: 128px;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  z-index: 1;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+
+  &:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    border-color: var(--muted-foreground);
+  }
+}
+
+/* 顶部 3px 类型色条（黑白灰主调，颜色仅做类型微区分，低饱和度） */
+.nodeCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #9a9aa3; /* 默认灰；选中/hover 由下方规则覆盖 */
+}
+
+.nodeCardDragging {
+  cursor: grabbing;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+  z-index: 5;
+  transition: none;
+}
+
+/* 选中：黑描边 + 深阴影（低调但有辨识度） */
+.nodeCardSelected {
+  border-color: var(--foreground);
+  box-shadow: 0 0 0 1px var(--foreground), 0 8px 24px rgba(0, 0, 0, 0.2);
+
+  &::before {
+    background: var(--foreground);
+  }
+}
+
+.nodeCardStart::before {
+  background: #2d2d33;
+}
+
+/* 结束节点：去掉 hover 时的绿色 var(--accent)，保持黑灰中性 */
+.nodeCardEnd {
+  border-color: var(--surface-hover-border);
+}
+
+/* 端口：12px 灰色（参考主画布 cardHandle），hover 才高亮 */
+.nodePort {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #5e5e66;
+  border: 2px solid var(--surface);
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+}
+
+.nodeCard:hover .nodePort {
+  opacity: 0.9;
+}
+
+.nodePortIn {
+  left: -5.5px;
+}
+
+.nodePortOut {
+  right: -5.5px;
+  cursor: crosshair;
+
+  &:hover {
+    opacity: 1;
+    background: #2d2d33;
+    transform: translateY(-50%) scale(1.35);
+  }
+}
+
+.nodeHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 12px 8px;
+}
+
+/* 图标：黑白灰（去掉彩色背景，统一深灰） */
+.nodeIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(60, 60, 65, 0.1);
+  color: #2d2d33;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.nodeTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--foreground);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nodeTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 500;
+  background: rgba(60, 60, 65, 0.12);
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.nodeRun {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: var(--foreground);
+    background: var(--subcard);
+  }
+}
+
+.nodeMore {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--faint-foreground);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: var(--foreground);
+    background: var(--subcard);
+  }
+}
+
+.nodeBody {
+  padding: 4px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  min-height: 16px;
+}
+
+.nodeKey {
+  width: 36px;
+  flex-shrink: 0;
+  color: var(--faint-foreground);
+  text-align: right;
+}
+
+.nodeVal {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nodeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(60, 60, 65, 0.08);
+  color: var(--foreground);
+  font-size: 10px;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 黑白灰：accent chip 也用深灰底 + 黑字（仅字重区分） */
+.nodeChipAccent {
+  color: var(--foreground);
+  background: rgba(60, 60, 65, 0.14);
+  font-weight: 500;
+}
+
+.nodeChipType {
+  color: var(--muted-foreground);
+  font-size: 9.5px;
+  padding-right: 1px;
+  flex-shrink: 0;
+}
+
+/* ============================ 底部工具条 ============================ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 20px;
+  background: var(--background);
+  flex-shrink: 0;
+}
+
+.toolbarBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.toolbarSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--background);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: inherit;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 12px) 13px,
+    calc(100% - 8px) 13px;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  padding-right: 22px;
+}
+
+.toolbarSelectZoom {
+  min-width: 64px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================== 缩放比例按钮 + 档位弹层 ==================== */
+.zoomWrap {
+  position: relative;
+}
+
+.zoomBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 30px;
+  padding: 0 10px;
+  min-width: 68px;
+  background: var(--background);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: var(--muted-foreground);
+  }
+}
+
+.zoomPopover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 140px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: modePopIn 0.15s ease-out;
+}
+
+.zoomOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.zoomOptionActive {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.zoomHint {
+  font-size: 10px;
+  color: var(--faint-foreground);
+}
+
+.zoomDivider {
+  height: 1px;
+  background: var(--surface-border);
+  margin: 5px 8px;
+}
+
+.toolbarIconBtn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+/* 触控板友好模式按钮：笔记本图标 + 小箭头 */
+.touchpadBtn {
+  gap: 0;
+  padding: 0 4px;
+  position: relative;
+
+  svg:last-of-type {
+    margin-left: -1px;
+    color: var(--muted-foreground);
+  }
+}
+
+.touchpadBtnActive {
+  background: var(--subcard);
+  color: var(--foreground);
+
+  svg:last-of-type {
+    color: var(--foreground);
+  }
+}
+
+/* 交互模式弹层：参考扣子截图 —— 标题 + 两张选项卡（鼠标/触控板） */
+.modePopover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  padding: 18px 18px 16px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  z-index: 100;
+  cursor: default;
+  text-align: left;
+  animation: modePopIn 0.15s ease-out;
+}
+
+@keyframes modePopIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.modeTitle {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.modeOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modeOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 14px 16px;
+  background: var(--background);
+  border: 1.5px solid var(--surface-border);
+  border-radius: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover {
+    border-color: var(--muted-foreground);
+  }
+}
+
+.modeOptionActive {
+  background: rgba(83, 74, 183, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+
+  svg {
+    color: var(--accent);
+  }
+}
+
+.modeOptionName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.modeOptionActive .modeOptionName {
+  color: var(--accent);
+}
+
+.modeOptionDesc {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+
+/* hover 弹出的浅色 tooltip（参考扣子截图） */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid var(--surface-border);
+  border-radius: 7px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  z-index: 10;
+
+  /* 小尾巴 */
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: var(--surface);
+    border-right: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--surface-border);
+  }
+}
+
+.touchpadBtn:hover .tooltip,
+.toolbarIconBtn:hover .tooltip,
+.inspectorIconBtn:hover .tooltip,
+.inspectorGroupBtn:hover .tooltipSm {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* 小号 tooltip（用在 inspector 内的 22px 按钮） */
+.tooltipSm {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  padding: 3px 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--surface-border);
+  border-radius: 5px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  z-index: 200;
+}
+
+/* 顶部按钮的 tooltip 偏向右对齐，避免弹出抽屉时溢出 */
+.inspectorIconBtn:hover .tooltip {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(2px);
+}
+.inspectorIconBtn:hover .tooltip {
+  opacity: 1;
+  transform: translateX(0) translateY(-2px);
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 18px;
+  background: var(--surface-border);
+  margin: 0 4px;
+}
+
+/* ====================== 节点库弹层（添加节点） ====================== */
+.pickerWrap {
+  position: relative;
+}
+
+.pickerPopover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 480px;
+  max-height: 540px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modePopIn 0.15s ease-out;
+}
+
+.pickerSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface);
+}
+
+.pickerSearchIcon {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.pickerSearchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--foreground);
+  font-family: inherit;
+  outline: none;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+}
+
+.pickerScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pickerGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pickerTopRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.pickerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pickerSectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.pickerItemDisabled {
+  opacity: 0.6;
+  cursor: default;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+.pickerItemIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.pickerItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pickerItemName {
+  font-size: 12.5px;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.pickerItemDesc {
+  font-size: 10.5px;
+  color: var(--faint-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickerEmpty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--faint-foreground);
+  font-size: 12px;
+}
+
+.addNodeBtn,
+.runBtn,
+.debugBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0 2px;
+  /* 不要 transform 过渡，避免按钮按下时缩放弹回产生"一闪" */
+  transition: filter 0.15s;
+}
+
+.addNodeBtn {
+  background: var(--subcard);
+  color: var(--accent);
+  border: 1px solid var(--surface-border);
+
+  &:hover {
+    background: var(--background);
+    border-color: var(--accent);
+  }
+}
+
+.runBtn {
+  background: #1f9e6a;
+  color: #fff;
+  font-weight: 600;
+
+  &:hover {
+    filter: brightness(1.06);
+  }
+}
+
+.debugBtn {
+  width: 30px;
+  padding: 0;
+  background: var(--subcard);
+  color: var(--muted-foreground);
+  border: 1px solid var(--surface-border);
+
+  &:hover {
+    color: var(--foreground);
+    background: var(--background);
+  }
+}
+
+/* ====================== 快速添加菜单（拉线松手空白处） ====================== */
+.quickAddMenu {
+  position: fixed;
+  z-index: 300;
+  width: 300px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  animation: modePopIn 0.12s ease-out;
+  transform: translate(-50%, calc(-100% - 12px)); /* 锚点在松手点上方 */
+}
+
+.quickAddTitle {
+  padding: 4px 8px 8px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.quickAddGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.quickAddItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.quickAddIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.quickAddName {
+  font-size: 12px;
+  color: var(--foreground);
+}
+
+.quickAddCancel {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  font-size: 11px;
+  color: var(--faint-foreground);
+  cursor: pointer;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+/* ====================== JSON 导入弹窗 ====================== */
+.jsonModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  animation: jsonPopIn 0.14s ease-out;
+}
+
+@keyframes jsonPopIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.jsonModalCard {
+  width: 640px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.jsonModalHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.jsonModalTitle {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.jsonModalBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  overflow: auto;
+}
+
+.jsonModalHint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+
+  code {
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--subcard);
+    color: var(--foreground);
+    font-size: 10.5px;
+  }
+}
+
+.jsonModalTextarea {
+  width: 100%;
+  min-height: 280px;
+  padding: 10px 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: 7px;
+  background: var(--background);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--foreground);
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.jsonModalError {
+  margin: 0;
+  font-size: 11.5px;
+  color: #e0533a;
+  background: rgba(224, 83, 58, 0.1);
+  border: 1px solid rgba(224, 83, 58, 0.3);
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+
+.jsonModalFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--surface-border);
+  background: var(--background);
+}
+
+.jsonModalBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  color: var(--muted-foreground);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+    border-color: var(--surface-hover-border);
+  }
+}
+
+.jsonImportBtn {
+  composes: jsonModalBtn;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: var(--accent);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+    filter: brightness(1.08);
+  }
+}
+
+/* ====================== 节点配置抽屉（右侧滑出） ====================== */
+.inspector {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 440px;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--surface-border);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  /* 形成独立 stacking context，让内部 tooltip/弹窗的 z-index 真正生效 */
+  isolation: isolate;
+  animation: inspectorIn 0.2s ease-out;
+}
+
+@keyframes inspectorIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.inspectorMeta {
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.inspectorHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.inspectorIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.inspectorTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.inspectorTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.inspectorTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: rgba(83, 74, 183, 0.14);
+  color: #7f77dd;
+}
+
+.inspectorHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.inspectorIconBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+.inspectorDesc {
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+/* start 节点可编辑描述：textarea + 字数 */
+.inspectorDescEditable {
+  position: relative;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.inspectorDescTextarea {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+}
+
+.inspectorDescCount {
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  font-size: 10.5px;
+  color: var(--faint-foreground);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.inspectorTabs {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px 0;
+  gap: 0;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.inspectorTab {
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-family: inherit;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.inspectorTabActive {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.inspectorBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 24px;
+}
+
+.inspectorHint {
+  margin: 4px 0 12px;
+  padding: 9px 12px;
+  background: rgba(83, 74, 183, 0.08);
+  border: 1px solid rgba(83, 74, 183, 0.18);
+  border-radius: 7px;
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+.inspectorGroup {
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: var(--background);
+  overflow: hidden;
+  margin-bottom: 10px;
+
+  &[open] > .inspectorGroupHead::before {
+    transform: rotate(90deg);
+  }
+}
+
+.inspectorGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    content: "▸";
+    font-size: 10px;
+    color: var(--muted-foreground);
+    transition: transform 0.15s;
+  }
+}
+
+.inspectorGroupRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspectorGroupBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+.inspectorVarList {
+  padding: 4px 8px 10px;
+}
+
+.inspectorVarHead,
+.inspectorVarRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 32px 56px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.inspectorVarHead {
+  font-size: 10.5px;
+  color: var(--faint-foreground);
+  border-bottom: 1px solid var(--surface-border);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.inspectorVarInput,
+.inspectorVarSelect,
+.inspectorFieldSelect {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.inspectorVarInput:focus,
+.inspectorVarSelect:focus,
+.inspectorFieldSelect:focus {
+  border-color: var(--accent);
+}
+
+.inspectorCheck {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  border-radius: 5px;
+  cursor: pointer;
+  color: transparent;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    border-color: var(--muted-foreground);
+  }
+}
+
+.inspectorCheckOn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.inspectorVarActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
+/* ================== 时区选择器（双列 Cascader） ================== */
+.tzWrap {
+  position: relative;
+}
+
+.tzBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: left;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+  }
+}
+
+.tzBtnText {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 弹层：横向两列 + 第二列绝对定位在右侧 */
+.tzPopover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 540px;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  min-height: 200px;
+  max-height: 360px;
+  animation: jsonPopIn 0.12s ease-out;
+  overflow: hidden;
+}
+
+/* 第一列：UTC 偏移（独立滚动） */
+.tzCol1 {
+  width: 140px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 4px;
+  border-right: 1px solid var(--surface-border);
+  background: var(--background);
+}
+
+.tzItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  border-radius: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--accent);
+  }
+}
+
+.tzItemActive,
+.tzItemOpen {
+  background: rgba(83, 74, 183, 0.14);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.tzOffset {
+  flex: 1;
+}
+
+.tzChevron {
+  font-size: 14px;
+  color: inherit;
+  flex-shrink: 0;
+  font-weight: 400;
+}
+
+/* 第二列：时区列表（固定右侧） */
+.tzCol2 {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.tzZone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: var(--foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.tzZoneActive {
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--subcard);
+}
+
+.tzCheck {
+  color: var(--accent);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.inspectorIconBtnSm {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  &:hover {
+    color: var(--foreground);
+    background: var(--subcard);
+  }
+}
+
+.inspectorIconBtnSmActive {
+  background: rgba(83, 74, 183, 0.18);
+  color: var(--accent);
+}
+
+/* 变量行展开区：默认值 + 描述（与上方输入行左对齐） */
+.inspectorVarExpand {
+  padding: 10px 4px 10px 8px; /* 与 inspectorVarList 的 padding 8px 对齐 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px dashed var(--surface-border);
+  background: rgba(83, 74, 183, 0.04);
+  border-radius: 0 0 8px 8px;
+  margin: -2px 0 4px;
+  animation: jsonPopIn 0.15s ease-out;
+}
+
+.inspectorVarField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inspectorVarFieldLabel {
+  font-size: 10.5px;
+  color: var(--faint-foreground);
+}
+
+.inspectorVarFieldInput {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.inspectorField {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.inspectorLabel {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+
+.inspectorReq {
+  color: #e0533a;
+  margin-left: 2px;
+}
+
+.inspectorTimeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inspectorSwitch {
+  width: 32px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-border);
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s;
+
+  span {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.15s;
+  }
+}
+
+.inspectorSwitchOn {
+  background: var(--accent);
+
+  span {
+    transform: translateX(14px);
+  }
+}
+
+.inspectorSubGroup {
+  margin: 0 8px 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.inspectorParamList {
+  padding: 6px 10px 10px;
+}
+
+.inspectorParamRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.inspectorParamKey {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  min-width: 90px;
+}
+
+.inspectorParamType {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--subcard);
+  color: var(--muted-foreground);
+}
+
+.inspectorParamInput {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--background);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.inspectorSection {
+  margin-bottom: 14px;
+}
+
+.inspectorSectionTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.inspectorMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--background);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+}
+
+.inspectorMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.inspectorMetaKey {
+  color: var(--faint-foreground);
+  width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.inspectorMetaVal {
+  color: var(--foreground);
+  flex: 1;
+  min-width: 0;
+}

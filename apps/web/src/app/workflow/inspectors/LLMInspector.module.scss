@@ -1,0 +1,316 @@
+/* LLM 节点配置面板（参考扣子截图：模型 / 系统提示词 / 用户提示词 / 输入 / 输出 / 技能 / 异常处理） */
+
+.inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============================== Section 折叠 ============================== */
+.section {
+  background: var(--background);
+  border: 1px solid var(--surface-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  color: var(--foreground);
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.chev {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  width: 10px;
+}
+
+.icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.title {
+  flex: 1;
+  font-weight: 500;
+}
+
+.sectionRight {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sectionBody {
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============================== 模型下拉 ============================== */
+.modelWrap {
+  position: relative;
+}
+
+.modelBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  box-sizing: border-box;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+  }
+}
+
+.modelDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f6cff, #534ab7);
+  flex-shrink: 0;
+}
+
+.modelMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  padding: 4px;
+}
+
+.modelItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+/* ============================== 文本域 ============================== */
+.textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--foreground);
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.iconRow {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+/* ============================== 通用按钮 ============================== */
+.iconBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 12px;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+/* ============================== 变量列表 ============================== */
+.varList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.varHead,
+.varRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 32px 56px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.varHead {
+  font-size: 10.5px;
+  color: var(--faint-foreground);
+  border-bottom: 1px solid var(--surface-border);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.varGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.check {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  border-radius: 5px;
+  cursor: pointer;
+  color: transparent;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    border-color: var(--muted-foreground);
+  }
+}
+
+.checkOn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.varActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
+.varExpand {
+  padding: 0 4px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px dashed var(--surface-border);
+  margin: -2px 0 4px;
+  padding-top: 10px;
+  background: rgba(83, 74, 183, 0.04);
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 4px;
+}
+
+.subField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 10.5px;
+    color: var(--faint-foreground);
+  }
+}
+
+/* ============================== 技能空状态 ============================== */
+.skillEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 12px;
+  text-align: center;
+
+  span {
+    font-size: 12.5px;
+    color: var(--foreground);
+  }
+  p {
+    margin: 0;
+    font-size: 10.5px;
+    color: var(--faint-foreground);
+  }
+}
+
+/* ============================== 异常处理 ============================== */
+.fieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  gap: 12px;
+
+  select {
+    flex: 1;
+    max-width: 60%;
+  }
+}

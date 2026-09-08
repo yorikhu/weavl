@@ -1,344 +1,368 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
-import type { InputDef, RunView, CandidateArtifact } from "@weavl/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  CheckCircle2,
-  Coins,
-  FileCheck2,
-  RefreshCw,
+  Bot,
+  Loader2,
+  Plus,
+  Send,
   Sparkles,
-  ClipboardList,
-  PackageCheck,
+  Wand2,
 } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
+import { API } from "@/lib/env";
+import {
+  CATEGORY_TABS,
+  DEFAULT_DISPLAY,
+  TEMPLATE_DISPLAY,
+  type TemplateSummary,
+} from "@/features/preset/display";
 import styles from "./page.module.scss";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+/* ========================================================================
+ * 预设市场 —— AI 对话驱动版
+ *
+ * 布局：
+ *   左 60%：分类 tab + 卡片网格（AI 推荐的卡片会高亮）
+ *   右 40%：织光 Agent 对话窗口（顶部 +新建按钮 + 快捷话题 + 气泡）
+ *
+ * AI 推荐（mock 关键词匹配）：
+ *   用户输入 → 命中预设话题 → 返回对应模板 id → 卡片加 ⭐ 高亮
+ * ====================================================================== */
 
-type Phase = "form" | "running" | "done" | "error";
+/** 快捷话题：点击直接进入对话 */
+const QUICK_TOPICS = [
+  { icon: "✨", label: "小红书种草图文", keywords: ["小红书", "种草", "图文"] },
+  { icon: "🎬", label: "短视频脚本", keywords: ["短视频", "脚本", "视频"] },
+  { icon: "🛒", label: "商品详情页", keywords: ["商品", "详情"] },
+  { icon: "📊", label: "数据分析报告", keywords: ["数据", "分析", "报告"] },
+  { icon: "🎙️", label: "配音视频", keywords: ["配音", "tts"] },
+  { icon: "📝", label: "广告文案", keywords: ["文案", "广告"] },
+] as const;
 
-export default function PresetPage() {
-  const [inputs, setInputs] = useState<Record<string, string>>({});
-  const [template, setTemplate] = useState<{
-    id: string;
-    name: string;
-    inputs: InputDef[];
-    gates: { afterStep: string; title: string; description?: string }[];
-    totalSteps: number;
-    cost: { min: number; max: number };
-  } | null>(null);
-  const [run, setRun] = useState<RunView | null>(null);
-  const [phase, setPhase] = useState<Phase>("form");
-  const [error, setError] = useState<string | null>(null);
+/** 关键词 → 推荐模板 id 映射（mock，未来对接 LLM） */
+const KEYWORD_TO_TEMPLATE: Record<string, string> = {
+  "小红书": "ecom.xhs-note",
+  "种草": "ecom.xhs-note",
+  "图文": "ecom.xhs-note",
+};
+
+/** Agent 对话消息 */
+interface ChatMsg {
+  id: string;
+  role: "agent" | "user";
+  text: string;
+  /** 命中的推荐模板 id（仅 agent 推荐回复时有） */
+  recommend?: string;
+}
+
+export default function PresetMarketPage() {
+  const router = useRouter();
+
+  /* ------- 数据 ------- */
+  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [error, setError] = useState(false);
+  const [tab, setTab] = useState<string>("all");
+
+  /* ------- AI 对话 ------- */
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  /** AI 当前推荐的模板 id（高亮左侧卡片） */
+  const [recommended, setRecommended] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     fetch(`${API}/templates`)
-      .then((r) => r.json())
-      .then((list: {
-        id: string;
-        name: string;
-        inputs: InputDef[];
-        gates: { afterStep: string; title: string; description?: string }[];
-        totalSteps: number;
-        cost: { min: number; max: number };
-      }[]) => {
-        const t = list?.[0];
-        if (!t) return;
-        setTemplate(t);
-        const init: Record<string, string> = {};
-        t.inputs.forEach((d: InputDef) => {
-          if (d.type === "select" && d.options[0]) init[d.name] = d.options[0].value;
-          else if (d.type === "number" && d.default != null) init[d.name] = String(d.default);
-          else init[d.name] = "";
-        });
-        setInputs(init);
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((list: TemplateSummary[]) => {
+        setTemplates(list ?? []);
+        /* 首屏欢迎语：根据已有模板动态生成 */
+        setChat([
+          {
+            id: "welcome",
+            role: "agent",
+            text:
+              list && list.length > 0
+                ? `你好！我是织光。告诉我你想做什么，我来帮你挑最合适的预设（比如"小红书种草"）。也可以从下方挑一个直接开始。`
+                : "你好！我是织光。告诉我你想做什么，我帮你创建工作流。",
+          },
+        ]);
       })
-      .catch(() => setError("无法连接 API（localhost:3001），请先启动 pnpm dev:api"));
+      .catch(() => {
+        setError(true);
+        setChat([
+          {
+            id: "welcome",
+            role: "agent",
+            text: "你好！我是织光。告诉我你想做什么，我帮你创建工作流。",
+          },
+        ]);
+      });
   }, []);
 
-  const startRun = useCallback(async () => {
-    if (!template) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API}/runs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId: template.id, inputs }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? "创建失败");
-      setRun(data);
-      setPhase(data.status === "succeeded" ? "done" : "running");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }, [template, inputs]);
+  /* 对话自动滚到底 */
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [chat, busy]);
 
-  const decide = useCallback(
-    async (action: "confirm" | "regenerate") => {
-      if (!run) return;
-      setBusy(true);
-      try {
-        const res = await fetch(`${API}/runs/${run.id}/decide`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, candidateId: selected ?? undefined }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message ?? "操作失败");
-        setRun(data);
-        setSelected(null);
-        setPhase(data.status === "succeeded" ? "done" : "running");
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setBusy(false);
-      }
-    },
-    [run, selected],
+  /* 模板筛选 */
+  const filtered = useMemo(
+    () => (tab === "all" ? templates : templates.filter((t) => t.category === tab)),
+    [templates, tab],
   );
 
-  const gate = template?.gates.find((g) => g.afterStep === run?.awaitingGate);
-  const candidates: CandidateArtifact[] = run?.candidates ?? [];
-  const pkg = run?.contentPackage;
+  /* ------- AI 匹配（mock 关键词） -------
+   * 真实场景对接 LLM 流式输出；此处用关键词匹配快速返回。 */
+  function matchTemplate(text: string): string | null {
+    for (const [kw, tid] of Object.entries(KEYWORD_TO_TEMPLATE)) {
+      if (text.includes(kw) && templates.some((t) => t.id === tid)) return tid;
+    }
+    /* 兜底：用户描述超过 4 字，返回第一个模板 */
+    if (text.trim().length > 4 && templates[0]) return templates[0].id;
+    return null;
+  }
+
+  function buildAgentReply(userText: string, recommendedId: string | null): ChatMsg {
+    if (!recommendedId) {
+      return {
+        id: `m-${Date.now()}`,
+        role: "agent",
+        text: "能再具体一点吗？比如「小红书种草图文」「短视频脚本」——或者点上面的快捷话题试试。",
+      };
+    }
+    const tpl = templates.find((t) => t.id === recommendedId);
+    if (!tpl) {
+      return {
+        id: `m-${Date.now()}`,
+        role: "agent",
+        text: "抱歉，没找到合适的预设。可以试试其他描述。",
+      };
+    }
+    const display = TEMPLATE_DISPLAY[tpl.id] ?? DEFAULT_DISPLAY;
+    return {
+      id: `m-${Date.now()}`,
+      role: "agent",
+      text: `根据你的需求，我推荐「${tpl.name}」：\n${display.intro}\n流程：${display.summary}\n\n点左侧卡片预览，或直接 [进入工作流] 开始编排。`,
+      recommend: tpl.id,
+    };
+  }
+
+  /* 发送：用户输入 → mock AI 回复 → 命中推荐 */
+  function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+    const userMsg: ChatMsg = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      text: trimmed,
+    };
+    setChat((c) => [...c, userMsg]);
+    setInput("");
+    setBusy(true);
+    /* 模拟思考延迟 */
+    setTimeout(() => {
+      const matchedId = matchTemplate(trimmed);
+      setRecommended(matchedId);
+      setChat((c) => [...c, buildAgentReply(trimmed, matchedId)]);
+      setBusy(false);
+    }, 600);
+  }
+
+  /* 快捷话题 */
+  function pickTopic(topic: (typeof QUICK_TOPICS)[number]) {
+    send(topic.label);
+  }
+
+  /* ------- 操作 ------- */
+  function goTemplate(id: string) {
+    router.push(`/preset/detail?id=${id}`);
+  }
+
+  function goNewWorkflow() {
+    router.push("/workflow");
+  }
 
   return (
     <AppShell>
-      <div className={styles.container}>
-        <div className={styles.head}>
-          <div>
-            <h2 className={styles.title}>{template?.name ?? "预设加载中…"}</h2>
-            <p className={styles.sub}>
-              表单填写业务信息 → 系统生成 → 关键节点人工确认 → 交付内容包
-            </p>
+      <div className={styles.market}>
+        {/* 左侧：预设市场 */}
+        <section className={styles.left}>
+          <header className={styles.head}>
+            <h1 className={styles.title}>预设市场</h1>
+            <p className={styles.sub}>从预设开始，或让 AI 帮你挑选</p>
+          </header>
+
+          <button className={styles.newWorkflow} onClick={goNewWorkflow}>
+            <Plus size={14} />
+            <span>直接新建工作流</span>
+          </button>
+
+          <div className={styles.tabs}>
+            {CATEGORY_TABS.map((t) => (
+              <button
+                key={t.key}
+                className={`${styles.tab} ${tab === t.key ? styles.tabActive : ""}`}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-          {template && (
-            <div className={styles.costHint}>
-              <span>预计成本:</span>
-              <span className={styles.costValue}>
-                <Coins size={14} />
-                ¥{template.cost.min}–{template.cost.max}
-              </span>
-            </div>
+
+          {error && <p className={styles.empty}>模板加载失败，请确认 API 服务已启动</p>}
+          {!error && filtered.length === 0 && (
+            <p className={styles.empty}>该分类暂无预设</p>
           )}
-        </div>
 
-        {error && <div className={styles.errorBar}>{error}</div>}
-
-        <div className={styles.grid}>
-          {/* 左列：Schema 驱动表单 / 进度 */}
-          <div className={styles.card}>
-            {phase === "form" && (
-              <>
-                <div className={styles.cardHead}>
-                  <h3 className={styles.cardTitle}>第 1 步 · 填写商品信息</h3>
-                  <span className={styles.cardBadge}>
-                    {template?.totalSteps ?? "-"} 个后台步骤 · {template?.gates.length ?? "-"} 个人工确认点
-                  </span>
-                </div>
-                {template?.inputs.map((def) => (
-                  <div key={def.name} className={styles.field}>
-                    <label className={styles.label}>
-                      {def.label}
-                      {def.required ? " *" : ""}
-                    </label>
-                    {def.type === "textarea" ? (
-                      <textarea
-                        className={styles.textarea}
-                        rows={3}
-                        placeholder={"placeholder" in def ? def.placeholder : undefined}
-                        maxLength={"maxLength" in def ? def.maxLength : undefined}
-                        value={inputs[def.name] ?? ""}
-                        onChange={(e) => setInputs((s) => ({ ...s, [def.name]: e.target.value }))}
-                      />
-                    ) : def.type === "select" ? (
-                      <select
-                        className={styles.select}
-                        value={inputs[def.name] ?? ""}
-                        onChange={(e) => setInputs((s) => ({ ...s, [def.name]: e.target.value }))}
-                      >
-                        {def.options.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={def.type === "number" ? "number" : "text"}
-                        className={styles.input}
-                        placeholder={"placeholder" in def ? def.placeholder : undefined}
-                        maxLength={"maxLength" in def ? def.maxLength : undefined}
-                        value={inputs[def.name] ?? ""}
-                        onChange={(e) => setInputs((s) => ({ ...s, [def.name]: e.target.value }))}
-                      />
-                    )}
-                  </div>
-                ))}
-                <button className={styles.generateBtn} disabled={busy} onClick={startRun}>
-                  {busy ? (
-                    <>
-                      <RefreshCw size={16} className="spin" />
-                      正在启动…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      开始生成内容包
-                    </>
+          <div className={styles.grid}>
+            {filtered.map((t) => {
+              const display = TEMPLATE_DISPLAY[t.id] ?? DEFAULT_DISPLAY;
+              const isRecommended = recommended === t.id;
+              return (
+                <button
+                  key={t.id}
+                  className={`${styles.card} ${isRecommended ? styles.cardRecommended : ""}`}
+                  onClick={() => goTemplate(t.id)}
+                >
+                  {isRecommended && (
+                    <span className={styles.recommendBadge}>
+                      <Sparkles size={11} /> AI 推荐
+                    </span>
                   )}
-                </button>
-              </>
-            )}
-
-            {phase === "running" && (
-              <>
-                <div className={styles.cardHead}>
-                  <h3 className={styles.cardTitle}>任务进行中</h3>
-                  <span className={styles.cardBadge}>
-                    {run?.completedSteps}/{run?.totalSteps} 步
-                  </span>
-                </div>
-                <div className={styles.progressTrack}>
-                  <div
-                    className={styles.progressFill}
-                    style={{ width: `${((run?.completedSteps ?? 0) / (run?.totalSteps || 1)) * 100}%` }}
-                  />
-                </div>
-                {gate ? (
-                  <div className={styles.gateBanner}>
-                    <ClipboardList size={16} />
-                    等待确认：{gate.title}
-                    {gate.description ? ` — ${gate.description}` : ""}
-                  </div>
-                ) : (
-                  <div className={styles.gateWait}>后台执行中…</div>
-                )}
-                {run?.decisions && run.decisions.length > 0 && (
-                  <div className={styles.decisions}>
-                    {run.decisions.map((d, i) => (
-                      <div key={i} className={styles.decisionRow}>
-                        <CheckCircle2 size={12} />
-                        已确认 {d.gate}（{d.action}）
-                      </div>
+                  <div className={styles.cover}>
+                    {display.flow.map((kind, i) => (
+                      <span key={i} className={styles.flowBar} data-kind={kind} />
                     ))}
                   </div>
-                )}
-              </>
-            )}
-
-            {phase === "done" && pkg && (
-              <>
-                <div className={styles.cardHead}>
-                  <h3 className={styles.cardTitle}>
-                    <PackageCheck size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
-                    内容包已就绪
-                  </h3>
-                  <span className={styles.cardBadge}>
-                    {pkg.channel} · v{pkg.version} · 实际成本 ¥{run?.actualCost}
-                  </span>
-                </div>
-                {pkg.fields.map((f) => (
-                  <div key={f.key} className={styles.pkgField}>
-                    <div className={styles.pkgLabel}>{f.label}</div>
-                    <pre className={styles.pkgValue}>{f.value}</pre>
+                  <div className={styles.body}>
+                    <h3 className={styles.name}>{t.name}</h3>
+                    <p className={styles.summary}>
+                      {display.summary} · {t.totalSteps} 步
+                    </p>
+                    <div className={styles.meta}>
+                      <span className={styles.uses}>{display.uses} 使用</span>
+                      <span className={styles.priceFree}>免费</span>
+                    </div>
                   </div>
-                ))}
-                <button
-                  className={styles.downloadBtn}
-                  onClick={() => {
-                    const blob = new Blob(
-                      [pkg.fields.map((f) => `【${f.label}】\n${f.value}`).join("\n\n———\n\n")],
-                      { type: "text/plain;charset=utf-8" },
-                    );
-                    const a = document.createElement("a");
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `${pkg.id}.txt`;
-                    a.click();
-                  }}
-                >
-                  导出内容包（TXT）
                 </button>
-              </>
-            )}
+              );
+            })}
           </div>
+        </section>
 
-          {/* 右列：候选确认 / 结果 */}
-          <div className={styles.card}>
-            {phase === "running" && gate && (
-              <>
-                <div className={styles.cardHead}>
-                  <h3 className={styles.cardTitle}>{gate.title} · 选择一个候选</h3>
-                  <span className={styles.cardBadge}>{candidates.length} 个候选</span>
-                </div>
-                <div className={styles.candidateList}>
-                  {candidates.map((c, i) => (
-                    <button
-                      key={c.id}
-                      className={`${styles.candidate} ${selected === c.id ? styles.candidateActive : ""}`}
-                      onClick={() => setSelected(c.id)}
-                    >
-                      <div className={styles.candidateHead}>
-                        <span className={styles.candidateIndex}>{i + 1}</span>
-                        <span className={styles.candidateTag}>{c.variantLabel}</span>
-                      </div>
-                      <pre className={styles.candidateContent}>{c.content}</pre>
-                    </button>
-                  ))}
-                </div>
-                <div className={styles.gateActions}>
+        {/* 右侧：AI 对话窗口 */}
+        <aside className={styles.right}>
+          <header className={styles.chatHead}>
+            <div className={styles.chatHeadLeft}>
+              <span className={styles.chatAvatar}>
+                <Bot size={14} />
+              </span>
+              <div className={styles.chatHeadText}>
+                <span className={styles.chatName}>织光 Agent</span>
+                <span className={styles.chatModel}>✦ Weavl LLM</span>
+              </div>
+            </div>
+            <button className={styles.chatNewBtn} onClick={goNewWorkflow} title="新建空白工作流">
+              <Plus size={12} />
+              <span>新建</span>
+            </button>
+          </header>
+
+          {/* 快捷话题（仅当只有欢迎语时显示） */}
+          {chat.length <= 1 && (
+            <div className={styles.topics}>
+              <p className={styles.topicsTitle}>试试这些：</p>
+              <div className={styles.topicsGrid}>
+                {QUICK_TOPICS.map((t) => (
                   <button
-                    className={styles.confirmBtn}
-                    disabled={!selected || busy}
-                    onClick={() => decide("confirm")}
+                    key={t.label}
+                    className={styles.topicChip}
+                    onClick={() => pickTopic(t)}
                   >
-                    <CheckCircle2 size={14} />
-                    采纳并继续
+                    <span className={styles.topicIcon}>{t.icon}</span>
+                    <span>{t.label}</span>
                   </button>
-                  <button className={styles.regenerateBtn} disabled={busy} onClick={() => decide("regenerate")}>
-                    <RefreshCw size={14} />
-                    换一批
-                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 对话气泡流 */}
+          <div className={styles.chatBody}>
+            {chat.map((m) => (
+              <div
+                key={m.id}
+                className={`${styles.bubbleRow} ${m.role === "user" ? styles.bubbleRowUser : ""}`}
+              >
+                {m.role === "agent" && (
+                  <span className={styles.bubbleAvatar}>
+                    <Wand2 size={11} />
+                  </span>
+                )}
+                <div className={styles.bubbleStack}>
+                  <div
+                    className={`${styles.bubble} ${m.role === "user" ? styles.bubbleUser : styles.bubbleAgent}`}
+                  >
+                    {m.text.split("\n").map((line, i) => (
+                      <p key={i} className={styles.bubbleLine}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                  {/* Agent 推荐卡片按钮 */}
+                  {m.recommend && (
+                    <button
+                      className={styles.recommendCard}
+                      onClick={() => goTemplate(m.recommend!)}
+                    >
+                      <Sparkles size={12} />
+                      <span>查看「{templates.find((t) => t.id === m.recommend)?.name}」</span>
+                    </button>
+                  )}
                 </div>
-              </>
-            )}
-
-            {phase === "running" && !gate && (
-              <div className={styles.emptyState}>
-                <FileCheck2 size={32} />
-                <p>正在执行后台步骤，下一个确认点出现后会在这里展示候选</p>
+              </div>
+            ))}
+            {busy && (
+              <div className={`${styles.bubbleRow} ${styles.bubbleRow}`}>
+                <span className={styles.bubbleAvatar}>
+                  <Wand2 size={11} />
+                </span>
+                <div className={`${styles.bubble} ${styles.bubbleAgent} ${styles.bubbleLoading}`}>
+                  <Loader2 size={12} className={styles.spin} />
+                  <span>正在思考...</span>
+                </div>
               </div>
             )}
-
-            {phase === "form" && (
-              <div className={styles.emptyState}>
-                <Sparkles size={32} />
-                <p>
-                  填写左侧表单并开始后，生成结果会在这里出现。
-                  <br />
-                  流程包含 3 个人工确认点：选题方向 → 文案 → 封面
-                </p>
-              </div>
-            )}
-
-            {phase === "done" && (
-              <div className={styles.emptyState}>
-                <PackageCheck size={32} />
-                <p>
-                  任务完成，全部决策已留痕（{run?.decisions?.length ?? 0} 次）。
-                  <br />
-                  左侧为最终内容包，可导出后发布到{pkg?.channel}。
-                </p>
-              </div>
-            )}
+            <div ref={chatEndRef} />
           </div>
-        </div>
+
+          {/* 输入框 */}
+          <div className={styles.chatInput}>
+            <input
+              className={styles.chatInputField}
+              placeholder="告诉 AI 你想做什么..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send(input);
+                }
+              }}
+              disabled={busy}
+            />
+            <button
+              className={styles.chatSend}
+              onClick={() => send(input)}
+              disabled={busy || !input.trim()}
+              aria-label="发送"
+            >
+              <Send size={13} />
+            </button>
+          </div>
+        </aside>
       </div>
     </AppShell>
   );

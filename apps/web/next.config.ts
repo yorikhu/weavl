@@ -8,8 +8,11 @@ const nextConfig: NextConfig = {
   // 或打包进桌面应用（Electron/Tauri）——无 SSR 运行时依赖
   output: "export",
 
-  // 相对资源路径：file:// 协议（桌面容器）下资源可正确解析
-  assetPrefix: "./",
+  // 资源前缀：
+  // - dev 环境下用 "/"，避免浏览器在 /preset、/preset/detail 等嵌套路由下
+  //   把相对路径 _next/... 解析成 /preset/_next/... 导致 404、样式丢失。
+  // - build（静态导出）时用 "./"，保证 file:// 协议（桌面容器）下资源可正确解析。
+  assetPrefix: process.env.NODE_ENV === "production" ? "./" : "/",
 
   // 无自有图片域名场景，未启用 next/image 远程图；保留警告抑制
   images: {
