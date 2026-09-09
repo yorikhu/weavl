@@ -28,13 +28,13 @@ pnpm dev:api    # 仅后端  http://localhost:3000/api
 
 ## 语言体系
 
-| 中文 | 英文 | 含义 |
-|---|---|---|
-| 织光台 | Studio | 工作台 |
-| 花样 | template pack | 模板包 |
-| 织法 | workflow | 工作流 |
-| 一梭 | step | 步骤 |
-| 丝线 | asset | 素材 |
-| 织品 | artifact | 成片 |
-| 织光师 | weaver | 用户 |
-| 开织 | run | 运行任务 |
+| 中文   | 英文          | 含义     |
+| ------ | ------------- | -------- |
+| 织光台 | Studio        | 工作台   |
+| 花样   | template pack | 模板包   |
+| 织法   | workflow      | 工作流   |
+| 一梭   | step          | 步骤     |
+| 丝线   | asset         | 素材     |
+| 织品   | artifact      | 成片     |
+| 织光师 | weaver        | 用户     |
+| 开织   | run           | 运行任务 |

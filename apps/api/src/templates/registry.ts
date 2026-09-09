@@ -1,5 +1,5 @@
-import { TemplateManifest, validateSteps, validateGates, validateOutput } from '@weavl/shared';
-import { xhsNoteTemplate } from './xhs-note.template';
+import { TemplateManifest, validateSteps, validateGates, validateOutput } from "@weavl/shared";
+import { xhsNoteTemplate } from "./xhs-note.template";
 
 /**
  * 模板注册中心 —— "垂直 = 数据，不是代码"。
