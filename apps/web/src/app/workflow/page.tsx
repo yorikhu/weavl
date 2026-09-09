@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent, type MouseEvent as ReactMouseEvent, type ReactNode, Fragment } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent, type MouseEvent as ReactMouseEvent, type ReactNode, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { LLMInspector, type LLMConfig } from "./inspectors/LLMInspector";
+import { CodeInspector, type CodeConfig } from "./inspectors/CodeInspector";
+import { SelectorInspector, type SelectorConfig } from "./inspectors/SelectorInspector";
+import EndInspector, { type EndNodeData } from "./inspectors/EndInspector";
 import Link from "next/link";
 import {
   ArrowDownToLine,
@@ -44,20 +47,10 @@ import {
   TOP_GROUP_NODES,
   type NodeTypeMeta,
 } from "./nodeTypes";
+import type { NodeGroup, NodeChip, NodeRow } from "./types";
 import styles from "./page.module.scss";
 
 /** 节点卡片的展示数据 */
-interface NodeRow {
-  id: string;
-  title: string;
-  kind: string;
-  kindLabel: string;
-  kindColor: string;
-  step: number;
-  /** 每行元数据 key → value（value 是 chip 文本或普通文本） */
-  rows: Array<{ key: string; value: string; type: "input" | "output" | "plain" | "chip" | "chipAccent" | "chipMuted" }>;
-}
-
 /** step.type 归一化到的图标主色 —— 与画布 KIND_META 一致 */
 const KIND_ACCENT: Record<string, { color: string; icon: string }> = {
   llm: { color: "#d44b7e", icon: "✦" },
@@ -65,6 +58,8 @@ const KIND_ACCENT: Record<string, { color: string; icon: string }> = {
   "video-gen": { color: "#378add", icon: "▷" },
   tts: { color: "#378add", icon: "♪" },
   ffmpeg: { color: "#378add", icon: "◐" },
+  code: { color: "#378add", icon: "{}" },
+  selector: { color: "#378add", icon: "⤳" },
   http: { color: "#5e5e66", icon: "↗" },
   mcp: { color: "#5e5e66", icon: "◇" },
 };
@@ -92,7 +87,7 @@ export default function WorkflowPage() {
   const isBlank = id === "";
   const blankLoadedRef = useRef(false);
 
-  /* 空白工作流：自动注入 start + end 两个节点和一条连线（只跑一次）
+  /* 空白工作流：自动注入 start + end 两个节点（无连线，让用户主动从 start 端口拉线）
      默认把两个节点分别放在视口可见区域两端（开始靠左、结束靠右），给用户最大的可扩展空间 */
   useEffect(() => {
     if (!isBlank || blankLoadedRef.current) return;
@@ -103,9 +98,19 @@ export default function WorkflowPage() {
     });
     setCustomNodes([
       { id: "end", type: "end", title: "结束", color: "#5e5e66" },
+      // 演示用：默认放一个 LLM 节点在中央
+      { id: "llm-demo", type: "llm", title: "大模型", color: "#d44b7e" },
     ]);
-    /* start → end 连线 */
-    setEdges(() => [{ id: "start->end", source: "start", target: "end" }]);
+    /* 初始化 endNode（结束节点配置：返回变量/返回文本模式 + outputs + 文本 + 流式） */
+    setEndNode({
+      id: "end",
+      mode: "variables",
+      outputs: [{ name: "output", ref: "" }],
+      text: "{{output}}",
+      streaming: true,
+    });
+    /* 空白模式默认无连线（让用户从 start 端口主动拉线连接） */
+    setEdges([]);
 
     /* 把两个节点放在视口两端（左/右各留 40px 边距），垂直居中
        用画布坐标直接 = 视口像素（不缩放、不平移），让首次进入就有最大的工作空间 */
@@ -270,6 +275,9 @@ export default function WorkflowPage() {
   /* JSON 导入弹窗：把 StartInspector 内的弹窗状态提升到外层，让顶部"全屏"按钮也能触发 */
   const [jsonOpen, setJsonOpen] = useState(false);
 
+  /** 已计算的连线 path 数据（在 useLayoutEffect 里读 DOM 后存进来，保证拖拽/缩放/平移后路径实时跟随卡片） */
+  const [edgePaths, setEdgePaths] = useState<Record<string, { x1: number; y1: number; x2: number; y2: number; d: string }>>({});
+
   /* Portal tooltip 状态：渲染到 body 根部，彻底摆脱任何 stacking context 限制 */
   const [tip, setTip] = useState<{ text: string; x: number; y: number; place: "top" | "bottom" } | null>(null);
   const showTip = useCallback((el: HTMLElement, text: string, place: "top" | "bottom" = "top") => {
@@ -287,23 +295,58 @@ export default function WorkflowPage() {
   interface CustomNode { id: string; type: string; title: string; color: string; tag?: string }
   const [customNodes, setCustomNodes] = useState<CustomNode[]>([]);
 
+  /* 结束节点配置（参考扣子 End 节点：返回变量 / 返回文本） */
+  const [endNode, setEndNode] = useState<EndNodeData | null>(null);
+
   /** LLM 节点配置：按节点 id 存（多 LLM 节点独立） */
   const defaultLLMConfig = (): LLMConfig => ({
     model: { provider: "doubao", model: "doubao-2.0-pro" },
+    batchMode: "single",
     systemPrompt: "",
     userPrompt: "",
     inputs: [
       { name: "input", type: "str", required: true },
     ],
-    output: { name: "output", type: "str", required: true },
+    batchInputLists: [{ name: "item1", items: "" }],
+    visionInputs: [],
+    outputFormat: "markdown",
+    outputs: [{ name: "output", type: "str" }],
     skills: [],
   });
   const [llmConfigs, setLlmConfigs] = useState<Record<string, LLMConfig>>({});
 
+  /** 代码节点配置：按节点 id 存（多代码节点独立） */
+  const defaultCodeConfig = (): CodeConfig => ({
+    language: "javascript",
+    code: "",
+    inputs: [{ name: "input", type: "str" }],
+    outputs: [{ name: "filename", type: "str" }],
+    errorHandling: { timeout: 60, retryTimes: 0, onError: "abort" },
+  });
+  const [codeConfigs, setCodeConfigs] = useState<Record<string, CodeConfig>>({});
+
+  /** 选择器节点配置：按节点 id 存 */
+  const defaultSelectorConfig = (): SelectorConfig => ({
+    branches: [
+      {
+        id: "b1",
+        logic: "and",
+        conditions: [
+          { id: "c1", op: "==", left: "", right: "", leftType: "str" },
+        ],
+      },
+    ],
+  });
+  const [selectorConfigs, setSelectorConfigs] = useState<Record<string, SelectorConfig>>({});
+
   /* ====================== 节点自由拖拽（v2 画布） ====================== */
   /** 节点尺寸常量（与 SCSS .nodeCard 对应） */
-  const NODE_W = 220;
+  const NODE_W = 240;
   const NODE_H = 132;
+  /** 选择器卡片尺寸（与 SCSS .nodeCardSelector / .nodeHeadSelector / .nodeSelectorRow 对应） */
+  const SELECTOR_W = 280;
+  const SELECTOR_HEAD_H = 42;
+  const SELECTOR_ROW_H = 34; // 28px row + 6px gap
   /** 画布虚拟尺寸（SVG 连线层 + 绝对定位节点的坐标系范围） */
   const CANVAS_W = 3600;
   const CANVAS_H = 1800;
@@ -313,31 +356,32 @@ export default function WorkflowPage() {
 
   /* ====================== 连线（显式边） ====================== */
   /** 边：source → target。初始 null = 按节点顺序自动连（首次渲染时固化） */
-  interface FlowEdge { id: string; source: string; target: string }
+  interface FlowEdge { id: string; source: string; target: string; /** 选择器分支 key（"if_0"/"if_1"/.../"else"，普通边为空）；用于连线从对应端口精确引出 + 同源同分支去重 */ branch?: string }
   const [edges, setEdges] = useState<FlowEdge[] | null>(null);
 
-  /** 待连接状态：从某节点 output 端口拖出时记录，鼠标到目标 input 端口松手时建边 */
+  /** 待连接状态：从某节点 output 端口拖出时记录（选择器分支端口带 branch），鼠标到目标 input 端口松手时建边 */
   const [pendingEdge, setPendingEdge] = useState<{ from: string; x: number; y: number; valid: boolean; hoverTarget: string | null } | null>(null);
-  const pendingRef = useRef<{ from: string } | null>(null);
+  const pendingRef = useRef<{ from: string; branch?: string } | null>(null);
   /** 成功建边后，目标节点短暂闪光（用 ref 拿 setTimeout，避免闭包过期） */
   const flashTimerRef = useRef<{ id: string; timer: number } | null>(null);
   const [flashNodeId, setFlashNodeId] = useState<string | null>(null);
 
-  /** 建/删边 —— edges 初始为 null（渲染时 fallback 顺序连线），首次增删前先固化 */
+  /** 建/删边 —— edges 初始为 null（fallback 按 nodes 顺序生成连线），首次增删前先固化
+     空白模式 setEdges([]) 后 edges = [] → 直接返回 []，不触发 fallback */
   const currentEdges = useCallback((nodeList: NodeRow[]): FlowEdge[] => {
-    if (edges) return edges;
+    if (edges !== null) return edges;
     return nodeList.slice(0, -1).map((n, i) => {
       const next = nodeList[i + 1];
       return next ? { id: `${n.id}->${next.id}`, source: n.id, target: next.id } : null;
     }).filter(Boolean as unknown as (v: unknown) => boolean) as FlowEdge[];
   }, [edges]);
 
-  const connectNodes = useCallback((source: string, target: string, nodeList: NodeRow[]) => {
+  const connectNodes = useCallback((source: string, target: string, nodeList: NodeRow[], branch?: string) => {
     if (source === target) return;
     setEdges(() => {
       const list = currentEdges(nodeList);
-      if (list.some((e) => e.source === source && e.target === target)) return list; // 去重
-      return [...list, { id: `${source}->${target}`, source, target }];
+      if (list.some((e) => e.source === source && e.target === target && e.branch === branch)) return list; // 去重（同源同分支同目标）
+      return [...list, { id: `${source}${branch ? ":" + branch : ""}->${target}`, source, target, branch }];
     });
   }, [currentEdges]);
 
@@ -345,12 +389,12 @@ export default function WorkflowPage() {
     setEdges(() => currentEdges(nodeList).filter((e) => e.id !== edgeId));
   }, [currentEdges]);
 
-  /** output 端口 mousedown：开始拉线（坐标用事件实际位置初始化，避免闪向左上角的虚线） */
-  const onPortOutDown = useCallback((e: ReactMouseEvent<HTMLSpanElement>, nodeId: string) => {
+  /** output 端口 mousedown：开始拉线（坐标用事件实际位置初始化，避免闪向左上角的虚线）；选择器双端口带 branch */
+  const onPortOutDown = useCallback((e: ReactMouseEvent<HTMLSpanElement>, nodeId: string, branch?: string) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
-    pendingRef.current = { from: nodeId };
+    pendingRef.current = { from: nodeId, branch };
     setPendingEdge({ from: nodeId, x: e.clientX, y: e.clientY, valid: false, hoverTarget: null });
   }, []);
 
@@ -365,7 +409,7 @@ export default function WorkflowPage() {
   }, []);
 
   /* 快速添加：拉线松手在空白处 → 弹出节点选择，选中后新建节点于松手点并自动连线 */
-  const [quickAdd, setQuickAdd] = useState<{ clientX: number; clientY: number; canvasX: number; canvasY: number; from: string } | null>(null);
+  const [quickAdd, setQuickAdd] = useState<{ clientX: number; clientY: number; canvasX: number; canvasY: number; from: string; branch?: string } | null>(null);
   const quickAddRef = useRef<HTMLDivElement | null>(null);
   useClickOutside(!!quickAdd, [quickAddRef], () => setQuickAdd(null));
 
@@ -382,7 +426,7 @@ export default function WorkflowPage() {
     /* 自动连线 + 触发目标节点闪光动画 */
     setEdges(() => {
       const list = currentEdges(nodesRef.current);
-      return [...list, { id: `${qa.from}->${newId}`, source: qa.from, target: newId }];
+      return [...list, { id: `${qa.from}${qa.branch ? ":" + qa.branch : ""}->${newId}`, source: qa.from, target: newId, branch: qa.branch }];
     });
     flashNode(newId);
     setQuickAdd(null);
@@ -399,7 +443,7 @@ export default function WorkflowPage() {
       const target = port?.dataset.nodeId ?? card?.dataset.nodeId ?? null;
       if (!target || target === from) return { target: null, valid: false };
       const existing = currentEdges(nodesRef.current);
-      const dup = existing.some((e2) => e2.source === from && e2.target === target);
+      const dup = existing.some((e2) => e2.source === from && e2.target === target && e2.branch === pendingRef.current?.branch);
       return { target, valid: !dup };
     };
     const onMove = (e: MouseEvent) => {
@@ -410,13 +454,14 @@ export default function WorkflowPage() {
     };
     const onUp = (e: MouseEvent) => {
       const from = pendingRef.current?.from;
+      const branch = pendingRef.current?.branch;
       pendingRef.current = null;
       const final = pendingEdge;
       setPendingEdge(null);
       if (!from || !final) return;
       const { target, valid } = probe(e.clientX, e.clientY, from);
       if (valid && target) {
-        connectNodes(from, target, nodesRef.current);
+        connectNodes(from, target, nodesRef.current, branch);
         flashNode(target);
         return;
       }
@@ -430,6 +475,7 @@ export default function WorkflowPage() {
         canvasX: (e.clientX - wrapRect.left - viewRef.current.x) / scale,
         canvasY: (e.clientY - wrapRect.top - viewRef.current.y) / scale,
         from,
+        branch,
       });
     };
     window.addEventListener("mousemove", onMove);
@@ -631,12 +677,20 @@ export default function WorkflowPage() {
           kindColor: meta.color,
           step: startNode ? i + 1 : i,
           rows: buildNodeRows(s, i, template.steps.length),
+          // LLM 节点走分组 chips 渲染（参考扣子节点卡：输入/输出/模型/技能 分段）
+          groups:
+            s.type === "llm"
+              ? buildLLMGroups(s, i, template.steps.length, startNode)
+              : undefined,
         });
       });
     }
     /* 用户动态添加的节点（快速添加 / 空白工作流的 end 等） */
     customNodes.forEach((c) => {
       const meta = NODE_META[c.type];
+      const isLLM = c.type === "llm";
+      const isCode = c.type === "code";
+      const codeCfg = isCode ? (codeConfigs[c.id] ?? defaultCodeConfig()) : null;
       list.push({
         id: c.id,
         title: c.title,
@@ -645,14 +699,95 @@ export default function WorkflowPage() {
         kindColor: c.color,
         step: list.length,
         rows: [{ key: "类型", value: meta?.name ?? c.type, type: "plain" }],
+        // LLM 自定义节点也走分组 chips 渲染（与模板 LLM 一致）
+        groups: isLLM
+          ? [
+              {
+                label: "输入",
+                chips: [
+                  { label: "query", type: "str", variant: "default" },
+                  { label: "context", type: "str", variant: "default" },
+                ],
+                trailing: "more",
+              },
+              {
+                label: "输出",
+                chips: [{ label: `${c.id}.output`, type: "str", variant: "default" }],
+              },
+              {
+                label: "模型",
+                chips: [{ label: "豆包·2.0·Pro", variant: "model", icon: "✦" }],
+              },
+              {
+                label: "技能",
+                chips: [{ label: "未配置技能", variant: "skill", icon: "⚡" }],
+                trailing: "add",
+              },
+            ]
+          : // 代码节点走分组 chips（参考扣子代码卡：输入 / 输出）
+            isCode && codeCfg
+            ? [
+                {
+                  label: "输入",
+                  chips: codeCfg.inputs.map((v) => ({
+                    label: v.name,
+                    type: v.type,
+                    variant: "default" as const,
+                  })),
+                  trailing: "more" as const,
+                },
+                {
+                  label: "输出",
+                  chips: codeCfg.outputs.map((v) => ({
+                    label: v.name,
+                    type: v.type,
+                    variant: "default" as const,
+                  })),
+                },
+              ]
+            : undefined,
       });
     });
     return list;
-  }, [startNode, template, deletedStepIds, customNodes]);
+  }, [startNode, template, deletedStepIds, customNodes, codeConfigs]);
 
   /** nodes 的 ref 镜像（连线 mouseup 闭包 / 点边删除里拿最新列表） */
   const nodesRef = useRef<NodeRow[]>([]);
   nodesRef.current = nodes;
+
+  /** 连线 path 计算：用 positions + selectorConfigs 算出端口画布坐标，完全不用 DOM 查询
+     关键：保证 line endpoint 总是从最新的 positions state 计算，与卡片位置严格同步 */
+  useLayoutEffect(() => {
+    const next: Record<string, { x1: number; y1: number; x2: number; y2: number; d: string }> = {};
+    currentEdges(nodes).forEach((e) => {
+      const sIdx = nodes.findIndex((n) => n.id === e.source);
+      const tIdx = nodes.findIndex((n) => n.id === e.target);
+      if (sIdx < 0 || tIdx < 0) return;
+      const from = positions[e.source] ?? initialPos(e.source, sIdx);
+      const to = positions[e.target] ?? initialPos(e.target, tIdx);
+
+      /* source out port 画布坐标 */
+      let x1: number, y1: number;
+      if (e.branch) {
+        const sc = selectorConfigs[e.source];
+        const totalIf = sc ? sc.branches.length : 1;
+        const bi = e.branch === "else" ? totalIf : parseInt(e.branch.replace(/^if_/, "") || "0", 10);
+        x1 = from.x + SELECTOR_W;
+        y1 = from.y + SELECTOR_HEAD_H + 14 + bi * SELECTOR_ROW_H;
+      } else {
+        x1 = from.x + NODE_W;
+        y1 = from.y + NODE_H / 2;
+      }
+
+      /* target in port 画布坐标 */
+      const x2 = to.x;
+      const y2 = to.y + NODE_H / 2;
+
+      next[e.id] = { x1, y1, x2, y2, d: smoothstepPath(x1, y1, x2, y2) };
+    });
+    setEdgePaths(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, positions, view.scale, view.x, view.y, edges, selectorConfigs]);
 
   /* 当前选中的节点（用于右侧抽屉） */
   const selectedNode = useMemo(() => {
@@ -760,19 +895,9 @@ export default function WorkflowPage() {
                 preserveAspectRatio="xMinYMin meet"
               >
                 {currentEdges(nodes).map((e) => {
-                  const sIdx = nodes.findIndex((n) => n.id === e.source);
-                  const tIdx = nodes.findIndex((n) => n.id === e.target);
-                  if (sIdx < 0 || tIdx < 0) return null;
-                  const from = positions[e.source] ?? initialPos(e.source, sIdx);
-                  const to = positions[e.target] ?? initialPos(e.target, tIdx);
-                  /* 端口中心精确对齐：out port (left=222.5 relative, width=11 box-sizing border-box)
-                     视觉中心 ≈ from.x + NODE_W + 8.5
-                     in port (left=-5.5 relative) 视觉中心 ≈ to.x + 1 */
-                  const x1 = from.x + NODE_W + 8.5;
-                  const y1 = from.y + NODE_H / 2;
-                  const x2 = to.x + 1;
-                  const y2 = to.y + NODE_H / 2;
-                  const d = smoothstepPath(x1, y1, x2, y2);
+                  const p = edgePaths[e.id];
+                  if (!p) return null;
+                  const { x1, y1, x2, y2, d } = p;
                   return (
                     <g
                       key={e.id}
@@ -804,8 +929,26 @@ export default function WorkflowPage() {
                   const my = wrapRect
                     ? (pendingEdge.y - wrapRect.top - view.y) / view.scale
                     : from.y + NODE_H / 2;
-                  const x1 = from.x + NODE_W + 8.5;
-                  const y1 = from.y + NODE_H / 2;
+                  const branch = pendingRef.current?.branch;
+                  let x1 = from.x + NODE_W;
+                  let y1 = from.y + NODE_H / 2;
+                  if (branch && flowRef.current) {
+                    const portEl = flowRef.current.querySelector(
+                      `[data-port-out][data-branch="${CSS.escape(branch)}"][data-node-id="${pendingEdge.from}"]`,
+                    ) as HTMLElement | null;
+                    if (portEl) {
+                      const pr = portEl.getBoundingClientRect();
+                      const fr = flowRef.current.getBoundingClientRect();
+                      x1 = (pr.left + pr.width / 2 - fr.left) / view.scale;
+                      y1 = (pr.top + pr.height / 2 - fr.top) / view.scale;
+                    } else {
+                      const sc = selectorConfigs[pendingEdge.from];
+                      const totalIf = sc ? sc.branches.length : 1;
+                      const bi = branch === "else" ? totalIf : parseInt(branch.replace(/^if_/, "") || "0", 10);
+                      x1 = from.x + SELECTOR_W;
+                      y1 = from.y + SELECTOR_HEAD_H + 14 + bi * SELECTOR_ROW_H;
+                    }
+                  }
                   return (
                     <path
                       className={`${styles.edgePending} ${pendingEdge.valid ? styles.edgePendingValid : styles.edgePendingInvalid}`}
@@ -828,7 +971,7 @@ export default function WorkflowPage() {
                     key={n.id}
                     data-node-card="1"
                     data-node-id={n.id}
-                    className={`${styles.nodeCard} ${isStart ? styles.nodeCardStart : ""} ${isEnd ? styles.nodeCardEnd : ""} ${isSelected ? styles.nodeCardSelected : ""} ${draggingId === n.id ? styles.nodeCardDragging : ""} ${isConnecting ? styles.nodeCardConnecting : ""} ${isFlashing ? styles.nodeCardFlash : ""}`}
+                    className={`${styles.nodeCard} ${isStart ? styles.nodeCardStart : ""} ${isEnd ? styles.nodeCardEnd : ""} ${n.kind === "selector" ? styles.nodeCardSelector : ""} ${isSelected ? styles.nodeCardSelected : ""} ${draggingId === n.id ? styles.nodeCardDragging : ""} ${isConnecting ? styles.nodeCardConnecting : ""} ${isFlashing ? styles.nodeCardFlash : ""}`}
                     style={{ left: pos.x, top: pos.y }}
                     onMouseDown={(e) => onNodeDragStart(e, n.id, i)}
                     onClick={(e) => {
@@ -838,13 +981,15 @@ export default function WorkflowPage() {
                       if (!wasDragged) setSelectedNodeId(n.id);
                     }}
                   >
-                    {/* 左右端口：in 可接收连线（mouseup 命中检测），out 拖出拉线；end 只有 in */}
-                    <span
-                      className={`${styles.nodePort} ${styles.nodePortIn} ${isConnecting ? styles.nodePortConnecting : ""}`}
-                      data-port-in="1"
-                      data-node-id={n.id}
-                    />
-                    {!isEnd && (
+                    {/* 左右端口：end 只有 in；start 无 in；selector 恢复 in（参考扣子截图） */}
+                    {n.kind !== "end" && n.kind !== "start" && (
+                      <span
+                        className={`${styles.nodePort} ${styles.nodePortIn} ${isConnecting ? styles.nodePortConnecting : ""}`}
+                        data-port-in="1"
+                        data-node-id={n.id}
+                      />
+                    )}
+                    {!isEnd && n.kind !== "selector" && (
                       <span
                         className={`${styles.nodePort} ${styles.nodePortOut}`}
                         data-port-out="1"
@@ -853,46 +998,191 @@ export default function WorkflowPage() {
                       />
                     )}
 
-                    {/* 头：图标 + 标题 + ▶ + ⋯（黑白灰：图标统一深灰底黑字） */}
-                    <div className={styles.nodeHead}>
-                      <span className={styles.nodeIcon}>
-                        {isStart ? "▶" : isEnd ? "→" : (KIND_ACCENT[n.kind]?.icon ?? "✦")}
-                      </span>
-                      <span className={styles.nodeTitle}>{n.title}</span>
-                      {isStart && <span className={styles.nodeTag}>{n.kindLabel}</span>}
-                      <button className={styles.nodeRun} aria-label="单节点试运行">
-                        ▶
-                      </button>
-                      <button
-                        className={styles.nodeMore}
-                        aria-label="更多"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedNodeId(n.id);
-                        }}
-                        onDoubleClick={(e) => {
-                          /* 双击 ⋯ = 删除节点（直观操作） */
-                          e.stopPropagation();
-                          deleteNode(n.id);
-                        }}
-                      >
-                        ⋯
-                      </button>
-                    </div>
+                    {/* 头：选择器与 LLM 节点一致（白底 + 黑色 IF logo + ▶ ⋯） */}
+                    {n.kind === "selector" ? (
+                      <div className={`${styles.nodeHead} ${styles.nodeHeadSelector}`}>
+                        <span className={`${styles.nodeIcon} ${styles.nodeIconSelector}`}>IF</span>
+                        <span className={styles.nodeTitle}>选择器</span>
+                        <button className={styles.nodeRun} aria-label="单节点试运行">
+                          ▶
+                        </button>
+                        <button
+                          className={styles.nodeMore}
+                          aria-label="更多"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNodeId(n.id);
+                          }}
+                          onDoubleClick={(e) => {
+                            /* 双击 ⋯ = 删除节点（直观操作） */
+                            e.stopPropagation();
+                            deleteNode(n.id);
+                          }}
+                        >
+                          ⋯
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={styles.nodeHead}>
+                        <span className={styles.nodeIcon}>
+                          {isStart ? "▶" : isEnd ? "→" : (KIND_ACCENT[n.kind]?.icon ?? "✦")}
+                        </span>
+                        <span className={styles.nodeTitle}>{n.title}</span>
+                        {isStart && <span className={styles.nodeTag}>{n.kindLabel}</span>}
+                        <button className={styles.nodeRun} aria-label="单节点试运行">
+                          ▶
+                        </button>
+                        <button
+                          className={styles.nodeMore}
+                          aria-label="更多"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNodeId(n.id);
+                          }}
+                          onDoubleClick={(e) => {
+                            /* 双击 ⋯ = 删除节点（直观操作） */
+                            e.stopPropagation();
+                            deleteNode(n.id);
+                          }}
+                        >
+                          ⋯
+                        </button>
+                      </div>
+                    )}
 
-                    {/* 元数据多行 */}
+                    {/* 元数据多行：选择器走专属分支结构（每个分支独立行 + 所有条件 + 且/或 逻辑可视化） */}
+                    {n.kind === "selector" ? (
+                      <div className={styles.nodeSelectorBody}>
+                        {(() => {
+                          const sc = selectorConfigs[n.id] ?? defaultSelectorConfig();
+                          const branches = sc.branches;
+                          const compactOp = (op?: string) =>
+                            op === "==" ? "="
+                            : op === "!=" ? "≠"
+                            : op === ">" ? ">"
+                            : op === ">=" ? "≥"
+                            : op === "<" ? "<"
+                            : op === "<=" ? "≤"
+                            : op === "contains" ? "包含"
+                            : op === "not-contains" ? "不包含"
+                            : op === "is-empty" ? "为空"
+                            : op === "is-not-empty" ? "不为空"
+                            : "=";
+                          const condText = (c: { left: string; op: string; right: string }) =>
+                            c.left || c.right ? `${c.left || "…"} ${compactOp(c.op)} ${c.right || "…"}` : "";
+                          const condBoxText = (c: { left: string; op: string; right: string }) =>
+                            c.left || c.right ? condText(c) : "";
+                          return (
+                            <>
+                              {/* 动态分支（如果 / 否则如果）：展示所有条件 + 且/或 逻辑 */}
+                              {branches.map((branch, bi) => {
+                                const label = bi === 0 ? "如果" : "否则如果";
+                                const branchKey = `if_${bi}`;
+                                const logicLabel = branch.logic === "or" ? "或" : "且";
+                                const conds = branch.conditions;
+                                return (
+                                  <div key={branch.id} className={styles.nodeSelectorGroup}>
+                                    <span className={styles.nodeSelectorLabel}>{label}</span>
+                                    <div className={styles.nodeSelectorCondStack}>
+                                      {conds.map((c, ci) => {
+                                        const text = condBoxText(c);
+                                        const isFirst = ci === 0;
+                                        return (
+                                          <div key={c.id} className={styles.nodeSelectorCondRow}>
+                                            {!isFirst && (
+                                              <span className={styles.nodeSelectorLogic}>{logicLabel}</span>
+                                            )}
+                                            <div className={styles.nodeSelectorCond}>
+                                              <span className={text ? styles.nodeSelectorCondText : styles.nodeSelectorCondTextDim}>
+                                                {text || "设置条件…"}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <span
+                                      className={`${styles.nodePort} ${styles.nodePortOut}`}
+                                      data-port-out="1"
+                                      data-branch={branchKey}
+                                      data-node-id={n.id}
+                                      title={`${label}（${branchKey}）`}
+                                      onMouseDown={(e) => onPortOutDown(e, n.id, branchKey)}
+                                    />
+                                  </div>
+                                );
+                              })}
+                              {/* 否则固定行：branch = "else" */}
+                              <div className={styles.nodeSelectorGroup}>
+                                <span className={styles.nodeSelectorLabel}>否则</span>
+                                <div className={styles.nodeSelectorCondStack}>
+                                  <div className={styles.nodeSelectorCondRow}>
+                                    <div className={styles.nodeSelectorCond}>
+                                      <span className={styles.nodeSelectorCondTextDim}>不满足以上条件时</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`${styles.nodePort} ${styles.nodePortOut}`}
+                                  data-port-out="1"
+                                  data-branch="else"
+                                  data-node-id={n.id}
+                                  title="否则（不满足条件）"
+                                  onMouseDown={(e) => onPortOutDown(e, n.id, "else")}
+                                />
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
                     <div className={styles.nodeBody}>
-                      {n.rows.map((r, k) => (
-                        <div key={k} className={styles.nodeRow}>
-                          <span className={styles.nodeKey}>{r.key}</span>
-                          <span className={styles.nodeVal}>
-                            {r.type === "chipAccent" && <span className={`${styles.nodeChip} ${styles.nodeChipAccent}`}>{r.value}</span>}
-                            {r.type === "chipMuted" && <span className={styles.nodeChip}>{r.value}</span>}
-                            {r.type === "plain" && r.value}
-                          </span>
-                        </div>
-                      ))}
+                      {n.groups && n.groups.length > 0 ? (
+                        n.groups.map((g, gi) => (
+                          <div key={gi} className={styles.nodeGroup}>
+                            <div className={styles.nodeGroupLabel}>{g.label}</div>
+                            <div className={styles.nodeGroupChips}>
+                              {g.chips.map((c, ci) => (
+                                <span
+                                  key={ci}
+                                  className={`${styles.nodeGroupChip} ${c.variant === "model" ? styles.nodeGroupChipModel : ""} ${c.variant === "skill" ? styles.nodeGroupChipSkill : ""}`}
+                                >
+                                  {c.variant === "model" && (
+                                    <span className={styles.nodeGroupIcon}>{c.icon ?? "✦"}</span>
+                                  )}
+                                  {c.variant === "skill" && (
+                                    <span className={styles.nodeGroupIcon}>{c.icon ?? "⚡"}</span>
+                                  )}
+                                  {c.type && c.variant === "default" && (
+                                    <span className={styles.nodeGroupType}>{c.type}</span>
+                                  )}
+                                  <span className={styles.nodeGroupLabelText}>{c.label}</span>
+                                  {c.warning && <span className={styles.nodeGroupWarning} aria-label="警告">!</span>}
+                                </span>
+                              ))}
+                              {g.trailing === "more" && (
+                                <button className={styles.nodeGroupTrailing} aria-label="更多">⋯</button>
+                              )}
+                              {g.trailing === "add" && (
+                                <button className={styles.nodeGroupAdd} aria-label="添加">+</button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        n.rows.map((r, k) => (
+                          <div key={k} className={styles.nodeRow}>
+                            <span className={styles.nodeKey}>{r.key}</span>
+                            <span className={styles.nodeVal}>
+                              {r.type === "chipAccent" && <span className={`${styles.nodeChip} ${styles.nodeChipAccent}`}>{r.value}</span>}
+                              {r.type === "chipMuted" && <span className={styles.nodeChip}>{r.value}</span>}
+                              {r.type === "plain" && r.value}
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -940,11 +1230,19 @@ export default function WorkflowPage() {
               className={styles.inspectorIcon}
               style={{ background: selectedNode.kind === "start" ? "#534ab7" : selectedNode.kindColor }}
             >
-              {selectedNode.kind === "start" ? "▶" : (KIND_ACCENT[selectedNode.kind]?.icon ?? "✦")}
+              {selectedNode.kind === "start" ? "▶" : selectedNode.kind === "end" ? "↪" : (KIND_ACCENT[selectedNode.kind]?.icon ?? "✦")}
             </span>
             <div className={styles.inspectorTitleWrap}>
               <span className={styles.inspectorTitle}>{selectedNode.title}</span>
               {selectedNode.kind === "start" && <span className={styles.inspectorTag}>触发器</span>}
+              {selectedNode.kind === "end" && endNode && (
+                <span className={styles.inspectorTag}>
+                  {endNode.mode === "variables" ? "返回变量" : "返回文本"}
+                </span>
+              )}
+              {selectedNode.kind === "llm" && <span className={styles.inspectorTag}>大模型</span>}
+              {selectedNode.kind === "code" && <span className={styles.inspectorTag}>代码</span>}
+              {selectedNode.kind === "selector" && <span className={styles.inspectorTag}>选择器</span>}
             </div>
             <div className={styles.inspectorHeadRight}>
               <button
@@ -971,6 +1269,89 @@ export default function WorkflowPage() {
                 {(startNode.description ?? "").length}/100
               </span>
             </div>
+          ) : selectedNode.kind === "end" && endNode ? (
+            <div className={styles.inspectorDescEditable}>
+              <textarea
+                className={styles.inspectorDescTextarea}
+                placeholder="工作流的最终节点，用于返回工作流运行后的结果信息"
+                maxLength={100}
+                value={endNode.description ?? NODE_META[selectedNode.kind]?.desc ?? ""}
+                onChange={(e) => setEndNode({ ...endNode, description: e.target.value })}
+                rows={2}
+              />
+              <span className={styles.inspectorDescCount}>
+                {(endNode.description ?? NODE_META[selectedNode.kind]?.desc ?? "").length}/100
+              </span>
+            </div>
+          ) : selectedNode.kind === "llm" ? (
+            (() => {
+              const llmCfg = llmConfigs[selectedNode.id] ?? defaultLLMConfig();
+              const desc = llmCfg.description ?? "调用大语言模型，使用变量和提示词生成回复";
+              return (
+                <div className={styles.inspectorDescEditable}>
+                  <textarea
+                    className={styles.inspectorDescTextarea}
+                    placeholder="调用大语言模型，使用变量和提示词生成回复"
+                    maxLength={100}
+                    value={desc}
+                    onChange={(e) =>
+                      setLlmConfigs((m) => ({
+                        ...m,
+                        [selectedNode.id]: { ...llmCfg, description: e.target.value },
+                      }))
+                    }
+                    rows={2}
+                  />
+                  <span className={styles.inspectorDescCount}>{desc.length}/100</span>
+                </div>
+              );
+            })()
+          ) : selectedNode.kind === "code" ? (
+            (() => {
+              const codeCfg = codeConfigs[selectedNode.id] ?? defaultCodeConfig();
+              const desc = codeCfg.description ?? "运行一段自定义 JS/Python 脚本处理数据";
+              return (
+                <div className={styles.inspectorDescEditable}>
+                  <textarea
+                    className={styles.inspectorDescTextarea}
+                    placeholder="运行一段自定义 JS/Python 脚本处理数据"
+                    maxLength={100}
+                    value={desc}
+                    onChange={(e) =>
+                      setCodeConfigs((m) => ({
+                        ...m,
+                        [selectedNode.id]: { ...codeCfg, description: e.target.value },
+                      }))
+                    }
+                    rows={2}
+                  />
+                  <span className={styles.inspectorDescCount}>{desc.length}/100</span>
+                </div>
+              );
+            })()
+          ) : selectedNode.kind === "selector" ? (
+            (() => {
+              const selCfg = selectorConfigs[selectedNode.id] ?? defaultSelectorConfig();
+              const desc = selCfg.description ?? "按条件分支流转（如果 / 否则）";
+              return (
+                <div className={styles.inspectorDescEditable}>
+                  <textarea
+                    className={styles.inspectorDescTextarea}
+                    placeholder="按条件分支流转（如果 / 否则）"
+                    maxLength={100}
+                    value={desc}
+                    onChange={(e) =>
+                      setSelectorConfigs((m) => ({
+                        ...m,
+                        [selectedNode.id]: { ...selCfg, description: e.target.value },
+                      }))
+                    }
+                    rows={2}
+                  />
+                  <span className={styles.inspectorDescCount}>{desc.length}/100</span>
+                </div>
+              );
+            })()
           ) : (
             <p className={styles.inspectorDesc}>
               {NODE_META[selectedNode.kind]?.desc ?? `${selectedNode.kindLabel} 节点`}
@@ -987,10 +1368,22 @@ export default function WorkflowPage() {
               showTip={showTip}
               hideTip={hideTip}
             />
+          ) : selectedNode.kind === "end" && endNode ? (
+            <EndInspector data={endNode} onChange={setEndNode} />
           ) : selectedNode.kind === "llm" ? (
             <LLMInspector
               config={llmConfigs[selectedNode.id] ?? defaultLLMConfig()}
               onChange={(c) => setLlmConfigs((m) => ({ ...m, [selectedNode.id]: c }))}
+            />
+          ) : selectedNode.kind === "code" ? (
+            <CodeInspector
+              config={codeConfigs[selectedNode.id] ?? defaultCodeConfig()}
+              onChange={(c) => setCodeConfigs((m) => ({ ...m, [selectedNode.id]: c }))}
+            />
+          ) : selectedNode.kind === "selector" ? (
+            <SelectorInspector
+              config={selectorConfigs[selectedNode.id] ?? defaultSelectorConfig()}
+              onChange={(c) => setSelectorConfigs((m) => ({ ...m, [selectedNode.id]: c }))}
             />
           ) : (
             <StepInspector node={selectedNode} />
@@ -1895,6 +2288,7 @@ function buildNodeRows(
         { key: "技能", value: "未配置技能", type: "plain" },
       ];
     }
+
     case "image-gen":
       return [
         { key: "输入", value: inputName, type: "chipAccent" },
@@ -1934,6 +2328,54 @@ function buildNodeRows(
         { key: "工具", value: `${s.server} · ${s.tool}`, type: "chipMuted" },
       ];
   }
+}
+
+/**
+ * LLM 节点 → 节点卡片分组 chips（参考扣子节点卡）：
+ *   输入：变量 chip 列表（带类型前缀 str/int/float/bool）
+ *   输出：单一变量 chip
+ *   模型：单行 chip（avatar + 完整名称）
+ *   技能：单行 chip（icon + 名称）
+ *
+ * 注：当前实现用 mock 数据（从 template.steps 取不到 inputs，UI 演示用占位）。
+ *     后续接 LLMConfig 后用 config.skills / config.systemPrompt 替换占位。
+ */
+function buildLLMGroups(
+  s: TemplateDetail["steps"][number],
+  index: number,
+  total: number,
+  _startNode: unknown,
+): NodeGroup[] {
+  const inputName = index === 0 ? "sys.query" : `step${index - 1}.output`;
+  const outputName = `${s.id}.output`;
+  /* Step 是 union，窄化到 llm 变体才能访问 model 字段 */
+  const modelName = s.type === "llm" ? modelLabel(s.model) : "默认模型";
+
+  return [
+    {
+      label: "输入",
+      chips: [
+        { label: "client_id", type: "str", variant: "default" },
+        { label: "age", type: "int", variant: "default" },
+        { label: "exp_level", type: "int", variant: "default" },
+        { label: "risk_tolerance", type: "str", variant: "default" },
+      ],
+      trailing: "more",
+    },
+    {
+      label: "输出",
+      chips: [{ label: outputName, type: "str", variant: "default" }],
+    },
+    {
+      label: "模型",
+      chips: [{ label: modelName, variant: "model", icon: "豆", warning: true }],
+    },
+    {
+      label: "技能",
+      chips: [{ label: "未配置技能", variant: "skill", icon: "⚡" }],
+      trailing: "add",
+    },
+  ];
 }
 
 function firstLine(text: string): string {

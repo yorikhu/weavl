@@ -347,8 +347,8 @@
 /* ====================== 节点卡（黑白灰 · 参考主画布结构） ====================== */
 .nodeCard {
   position: absolute;
-  width: 230px;
-  height: 128px;
+  width: 240px;
+  min-height: 128px;
   padding: 0;
   background: var(--surface);
   border: 1px solid var(--surface-border);
@@ -527,6 +527,153 @@
   gap: 4px;
 }
 
+/* ============================== IF 选择器卡片专属样式（参考扣子截图：无 head + 4 行 label/cond/port） ============================== */
+.nodeCardSelector {
+  /* 恢复 head + 左侧 in 端口；宽度 280px；head 自带 padding */
+  width: 280px;
+  padding: 0 0 10px 12px; /* 左 padding 给 label 让出空间；端口从右侧 absolute 凸出 */
+  position: relative;
+}
+
+.nodeCardSelector::before {
+  /* 去掉通用 3px 色条，让 selector head 自占顶部 */
+  height: 0;
+}
+
+/* 选择器专属头部：白底 + 黑色 IF logo（与 LLM 节点 header 一致） */
+.nodeHeadSelector {
+  height: 42px;
+  box-sizing: border-box;
+  background: transparent;
+  border-bottom: none;
+  padding: 0 12px;
+  margin-bottom: 10px;
+}
+
+.nodeIconSelector {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #1c1d22;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================== 选择器 Body（每个分支独立行 + 所有条件 + 且/或 逻辑可视化） ============================== */
+.nodeSelectorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 不加 padding-right，让端口直接基于卡片右边缘定位（right: -5.5px 即可半凸出） */
+}
+
+/* 每个分支（如果 / 否则如果 / 否则）：左 label + 中条件堆叠 + 右端口 */
+.nodeSelectorGroup {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.nodeSelectorLabel {
+  flex: 0 0 44px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 6px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* 条件堆叠容器：纵向排列多个条件行 + 且/或 连接符 */
+.nodeSelectorCondStack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 单个条件行：左可能是 且/或 标签，右是条件框 */
+.nodeSelectorCondRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.nodeSelectorLogic {
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.nodeSelectorCond {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 5px;
+  background: var(--background);
+  font-size: 11px;
+  color: var(--foreground);
+  overflow: hidden;
+}
+
+.nodeSelectorCondText {
+  flex: 1;
+  min-width: 0;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nodeSelectorCondTextDim {
+  flex: 1;
+  min-width: 0;
+  color: var(--faint-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nodeSelectorMore {
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(55, 138, 221, 0.12);
+  color: #378add;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* 选择器分支端口：每行独立凸出卡片右边缘，蓝色圆点，落在行垂直居中 */
+.nodeCardSelector [data-port-out][data-branch] {
+  position: absolute;
+  right: -5.5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #4f8cff;
+  border-color: #4f8cff;
+}
+
 .nodeRow {
   display: flex;
   align-items: center;
@@ -583,6 +730,160 @@
   font-size: 9.5px;
   padding-right: 1px;
   flex-shrink: 0;
+}
+
+/* ============================ 分组 chips（参考扣子节点卡） ============================ */
+.nodeGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.nodeGroupLabel {
+  flex-shrink: 0;
+  width: 36px;
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+  line-height: 22px;
+  padding-top: 1px;
+}
+
+.nodeGroupChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.nodeGroupChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  background: var(--subcard);
+  font-size: 10.5px;
+  color: var(--foreground);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.45;
+}
+
+.nodeGroupType {
+  color: var(--muted-foreground);
+  font-size: 9.5px;
+  flex-shrink: 0;
+}
+
+.nodeGroupLabelText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeGroupIcon {
+  font-size: 11px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+/* 模型 chip：图标 + 名称（粗体） */
+.nodeGroupChipModel {
+  font-weight: 500;
+  background: rgba(83, 74, 183, 0.12); /* 紫色浅底强调 */
+  color: var(--foreground);
+
+  .nodeGroupIcon {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* chip 警告圆点（橙色） */
+.nodeGroupWarning {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 2px;
+  line-height: 1;
+}
+
+/* 技能 chip：图标 + 名称（普通） */
+.nodeGroupChipSkill {
+  background: rgba(60, 60, 65, 0.08);
+}
+
+/* 末尾操作按钮（"+ 添加" / "⋯ 更多"） */
+.nodeGroupTrailing,
+.nodeGroupAdd {
+  width: 18px;
+  height: 18px;
+  border: 1px dashed var(--surface-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover {
+    border-color: var(--foreground);
+    color: var(--foreground);
+  }
+}
+
+.nodeGroupAdd {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--background);
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
+/* LLM 节点 header：白底（参考扣子截图，无渐变） */
+.nodeCard[data-kind="llm"] .nodeHead {
+  background: transparent;
+}
+
+/* LLM 节点 logo：黑色圆角矩形 + 白图标（参考扣子截图） */
+.nodeCard[data-kind="llm"] .nodeIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #1c1d22;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 /* ============================ 底部工具条 ============================ */

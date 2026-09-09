@@ -1,0 +1,561 @@
+/* 代码节点配置面板（风格与 LLMInspector 一致；代码编辑器参考扣子深色 CodeMirror 风） */
+
+.inspectorBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 12px 16px 24px;
+}
+
+.inspectorBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.inspectorBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.inspectorBody::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 3px;
+
+  &:hover {
+    background: var(--muted-foreground);
+  }
+}
+
+/* ============================== 折叠组 ============================== */
+.inspectorGroup {
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: var(--background);
+  overflow: hidden;
+  display: block;
+  flex-shrink: 0;
+
+  &[open] > .inspectorGroupHead::before {
+    transform: rotate(90deg);
+  }
+
+  &[open] > .inspectorGroupBody {
+    display: block;
+  }
+}
+
+.inspectorGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    content: "▸";
+    font-size: 10px;
+    color: var(--muted-foreground);
+    transition: transform 0.15s;
+  }
+}
+
+.inspectorGroupRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspectorGroupBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+.inspectorGroupBody {
+  padding: 4px 12px 12px;
+}
+
+/* ============================== 语言选择 ============================== */
+.langSelect {
+  height: 22px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  outline: none;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+/* ============================== 变量列表 ============================== */
+.inspectorVarList {
+  padding: 4px 8px 10px;
+}
+
+.inspectorVarHead {
+  display: grid;
+  grid-template-columns: 1fr 2fr 24px;
+  gap: 8px;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--faint-foreground);
+  border-bottom: 1px solid var(--surface-border);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+/* 输入行：变量名 | 变量值（引用/值 + 类型 chip + 选择）| 删除 */
+.inputVarRow {
+  display: grid;
+  grid-template-columns: 1fr 2fr 24px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.valueCol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 引用 chip（上游变量：开始-client_id） */
+.refChip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--surface-border);
+  border-radius: 5px;
+  background: rgba(83, 74, 183, 0.06);
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+  min-width: 0;
+}
+
+.refDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #4f6cff, #534ab7);
+  flex-shrink: 0;
+}
+
+.refNode {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 48px;
+}
+
+.refSep {
+  color: var(--faint-foreground);
+}
+
+.refKey {
+  flex: 1;
+  color: var(--foreground);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.refClose {
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+/* 类型 chip（透明 select 覆盖） */
+.typeWrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 5px;
+
+  &:hover .typeChip {
+    border-color: var(--accent);
+  }
+}
+
+.typeChip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--surface-border);
+  border-radius: 5px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  transition: border-color 0.12s;
+  white-space: nowrap;
+}
+
+.typeSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  z-index: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ============================== 输出变量（含空名错误） ============================== */
+.outputVarRowWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.outputVarRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 24px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.inspectorVarInput {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 4px 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.inputError {
+  border-color: #e5484d;
+
+  &:focus {
+    border-color: #e5484d;
+  }
+}
+
+.errorText {
+  font-size: 10px;
+  color: #e5484d;
+  padding-left: 2px;
+}
+
+/* ============================== 代码编辑器（深色 CodeMirror 风） ============================== */
+.codeEditor {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: #1e1e24;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #d4d4dc;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  tab-size: 4;
+
+  &::placeholder {
+    color: #6b6b76;
+  }
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+/* 在 IDE 中编辑（编辑器右上角悬浮按钮） */
+.codeWrap {
+  position: relative;
+}
+
+.ideBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(83, 74, 183, 0.85);
+  color: #fff;
+  font-size: 10.5px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+
+  &:hover {
+    background: rgba(83, 74, 183, 1);
+  }
+}
+
+/* ============================== 异常处理 ============================== */
+.ehRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.ehLabel {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.ehControl {
+  flex: 1;
+  max-width: 180px;
+}
+
+.ehInput,
+.ehSelect {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.ehControl {
+  position: relative;
+}
+
+.ehSuffix {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--faint-foreground);
+  pointer-events: none;
+}
+
+.ehInput {
+  padding-right: 24px;
+}
+
+/* ============================== IDE 全屏编辑窗口 ============================== */
+.ideOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  animation: ideIn 0.18s ease-out;
+}
+
+@keyframes ideIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.idePanel {
+  width: 530px;
+  max-width: 90vw;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--surface-border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.25);
+}
+
+.ideHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.ideIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(55, 138, 221, 0.14);
+  color: #378add;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ideTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ideLang {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.ideHeaderRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ideTestBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
+.ideCollapseBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+.ideEditor {
+  flex: 1;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: #1e1e24;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.75;
+  color: #d4d4dc;
+  tab-size: 4;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: #6b6b76;
+  }
+}

@@ -94,8 +94,8 @@ export const NODE_GROUPS: NodeGroup[] = [
   {
     category: "业务逻辑",
     items: [
-      { id: "code", name: "代码", desc: "运行一段 JS/Python 脚本", icon: Code2, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: false },
-      { id: "selector", name: "选择器", desc: "条件分支", icon: Filter, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: false },
+      { id: "code", name: "代码", desc: "运行一段 JS/Python 脚本", icon: Code2, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: true },
+      { id: "selector", name: "IF 选择器", desc: "按条件分支流转（如果 / 否则）", icon: GitBranch, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: true },
       { id: "intent", name: "意图识别", desc: "LLM 分类用户意图", icon: Brain, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: false },
       { id: "loop", name: "循环", desc: "遍历数组执行子流程", icon: Repeat, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: false },
       { id: "batch", name: "批处理", desc: "批量运行同一节点", icon: Layers, color: "#378add", category: "业务逻辑", hasInput: true, hasOutput: true, implemented: false },
@@ -152,7 +152,7 @@ export const BASE_NODES: NodeTypeMeta[] = [
     category: "基础", tag: "触发器", hasInput: false, hasOutput: true, implemented: true,
   },
   {
-    id: "end", name: "结束", desc: "工作流的结束节点", icon: LogOut, color: "#534ab7",
+    id: "end", name: "结束", desc: "工作流的最终节点，用于返回工作流运行后的结果信息", icon: LogOut, color: "#534ab7",
     category: "基础", hasInput: true, hasOutput: false, implemented: false,
   },
 ];
@@ -169,7 +169,7 @@ export const NODE_META: Record<string, NodeTypeMeta> = (() => {
   map["end"] = {
     id: "end",
     name: "结束",
-    desc: "工作流的结束节点，用于声明工作流的最终输出",
+    desc: "工作流的最终节点，用于返回工作流运行后的结果信息",
     icon: LogIn,
     color: "#5e5e66",
     category: "基础",
