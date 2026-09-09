@@ -3,15 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import type { InputDef, RunView, CandidateArtifact } from "@weavl/shared";
-import {
-  CheckCircle2,
-  Coins,
-  FileCheck2,
-  RefreshCw,
-  Sparkles,
-  ClipboardList,
-  PackageCheck,
-} from "lucide-react";
+import { CheckCircle2, Coins, FileCheck2, RefreshCw, Sparkles, ClipboardList, PackageCheck } from "lucide-react";
 import styles from "./page.module.scss";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -37,25 +29,29 @@ export default function PresetPage() {
   useEffect(() => {
     fetch(`${API}/templates`)
       .then((r) => r.json())
-      .then((list: {
-        id: string;
-        name: string;
-        inputs: InputDef[];
-        gates: { afterStep: string; title: string; description?: string }[];
-        totalSteps: number;
-        cost: { min: number; max: number };
-      }[]) => {
-        const t = list?.[0];
-        if (!t) return;
-        setTemplate(t);
-        const init: Record<string, string> = {};
-        t.inputs.forEach((d: InputDef) => {
-          if (d.type === "select" && d.options[0]) init[d.name] = d.options[0].value;
-          else if (d.type === "number" && d.default != null) init[d.name] = String(d.default);
-          else init[d.name] = "";
-        });
-        setInputs(init);
-      })
+      .then(
+        (
+          list: {
+            id: string;
+            name: string;
+            inputs: InputDef[];
+            gates: { afterStep: string; title: string; description?: string }[];
+            totalSteps: number;
+            cost: { min: number; max: number };
+          }[],
+        ) => {
+          const t = list?.[0];
+          if (!t) return;
+          setTemplate(t);
+          const init: Record<string, string> = {};
+          t.inputs.forEach((d: InputDef) => {
+            if (d.type === "select" && d.options[0]) init[d.name] = d.options[0].value;
+            else if (d.type === "number" && d.default != null) init[d.name] = String(d.default);
+            else init[d.name] = "";
+          });
+          setInputs(init);
+        },
+      )
       .catch(() => setError("无法连接 API（localhost:3001），请先启动 pnpm dev:api"));
   }, []);
 
@@ -114,16 +110,13 @@ export default function PresetPage() {
         <div className={styles.head}>
           <div>
             <h2 className={styles.title}>{template?.name ?? "预设加载中…"}</h2>
-            <p className={styles.sub}>
-              表单填写业务信息 → 系统生成 → 关键节点人工确认 → 交付内容包
-            </p>
+            <p className={styles.sub}>表单填写业务信息 → 系统生成 → 关键节点人工确认 → 交付内容包</p>
           </div>
           {template && (
             <div className={styles.costHint}>
               <span>预计成本:</span>
               <span className={styles.costValue}>
-                <Coins size={14} />
-                ¥{template.cost.min}–{template.cost.max}
+                <Coins size={14} />¥{template.cost.min}–{template.cost.max}
               </span>
             </div>
           )}
@@ -253,10 +246,9 @@ export default function PresetPage() {
                 <button
                   className={styles.downloadBtn}
                   onClick={() => {
-                    const blob = new Blob(
-                      [pkg.fields.map((f) => `【${f.label}】\n${f.value}`).join("\n\n———\n\n")],
-                      { type: "text/plain;charset=utf-8" },
-                    );
+                    const blob = new Blob([pkg.fields.map((f) => `【${f.label}】\n${f.value}`).join("\n\n———\n\n")], {
+                      type: "text/plain;charset=utf-8",
+                    });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
                     a.download = `${pkg.id}.txt`;
@@ -293,11 +285,7 @@ export default function PresetPage() {
                   ))}
                 </div>
                 <div className={styles.gateActions}>
-                  <button
-                    className={styles.confirmBtn}
-                    disabled={!selected || busy}
-                    onClick={() => decide("confirm")}
-                  >
+                  <button className={styles.confirmBtn} disabled={!selected || busy} onClick={() => decide("confirm")}>
                     <CheckCircle2 size={14} />
                     采纳并继续
                   </button>

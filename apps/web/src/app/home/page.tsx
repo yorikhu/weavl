@@ -2,17 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  Bot,
-  Heart,
-  ImageIcon,
-  Layers,
-  Play,
-  Sparkles,
-  Video,
-  Wand2,
-} from "lucide-react";
+import { ArrowRight, Bot, Heart, ImageIcon, Layers, Play, Sparkles, Video, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import styles from "./page.module.scss";
 
@@ -66,9 +56,7 @@ export default function HomePage() {
         <section className={styles.hero}>
           <div className={styles.heroIntro}>
             <h1 className={styles.heroTitle}>你好，织光师</h1>
-            <p className={styles.heroSub}>
-              今天想创造点什么呢？让灵感流动，让想象发光。
-            </p>
+            <p className={styles.heroSub}>今天想创造点什么呢？让灵感流动，让想象发光。</p>
           </div>
 
           <div>
@@ -77,17 +65,11 @@ export default function HomePage() {
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && prompt && router.push("/preset")
-                }
+                onKeyDown={(e) => e.key === "Enter" && prompt && router.push("/preset")}
                 placeholder="描述你的想法，按 Enter 生成"
                 className={styles.promptInput}
               />
-              <button
-                onClick={() => prompt && router.push("/preset")}
-                className={styles.promptBtn}
-                aria-label="生成"
-              >
+              <button onClick={() => prompt && router.push("/preset")} className={styles.promptBtn} aria-label="生成">
                 <Sparkles size={16} />
               </button>
             </div>
@@ -100,11 +82,7 @@ export default function HomePage() {
                 { label: "打开项目", icon: Layers, href: "/projects" },
                 { label: "Agent 对话", icon: Bot, href: "/agent" },
               ].map((tag) => (
-                <button
-                  key={tag.label}
-                  onClick={() => router.push(tag.href)}
-                  className={styles.tag}
-                >
+                <button key={tag.label} onClick={() => router.push(tag.href)} className={styles.tag}>
                   <tag.icon size={12} />
                   {tag.label}
                 </button>
@@ -120,11 +98,7 @@ export default function HomePage() {
           </div>
           <div className={styles.quickGrid}>
             {QUICK_STARTS.map((item) => (
-              <button
-                key={item.title}
-                onClick={() => router.push(item.href)}
-                className={styles.quickCard}
-              >
+              <button key={item.title} onClick={() => router.push(item.href)} className={styles.quickCard}>
                 <div className={styles.quickInfo}>
                   <h4 className={styles.quickTitle}>{item.title}</h4>
                   <p className={styles.quickDesc}>{item.desc}</p>

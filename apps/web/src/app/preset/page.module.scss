@@ -144,7 +144,9 @@
   font-weight: 700;
   color: #1a1205;
   cursor: pointer;
-  transition: filter 0.2s, opacity 0.2s;
+  transition:
+    filter 0.2s,
+    opacity 0.2s;
 
   &:hover {
     filter: brightness(1.08);
@@ -224,7 +226,9 @@
   border-radius: 16px;
   background: var(--subcard);
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 
   &:hover {
     border-color: var(--surface-hover-border);

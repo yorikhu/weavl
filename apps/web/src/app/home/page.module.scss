@@ -246,11 +246,7 @@
   align-items: center;
   justify-content: center;
   height: 112px;
-  background: linear-gradient(
-    to bottom right,
-    var(--pill-inactive-hover),
-    var(--sider)
-  );
+  background: linear-gradient(to bottom right, var(--pill-inactive-hover), var(--sider));
 }
 
 .galleryPlay {
@@ -333,11 +329,7 @@
   height: 80px;
   margin-bottom: 8px;
   border-radius: 12px;
-  background: linear-gradient(
-    to top right,
-    var(--pill-inactive-hover),
-    var(--subcard)
-  );
+  background: linear-gradient(to top right, var(--pill-inactive-hover), var(--subcard));
   color: rgba(255, 255, 255, 0.5);
 }
 

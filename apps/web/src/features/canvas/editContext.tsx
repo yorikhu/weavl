@@ -19,22 +19,58 @@ export interface EditCtx {
   enterEdit: (id: string) => void;
   saveEdit: (id: string, title: string, text: string) => void;
   commitEdit: () => void;
-  commitImageEdit: ((id: string, payload: {
-    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
-  }) => void) | null;
-  commitVideoEdit: ((id: string, payload: {
-    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
-  }) => void) | null;
+  commitImageEdit:
+    | ((
+        id: string,
+        payload: {
+          prompt?: string;
+          ratio?: string;
+          quality?: string;
+          count?: number;
+          model?: string;
+          url?: string;
+          title?: string;
+        },
+      ) => void)
+    | null;
+  commitVideoEdit:
+    | ((
+        id: string,
+        payload: {
+          prompt?: string;
+          ratio?: string;
+          quality?: string;
+          duration?: number;
+          count?: number;
+          model?: string;
+          url?: string;
+          title?: string;
+        },
+      ) => void)
+    | null;
   exitEdit: () => void;
   focusMode: { nodeId: string | null };
   onApplyFormat: (cmd: string, value?: string) => void;
   editorElRef: MutableRefObject<HTMLDivElement | null>;
   composingRef: MutableRefObject<boolean>;
   imageEditStateRef: MutableRefObject<{
-    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
+    prompt?: string;
+    ratio?: string;
+    quality?: string;
+    count?: number;
+    model?: string;
+    url?: string;
+    title?: string;
   } | null>;
   videoEditStateRef: MutableRefObject<{
-    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
+    prompt?: string;
+    ratio?: string;
+    quality?: string;
+    duration?: number;
+    count?: number;
+    model?: string;
+    url?: string;
+    title?: string;
   } | null>;
 }
 

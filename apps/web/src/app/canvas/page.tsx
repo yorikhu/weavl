@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { toast } from "@/hooks/useToast";
@@ -34,8 +34,6 @@ import {
   ChevronRight,
   Coins,
   Share2,
-  Sliders,
-  User,
   User as UserIcon,
   Plus,
   Send,
@@ -45,13 +43,8 @@ import {
   Maximize2,
   Image as ImageIcon,
   Video as VideoIcon,
-  Wand2,
-  Download,
-  Sun,
-  Grid3x3,
   Music,
   Sparkles,
-  Crop,
   CheckCircle2,
   Type as TypeIcon,
   Type as TypeGlyph,
@@ -62,11 +55,7 @@ import {
   MonitorPlay,
   SlidersHorizontal,
   Zap,
-  Code,
-  Quote,
   Minus,
-  Superscript as SuperscriptIcon,
-  Highlighter,
   Pilcrow,
   RemoveFormatting,
   Film,
@@ -77,7 +66,15 @@ import styles from "./page.module.scss";
 import { API } from "@/lib/env";
 import { EnterEditContext } from "@/features/canvas/editContext";
 import { KIND_META } from "@/features/canvas/types/kindMeta";
-import type { AnyNodeData, CardField, CardNodeData, ImageNodeData, NodeKind, TextNodeData, VideoNodeData } from "@/features/canvas/types/nodes";
+import type {
+  AnyNodeData,
+  CardField,
+  CardNodeData,
+  ImageNodeData,
+  NodeKind,
+  TextNodeData,
+  VideoNodeData,
+} from "@/features/canvas/types/nodes";
 import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "@/features/canvas/constants";
 
 /* ---------------- 节点定义 ---------------- */
@@ -188,11 +185,7 @@ function ImageCardStatic({
           <span>{displayTitle}</span>
         )}
       </div>
-      <div
-        className={styles.imageNode}
-        style={{ width: w, height: h }}
-        onDoubleClick={onDoubleClick}
-      >
+      <div className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有图则显示真图，否则占位渐变 */}
         {url ? (
@@ -267,7 +260,7 @@ function ImageEditPanel() {
 
   /* 当前编辑的图片节点（editingId）—— 字段初值取自节点的 data */
   const editingId = edit.editingId;
-  const node = useStore((s) => (editingId ? s.nodes.find((n) => n.id === editingId) ?? null : null));
+  const node = useStore((s) => (editingId ? (s.nodes.find((n) => n.id === editingId) ?? null) : null));
   const data = (node?.data as unknown as ImageNodeData | undefined) ?? null;
   /* v34.2：只渲染图片节点编辑栏（视频节点由 VideoEditPanel 渲染）。
      所有 hooks 必须在 early return 之前固定调用（Rules of Hooks） */
@@ -289,7 +282,7 @@ function ImageEditPanel() {
     setQuality(data.quality ?? "标准");
     setCount(data.count ?? 1);
     setModel(data.model ?? "Weavl Image");
-  }, [edit.editingId, data?.prompt, data?.ratio, data?.quality, data?.count, data?.model]);
+  }, [edit.editingId, data]);
 
   /* 实时同步到 imageEditStateRef，供外部 commitEdit / commitImageEdit 取最新值 */
   useEffect(() => {
@@ -370,7 +363,7 @@ function ImageEditPanel() {
       window.removeEventListener("resize", onResize);
       window.cancelAnimationFrame(raf);
     };
-  }, [node?.id, node?.position.x, node?.position.y, rf.tx, rf.ty, rf.zoom]);
+  }, [node, rf.tx, rf.ty, rf.zoom]);
 
   /* v36：去掉飞入动画 —— 始终 opacity:1，compute() 失败也不影响可见性 */
   useEffect(() => {
@@ -439,7 +432,10 @@ function ImageEditPanel() {
         <div className={styles.imageEditModelWrap}>
           <button
             className={styles.imageEditModel}
-            onClick={() => { setShowModelMenu((v) => !v); setShowRatioMenu(false); }}
+            onClick={() => {
+              setShowModelMenu((v) => !v);
+              setShowRatioMenu(false);
+            }}
           >
             <Sparkles size={11} />
             {model}
@@ -452,7 +448,10 @@ function ImageEditPanel() {
                 <button
                   key={m}
                   className={`${styles.imageEditRatioItem} ${m === model ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => { setModel(m); setShowModelMenu(false); }}
+                  onClick={() => {
+                    setModel(m);
+                    setShowModelMenu(false);
+                  }}
                 >
                   {m}
                 </button>
@@ -464,7 +463,10 @@ function ImageEditPanel() {
         <div className={styles.imageEditRatioWrap}>
           <button
             className={styles.imageEditParam}
-            onClick={() => { setShowRatioMenu((v) => !v); setShowModelMenu(false); }}
+            onClick={() => {
+              setShowRatioMenu((v) => !v);
+              setShowModelMenu(false);
+            }}
           >
             <MonitorPlay size={11} />
             {ratio} · {quality}画质 · {count}张
@@ -477,7 +479,9 @@ function ImageEditPanel() {
                 <button
                   key={r}
                   className={`${styles.imageEditRatioItem} ${r === ratio ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => { setRatio(r); }}
+                  onClick={() => {
+                    setRatio(r);
+                  }}
                 >
                   {r}
                 </button>
@@ -542,10 +546,7 @@ function ImageNodeEditor({ id, data }: { id: string; data: ImageNodeData }) {
   }, [edit, data]);
 
   return (
-    <div
-      className={styles.imageNodeEditWrap}
-      onDoubleClick={(e) => e.stopPropagation()}
-    >
+    <div className={styles.imageNodeEditWrap} onDoubleClick={(e) => e.stopPropagation()}>
       <div className={styles.imageNodeEditCardCol}>
         <ImageCardStatic id={id} d={data} editing />
       </div>
@@ -561,7 +562,7 @@ function TextNode({ data, id }: NodeProps) {
   const editing = edit.editingId === id;
 
   if (editing) {
-    return <TextNodeEditor id={id} data={d} />;
+    return <TextNodeEditor data={d} />;
   }
 
   return (
@@ -600,16 +601,17 @@ function TextNode({ data, id }: NodeProps) {
    - IME composition 期间完全不动 buffer（避免中文输入被打断 / 重复触发）
    - commitEdit 时直接从 editorElRef 读最新 innerText，绕开 React state 异步
    - 节点头部不挂 nodrag → React Flow 拖拽节点生效；input/contentEditable 加 nodrag → 不被拖动接管 */
-function TextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
+function TextNodeEditor({ data }: { data: TextNodeData }) {
   const edit = useContext(EnterEditContext);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const initialTextRef = useRef(edit.buffer.text);
 
   /* 挂载：buffer.text 写一次到 DOM，光标放到末尾 */
   useEffect(() => {
     if (!editorRef.current) return;
-    if (editorRef.current.innerText !== edit.buffer.text) {
-      editorRef.current.innerText = edit.buffer.text;
+    if (editorRef.current.innerText !== initialTextRef.current) {
+      editorRef.current.innerText = initialTextRef.current;
     }
     editorRef.current.focus();
     const range = document.createRange();
@@ -630,9 +632,10 @@ function TextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
 
   /* 卸载：清理 ref */
   useEffect(() => {
-    edit.editorElRef.current = editorRef.current;
+    const editor = editorRef.current;
+    edit.editorElRef.current = editor;
     return () => {
-      if (edit.editorElRef.current === editorRef.current) {
+      if (edit.editorElRef.current === editor) {
         edit.editorElRef.current = null;
       }
     };
@@ -762,11 +765,7 @@ function VideoCardStatic({
           <span>{displayTitle}</span>
         )}
       </div>
-      <div
-        className={styles.imageNode}
-        style={{ width: w, height: h }}
-        onDoubleClick={onDoubleClick}
-      >
+      <div className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有视频则显示视频预览，否则占位渐变 + 播放按钮 */}
         {url ? (
@@ -791,20 +790,19 @@ function VideoCardStatic({
           </div>
         )}
         {/* v25：左下角 chip ——「尝试：↻」+ 三个常用能力 */}
-        <div className={`${styles.imageTryChips} nodrag`} style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+        <div
+          className={`${styles.imageTryChips} nodrag`}
+          style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}
+        >
           <div style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
             <span className={styles.imageTryRefreshInline}>尝试：</span>
-            <button
-              className={styles.imageTryRefresh}
-              title="换一换"
-              onClick={() => fileRef.current?.click()}
-            >
+            <button className={styles.imageTryRefresh} title="换一换" onClick={() => fileRef.current?.click()}>
               <RefreshCw size={10} />
             </button>
           </div>
           <button className={styles.imageTryChip} title="即将上线：5 分钟超长视频">
-            <span style={{ color: "#a8a8b2", fontSize: 11, display: "inline-flex", alignItems: "center" }}>∞</span>
-            5 分钟超长视频
+            <span style={{ color: "#a8a8b2", fontSize: 11, display: "inline-flex", alignItems: "center" }}>∞</span>5
+            分钟超长视频
           </button>
           <button className={styles.imageTryChip} title="即将上线：首尾帧生成视频">
             <Layers size={11} />
@@ -851,30 +849,30 @@ function VideoEditPanel() {
   const edit = useContext(EnterEditContext);
   const rf = useStore((s) => ({ tx: s.transform[0], ty: s.transform[1], zoom: s.transform[2] }), shallowEqual);
   const editingId = edit.editingId;
-  const node = useStore((s) => (editingId ? s.nodes.find((n) => n.id === editingId) ?? null : null));
+  const node = useStore((s) => (editingId ? (s.nodes.find((n) => n.id === editingId) ?? null) : null));
   const data = (node?.data as unknown as VideoNodeData | undefined) ?? null;
-  const isVideo = (data as unknown as { nodeKind?: string } | undefined)?.nodeKind === 'video';
+  const isVideo = (data as unknown as { nodeKind?: string } | undefined)?.nodeKind === "video";
 
   /* 所有 hooks 必须在 return 之前固定调用（Rules of Hooks） */
-  const [prompt, setPrompt] = useState(data?.prompt ?? '');
-  const [ratio, setRatio] = useState(data?.ratio ?? '16:9');
-  const [quality, setQuality] = useState(data?.quality ?? '720P');
+  const [prompt, setPrompt] = useState(data?.prompt ?? "");
+  const [ratio, setRatio] = useState(data?.ratio ?? "16:9");
+  const [quality, setQuality] = useState(data?.quality ?? "720P");
   const [duration, setDuration] = useState(data?.duration ?? 5);
   const [count, setCount] = useState(data?.count ?? 1);
-  const [model, setModel] = useState(data?.model ?? 'Weavl Video');
-  const [refType, setRefType] = useState('全能参考');
+  const [model, setModel] = useState(data?.model ?? "Weavl Video");
+  const [refType, setRefType] = useState("全能参考");
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showRefMenu, setShowRefMenu] = useState(false);
   useEffect(() => {
     if (!data) return;
-    setPrompt(data.prompt ?? '');
-    setRatio(data.ratio ?? '16:9');
-    setQuality(data.quality ?? '720P');
+    setPrompt(data.prompt ?? "");
+    setRatio(data.ratio ?? "16:9");
+    setQuality(data.quality ?? "720P");
     setDuration(data.duration ?? 5);
     setCount(data.count ?? 1);
-    setModel(data.model ?? 'Weavl Video');
-  }, [edit.editingId]);
+    setModel(data.model ?? "Weavl Video");
+  }, [edit.editingId, data]);
   useEffect(() => {
     edit.videoEditStateRef.current = { prompt, ratio, quality, duration, count, model, title: edit.buffer.title };
   }, [prompt, ratio, quality, duration, count, model, edit]);
@@ -882,17 +880,17 @@ function VideoEditPanel() {
     if (!edit.editingId) return;
     edit.commitVideoEdit?.(edit.editingId, { prompt, ratio, quality, duration, count, model, title: undefined });
   }, [edit, prompt, ratio, quality, duration, count, model]);
-  const ratioOptions = ['16:9', '9:16', '1:1', '4:3', '3:4'];
-  const modelOptions = ['Weavl Video', 'Lib Video', 'Sora', 'Veo'];
-  const refOptions = ['全能参考', '人脸参考', '首尾帧', '角色一致性'];
-  const cost = count * (quality === '2K' ? 60 : quality === '720P' ? 27 : 18);
+  const ratioOptions = ["16:9", "9:16", "1:1", "4:3", "3:4"];
+  const modelOptions = ["Weavl Video", "Lib Video", "Sora", "Veo"];
+  const refOptions = ["全能参考", "人脸参考", "首尾帧", "角色一致性"];
+  const cost = count * (quality === "2K" ? 60 : quality === "720P" ? 27 : 18);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const lastLeftRef = useRef(-1);
   const lastTopRef = useRef(-1);
   const lastWidthRef = useRef(-1);
   useEffect(() => {
     const compute = () => {
-      if (!node || typeof window === 'undefined') return;
+      if (!node || typeof window === "undefined") return;
       const panelEl = panelRef.current;
       if (!panelEl) return;
       const panelW = Math.max(320, Math.min(720, window.innerWidth * 0.4));
@@ -907,31 +905,37 @@ function VideoEditPanel() {
       const maxTop = window.innerHeight - panelH - 16;
       const clampedTop = Math.min(rawTop, maxTop);
       if (clampedLeft !== lastLeftRef.current || clampedTop !== lastTopRef.current) {
-        panelEl.style.transform = 'translate3d(' + clampedLeft + 'px, ' + clampedTop + 'px, 0)';
+        panelEl.style.transform = "translate3d(" + clampedLeft + "px, " + clampedTop + "px, 0)";
         lastLeftRef.current = clampedLeft;
         lastTopRef.current = clampedTop;
       }
       if (panelW !== lastWidthRef.current) {
-        panelEl.style.width = panelW + 'px';
+        panelEl.style.width = panelW + "px";
         lastWidthRef.current = panelW;
       }
     };
     compute();
     const onResize = () => compute();
-    window.addEventListener('resize', onResize);
+    window.addEventListener("resize", onResize);
     let raf = 0;
-    const loop = () => { compute(); raf = window.requestAnimationFrame(loop); };
+    const loop = () => {
+      compute();
+      raf = window.requestAnimationFrame(loop);
+    };
     raf = window.requestAnimationFrame(loop);
-    return () => { window.removeEventListener('resize', onResize); window.cancelAnimationFrame(raf); };
-  }, [node?.id, node?.position.x, node?.position.y, rf.tx, rf.ty, rf.zoom]);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.cancelAnimationFrame(raf);
+    };
+  }, [node, rf.tx, rf.ty, rf.zoom]);
   /* v36：移除飞入动画 —— 挂载时透明，首次定位后立即显示（无位移过渡） */
   useEffect(() => {
     const el = panelRef.current;
     if (!el) return;
-    el.style.opacity = '0';
+    el.style.opacity = "0";
     let raf = window.requestAnimationFrame(function show() {
-      if (el.style.transform !== '') {
-        el.style.opacity = '1';
+      if (el.style.transform !== "") {
+        el.style.opacity = "1";
       } else {
         raf = window.requestAnimationFrame(show);
       }
@@ -1012,7 +1016,11 @@ function VideoEditPanel() {
         <div className={styles.imageEditModelWrap}>
           <button
             className={styles.imageEditModel}
-            onClick={() => { setShowModelMenu((v) => !v); setShowRatioMenu(false); setShowRefMenu(false); }}
+            onClick={() => {
+              setShowModelMenu((v) => !v);
+              setShowRatioMenu(false);
+              setShowRefMenu(false);
+            }}
           >
             <Sparkles size={11} />
             {model}
@@ -1025,7 +1033,10 @@ function VideoEditPanel() {
                 <button
                   key={m}
                   className={`${styles.imageEditRatioItem} ${m === model ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => { setModel(m); setShowModelMenu(false); }}
+                  onClick={() => {
+                    setModel(m);
+                    setShowModelMenu(false);
+                  }}
                 >
                   {m}
                 </button>
@@ -1037,7 +1048,11 @@ function VideoEditPanel() {
         <div className={styles.imageEditRatioWrap}>
           <button
             className={styles.imageEditParam}
-            onClick={() => { setShowRefMenu((v) => !v); setShowModelMenu(false); setShowRatioMenu(false); }}
+            onClick={() => {
+              setShowRefMenu((v) => !v);
+              setShowModelMenu(false);
+              setShowRatioMenu(false);
+            }}
           >
             <Layers size={11} />
             {refType}
@@ -1050,7 +1065,10 @@ function VideoEditPanel() {
                 <button
                   key={r}
                   className={`${styles.imageEditRatioItem} ${r === refType ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => { setRefType(r); setShowRefMenu(false); }}
+                  onClick={() => {
+                    setRefType(r);
+                    setShowRefMenu(false);
+                  }}
                 >
                   {r}
                 </button>
@@ -1062,7 +1080,11 @@ function VideoEditPanel() {
         <div className={styles.imageEditRatioWrap}>
           <button
             className={styles.imageEditParam}
-            onClick={() => { setShowRatioMenu((v) => !v); setShowModelMenu(false); setShowRefMenu(false); }}
+            onClick={() => {
+              setShowRatioMenu((v) => !v);
+              setShowModelMenu(false);
+              setShowRefMenu(false);
+            }}
           >
             <MonitorPlay size={11} />
             {ratio} · {quality} · {duration}s · {count}个
@@ -1075,7 +1097,9 @@ function VideoEditPanel() {
                 <button
                   key={r}
                   className={`${styles.imageEditRatioItem} ${r === ratio ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => { setRatio(r); }}
+                  onClick={() => {
+                    setRatio(r);
+                  }}
                 >
                   {r}
                 </button>
@@ -1144,26 +1168,28 @@ function VideoNodeEditor({ id, data }: { id: string; data: VideoNodeData }) {
   useEffect(() => {
     if (edit.videoEditStateRef.current == null) {
       edit.videoEditStateRef.current = {
-        prompt: data.prompt ?? '',
-        ratio: data.ratio ?? '16:9',
-        quality: data.quality ?? '720P',
+        prompt: data.prompt ?? "",
+        ratio: data.ratio ?? "16:9",
+        quality: data.quality ?? "720P",
         duration: data.duration ?? 5,
         count: data.count ?? 1,
-        model: data.model ?? 'Weavl Video',
+        model: data.model ?? "Weavl Video",
         url: data.url,
         title: edit.buffer.title,
       };
     }
   }, [edit, data]);
-  return (
-    React.createElement('div', {
+  return React.createElement(
+    "div",
+    {
       className: styles.imageNodeEditWrap,
       onDoubleClick: (e) => e.stopPropagation(),
     },
-      React.createElement('div', { className: styles.imageNodeEditCardCol },
-        React.createElement(VideoCardStatic, { id: id, d: data, editing: true }),
-      ),
-    )
+    React.createElement(
+      "div",
+      { className: styles.imageNodeEditCardCol },
+      React.createElement(VideoCardStatic, { id: id, d: data, editing: true }),
+    ),
   );
 }
 const nodeTypes = { card: CardNode, image: ImageNode, text: TextNode, video: VideoNode };
@@ -1181,13 +1207,36 @@ interface EditCtx {
   saveEdit: (id: string, title: string, text: string) => void;
   commitEdit: () => void;
   /* v15：图片节点编辑态提交（prompt/参数/模型/图片写回节点 data） */
-  commitImageEdit: ((id: string, payload: {
-    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
-  }) => void) | null;
+  commitImageEdit:
+    | ((
+        id: string,
+        payload: {
+          prompt?: string;
+          ratio?: string;
+          quality?: string;
+          count?: number;
+          model?: string;
+          url?: string;
+          title?: string;
+        },
+      ) => void)
+    | null;
   /* v25：视频节点编辑态提交 */
-  commitVideoEdit: ((id: string, payload: {
-    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
-  }) => void) | null;
+  commitVideoEdit:
+    | ((
+        id: string,
+        payload: {
+          prompt?: string;
+          ratio?: string;
+          quality?: string;
+          duration?: number;
+          count?: number;
+          model?: string;
+          url?: string;
+          title?: string;
+        },
+      ) => void)
+    | null;
   exitEdit: () => void;
   focusMode: { nodeId: string | null };
   onApplyFormat: (cmd: string, value?: string) => void;
@@ -1195,11 +1244,24 @@ interface EditCtx {
   composingRef: React.MutableRefObject<boolean>;
   /* v15：图片编辑器实时状态（点外部保存时从这里取最新值） */
   imageEditStateRef: React.MutableRefObject<{
-    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
+    prompt?: string;
+    ratio?: string;
+    quality?: string;
+    count?: number;
+    model?: string;
+    url?: string;
+    title?: string;
   } | null>;
   /* v25：视频编辑器实时状态 */
   videoEditStateRef: React.MutableRefObject<{
-    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
+    prompt?: string;
+    ratio?: string;
+    quality?: string;
+    duration?: number;
+    count?: number;
+    model?: string;
+    url?: string;
+    title?: string;
   } | null>;
 }
 
@@ -1215,10 +1277,15 @@ function FloatingToolbar() {
     <div className={styles.floatingToolbar}>
       <select
         className={styles.tbSelect}
-        onChange={(e) => { apply("fontName", e.target.value); e.currentTarget.selectedIndex = 0; }}
+        onChange={(e) => {
+          apply("fontName", e.target.value);
+          e.currentTarget.selectedIndex = 0;
+        }}
         defaultValue=""
       >
-        <option value="" disabled>字体</option>
+        <option value="" disabled>
+          字体
+        </option>
         <option value="PingFang SC">PingFang</option>
         <option value="system-ui">系统</option>
         <option value="serif">衬线</option>
@@ -1226,10 +1293,15 @@ function FloatingToolbar() {
       </select>
       <select
         className={styles.tbSelectNarrow}
-        onChange={(e) => { apply("fontSize", e.target.value); e.currentTarget.selectedIndex = 0; }}
+        onChange={(e) => {
+          apply("fontSize", e.target.value);
+          e.currentTarget.selectedIndex = 0;
+        }}
         defaultValue=""
       >
-        <option value="" disabled>14</option>
+        <option value="" disabled>
+          14
+        </option>
         <option value="3">12</option>
         <option value="4">14</option>
         <option value="5">18</option>
@@ -1237,10 +1309,18 @@ function FloatingToolbar() {
         <option value="7">32</option>
       </select>
       <span className={styles.tbSep} />
-      <button className={styles.tbBtn} title="加粗" onClick={() => apply("bold")}><b>B</b></button>
-      <button className={styles.tbBtn} title="斜体" onClick={() => apply("italic")}><i>I</i></button>
-      <button className={styles.tbBtn} title="下划线" onClick={() => apply("underline")}><u>U</u></button>
-      <button className={styles.tbBtn} title="删除线" onClick={() => apply("strikeThrough")}><s>S</s></button>
+      <button className={styles.tbBtn} title="加粗" onClick={() => apply("bold")}>
+        <b>B</b>
+      </button>
+      <button className={styles.tbBtn} title="斜体" onClick={() => apply("italic")}>
+        <i>I</i>
+      </button>
+      <button className={styles.tbBtn} title="下划线" onClick={() => apply("underline")}>
+        <u>U</u>
+      </button>
+      <button className={styles.tbBtn} title="删除线" onClick={() => apply("strikeThrough")}>
+        <s>S</s>
+      </button>
       <span className={styles.tbBtn} title="字体颜色">
         <input
           type="color"
@@ -1258,14 +1338,28 @@ function FloatingToolbar() {
         />
       </span>
       <span className={styles.tbSep} />
-      <button className={styles.tbBtn} title="居左" onClick={() => apply("justifyLeft")}>≡</button>
-      <button className={styles.tbBtn} title="居中" onClick={() => apply("justifyCenter")}>≣</button>
-      <button className={styles.tbBtn} title="居右" onClick={() => apply("justifyRight")}>≡</button>
+      <button className={styles.tbBtn} title="居左" onClick={() => apply("justifyLeft")}>
+        ≡
+      </button>
+      <button className={styles.tbBtn} title="居中" onClick={() => apply("justifyCenter")}>
+        ≣
+      </button>
+      <button className={styles.tbBtn} title="居右" onClick={() => apply("justifyRight")}>
+        ≡
+      </button>
       <span className={styles.tbSep} />
-      <button className={styles.tbBtn} title="无序列表" onClick={() => apply("insertUnorderedList")}>•</button>
-      <button className={styles.tbBtn} title="有序列表" onClick={() => apply("insertOrderedList")}>1.</button>
-      <span className={styles.tbBtn} title="减少缩进" onClick={() => apply("outdent")}><Minus size={12} /></span>
-      <span className={styles.tbBtn} title="增加缩进" onClick={() => apply("indent")}><Pilcrow size={12} /></span>
+      <button className={styles.tbBtn} title="无序列表" onClick={() => apply("insertUnorderedList")}>
+        •
+      </button>
+      <button className={styles.tbBtn} title="有序列表" onClick={() => apply("insertOrderedList")}>
+        1.
+      </button>
+      <span className={styles.tbBtn} title="减少缩进" onClick={() => apply("outdent")}>
+        <Minus size={12} />
+      </span>
+      <span className={styles.tbBtn} title="增加缩进" onClick={() => apply("indent")}>
+        <Pilcrow size={12} />
+      </span>
       <span className={styles.tbSep} />
       <button
         className={styles.tbBtn}
@@ -1274,7 +1368,9 @@ function FloatingToolbar() {
           const url = window.prompt("输入链接 URL");
           if (url) apply("createLink", url);
         }}
-      >⌘</button>
+      >
+        ⌘
+      </button>
       <button className={styles.tbBtn} title="清除格式" onClick={() => apply("removeFormat")}>
         <RemoveFormatting size={12} />
       </button>
@@ -1288,7 +1384,12 @@ function FloatingToolbar() {
 
 /* 节点内编辑器：放大后的节点本体（带格式化工具条 + textarea） */
 function NodeEditor({
-  categoryLabel, initialTitle, initialText, onSave, onCancel, accentColor,
+  categoryLabel,
+  initialTitle,
+  initialText,
+  onSave,
+  onCancel,
+  accentColor,
 }: {
   categoryLabel: string;
   initialTitle: string;
@@ -1336,8 +1437,20 @@ function NodeEditor({
     toast("已复制到剪贴板", "success");
   };
 
-  const FB = ({ label, title: t, onClick, bold, italic, strike }: {
-    label: string; title?: string; onClick: () => void; bold?: boolean; italic?: boolean; strike?: boolean;
+  const FB = ({
+    label,
+    title: t,
+    onClick,
+    bold,
+    italic,
+    strike,
+  }: {
+    label: string;
+    title?: string;
+    onClick: () => void;
+    bold?: boolean;
+    italic?: boolean;
+    strike?: boolean;
   }) => (
     <button
       className={styles.formatBtn}
@@ -1354,14 +1467,12 @@ function NodeEditor({
   );
 
   return (
-    <div
-      className={styles.nodeEditor}
-      style={{ borderColor: accentColor }}
-      onDoubleClick={(e) => e.stopPropagation()}
-    >
+    <div className={styles.nodeEditor} style={{ borderColor: accentColor }} onDoubleClick={(e) => e.stopPropagation()}>
       {/* 头部 */}
       <div className={styles.nodeEditorHead}>
-        <span className={styles.nodeEditorCategory} style={{ color: accentColor }}>{categoryLabel}</span>
+        <span className={styles.nodeEditorCategory} style={{ color: accentColor }}>
+          {categoryLabel}
+        </span>
         <input
           className={styles.nodeEditorTitleInput}
           value={title}
@@ -1443,24 +1554,33 @@ function CanvasInner() {
   const creditOpenTimer = useRef<number | null>(null);
   const creditCloseTimer = useRef<number | null>(null);
   const openCredit = useCallback(() => {
-    if (creditCloseTimer.current) { window.clearTimeout(creditCloseTimer.current); creditCloseTimer.current = null; }
+    if (creditCloseTimer.current) {
+      window.clearTimeout(creditCloseTimer.current);
+      creditCloseTimer.current = null;
+    }
     if (creditHover) return;
     creditOpenTimer.current = window.setTimeout(() => setCreditHover(true), 200);
   }, [creditHover]);
   const closeCredit = useCallback(() => {
-    if (creditOpenTimer.current) { window.clearTimeout(creditOpenTimer.current); creditOpenTimer.current = null; }
+    if (creditOpenTimer.current) {
+      window.clearTimeout(creditOpenTimer.current);
+      creditOpenTimer.current = null;
+    }
     if (!creditHover) return;
     creditCloseTimer.current = window.setTimeout(() => setCreditHover(false), 150);
   }, [creditHover]);
-  useEffect(() => () => {
-    if (creditOpenTimer.current) window.clearTimeout(creditOpenTimer.current);
-    if (creditCloseTimer.current) window.clearTimeout(creditCloseTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (creditOpenTimer.current) window.clearTimeout(creditOpenTimer.current);
+      if (creditCloseTimer.current) window.clearTimeout(creditCloseTimer.current);
+    },
+    [],
+  );
   /* v38：Agent 抽屉（右上角头像展开）+ 气泡消息流 */
   const [agentOpen, setAgentOpen] = useState(false);
-  const [agentMessages, setAgentMessages] = useState<{ role: "user" | "agent"; text: string; thumb?: string | null }[]>([
-    { role: "agent", text: "你好，我是织光 Agent。告诉我想要的内容，我来帮你编排画布。" },
-  ]);
+  const [agentMessages, setAgentMessages] = useState<{ role: "user" | "agent"; text: string; thumb?: string | null }[]>(
+    [{ role: "agent", text: "你好，我是织光 Agent。告诉我想要的内容，我来帮你编排画布。" }],
+  );
   const [chatInput, setChatInput] = useState("");
   const [chatThumb, setChatThumb] = useState<string | null>(null);
   const [chatModel] = useState("Weavl LLM");
@@ -1491,15 +1611,15 @@ function CanvasInner() {
       const n = nodes.find((x) => x.id === id);
       if (!n) return;
       const d = n.data as Record<string, unknown>;
-      const title = typeof d.title === "string" ? d.title : (d.kind === "card" ? "" : "文本");
-      const text = typeof d.text === "string"
-        ? d.text
-        : typeof d.url === "string"
-        ? d.url
-        : (d.kind === "card" && Array.isArray(d.fields)
-            ? (d.fields as Array<{ label: string; value: string }>)
-                .map((f) => `${f.label}：${f.value}`).join("\n")
-            : "");
+      const title = typeof d.title === "string" ? d.title : d.kind === "card" ? "" : "文本";
+      const text =
+        typeof d.text === "string"
+          ? d.text
+          : typeof d.url === "string"
+            ? d.url
+            : d.kind === "card" && Array.isArray(d.fields)
+              ? (d.fields as Array<{ label: string; value: string }>).map((f) => `${f.label}：${f.value}`).join("\n")
+              : "";
       setEditBuffer({ title, text });
       // 节点居中 + 放大到 2.0（进入编辑时，参考 LibTV 200%）
       // 用节点实际渲染尺寸计算中心，避免视觉偏移
@@ -1517,89 +1637,120 @@ function CanvasInner() {
   }, []);
 
   /* 写回节点 data（v6 节点内编辑器走这条） */
-  const writeNodeData = useCallback((id: string, title: string, text: string, size?: { w: number; h: number }) => {
-    setNodes((ns) =>
-      ns.map((n) => {
-        if (n.id !== id) return n;
-        const d = { ...(n.data as Record<string, unknown>) };
-        if (title.trim()) d.title = title.trim();
-        const kind = d.nodeKind;
-        if (kind === "text") {
-          d.text = text;
-          if (size && size.w > 0) d.width = Math.round(size.w);
-          if (size && size.h > 0) d.height = Math.round(size.h);
-        } else if (kind === "card") {
-          const fields: CardField[] = [];
-          for (const line of text.split("\n")) {
-            const m = line.match(/^(.*?)[:：]\s*(.*)$/);
-            if (m && m[1]) fields.push({ label: m[1], value: m[2] ?? "" });
-            else if (line.trim()) fields.push({ label: "·", value: line });
+  const writeNodeData = useCallback(
+    (id: string, title: string, text: string, size?: { w: number; h: number }) => {
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id) return n;
+          const d = { ...(n.data as Record<string, unknown>) };
+          if (title.trim()) d.title = title.trim();
+          const kind = d.nodeKind;
+          if (kind === "text") {
+            d.text = text;
+            if (size && size.w > 0) d.width = Math.round(size.w);
+            if (size && size.h > 0) d.height = Math.round(size.h);
+          } else if (kind === "card") {
+            const fields: CardField[] = [];
+            for (const line of text.split("\n")) {
+              const m = line.match(/^(.*?)[:：]\s*(.*)$/);
+              if (m && m[1]) fields.push({ label: m[1], value: m[2] ?? "" });
+              else if (line.trim()) fields.push({ label: "·", value: line });
+            }
+            d.fields = fields;
+          } else {
+            const urlMatch = text.match(/https?:\/\/\S+/);
+            if (urlMatch) d.url = urlMatch[0];
           }
-          d.fields = fields;
-        } else {
-          const urlMatch = text.match(/https?:\/\/\S+/);
-          if (urlMatch) d.url = urlMatch[0];
-        }
-        return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
-      }),
-    );
-  }, [setNodes]);
+          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
+        }),
+      );
+    },
+    [setNodes],
+  );
 
   /* v6 入口：传入 id/title/text 直接写回 */
-  const saveEdit = useCallback((id: string, title: string, text: string) => {
-    writeNodeData(id, title, text);
-    exitEdit();
-  }, [writeNodeData, exitEdit]);
+  const saveEdit = useCallback(
+    (id: string, title: string, text: string) => {
+      writeNodeData(id, title, text);
+      exitEdit();
+    },
+    [writeNodeData, exitEdit],
+  );
 
   /* v14：图片编辑器实时状态 ref（编辑器组件每次状态变化时写入） */
   const imageEditStateRef = useRef<EditCtx["imageEditStateRef"]["current"]>(null);
 
   /* v15：图片节点编辑提交 —— prompt/参数/模型/图片写回节点 data */
-  const commitImageEdit = useCallback((id: string, payload: {
-    prompt?: string; ratio?: string; quality?: string; count?: number; model?: string; url?: string; title?: string;
-  }) => {
-    setNodes((ns) =>
-      ns.map((n) => {
-        if (n.id !== id) return n;
-        const d = { ...(n.data as Record<string, unknown>) };
-        if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
-        if (payload.prompt !== undefined) d.prompt = payload.prompt;
-        if (payload.ratio) d.ratio = payload.ratio;
-        if (payload.quality) d.quality = payload.quality;
-        if (typeof payload.count === "number") d.count = payload.count;
-        if (payload.model) d.model = payload.model;
-        if (payload.url !== undefined) d.url = payload.url;
-        /* 有 prompt 没有图 → 占位色改成生成中样式（后续接真生图 API 时替换） */
-        return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
-      }),
-    );
-    exitEdit();
-  }, [setNodes, exitEdit]);
+  const commitImageEdit = useCallback(
+    (
+      id: string,
+      payload: {
+        prompt?: string;
+        ratio?: string;
+        quality?: string;
+        count?: number;
+        model?: string;
+        url?: string;
+        title?: string;
+      },
+    ) => {
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id) return n;
+          const d = { ...(n.data as Record<string, unknown>) };
+          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
+          if (payload.prompt !== undefined) d.prompt = payload.prompt;
+          if (payload.ratio) d.ratio = payload.ratio;
+          if (payload.quality) d.quality = payload.quality;
+          if (typeof payload.count === "number") d.count = payload.count;
+          if (payload.model) d.model = payload.model;
+          if (payload.url !== undefined) d.url = payload.url;
+          /* 有 prompt 没有图 → 占位色改成生成中样式（后续接真生图 API 时替换） */
+          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
+        }),
+      );
+      exitEdit();
+    },
+    [setNodes, exitEdit],
+  );
 
   /* v25：视频编辑器实时状态 ref（编辑器组件每次状态变化时写入） */
   const videoEditStateRef = useRef<EditCtx["videoEditStateRef"]["current"]>(null);
 
   /* v25：视频节点编辑提交 —— prompt/参数/视频写回节点 data */
-  const commitVideoEdit = useCallback((id: string, payload: {
-    prompt?: string; ratio?: string; quality?: string; duration?: number; count?: number; model?: string; url?: string; title?: string;
-  }) => {
-    setNodes((ns) =>
-      ns.map((n) => {
-        if (n.id !== id) return n;
-        const d = { ...(n.data as Record<string, unknown>) };
-        if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
-        if (payload.prompt !== undefined) d.prompt = payload.prompt;
-        if (payload.ratio) d.ratio = payload.ratio;
-        if (payload.quality) d.quality = payload.quality;
-        if (typeof payload.duration === "number") d.duration = payload.duration;
-        if (typeof payload.count === "number") d.count = payload.count;
-        if (payload.model) d.model = payload.model;
-        if (payload.url !== undefined) d.url = payload.url;
-        return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
-      }),
-    );
-    exitEdit();
-  }, [setNodes, exitEdit]);
+  const commitVideoEdit = useCallback(
+    (
+      id: string,
+      payload: {
+        prompt?: string;
+        ratio?: string;
+        quality?: string;
+        duration?: number;
+        count?: number;
+        model?: string;
+        url?: string;
+        title?: string;
+      },
+    ) => {
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id) return n;
+          const d = { ...(n.data as Record<string, unknown>) };
+          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
+          if (payload.prompt !== undefined) d.prompt = payload.prompt;
+          if (payload.ratio) d.ratio = payload.ratio;
+          if (payload.quality) d.quality = payload.quality;
+          if (typeof payload.duration === "number") d.duration = payload.duration;
+          if (typeof payload.count === "number") d.count = payload.count;
+          if (payload.model) d.model = payload.model;
+          if (payload.url !== undefined) d.url = payload.url;
+          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
+        }),
+      );
+      exitEdit();
+    },
+    [setNodes, exitEdit],
+  );
 
   /* v7 入口：commitEdit 直接从 contentEditable DOM 读最新 innerText（避免 React state 异步导致保存过时）
      v14：图片节点编辑态时改走 commitImageEdit（用 imageEditStateRef 里的实时状态）
@@ -1731,7 +1882,9 @@ function CanvasInner() {
   }, [setNodes, setEdges]);
 
   useEffect(() => {
-    fetch(`${API}/runs/latest/_pick`).then((r) => setHasRun(r.ok)).catch(() => {});
+    fetch(`${API}/runs/latest/_pick`)
+      .then((r) => setHasRun(r.ok))
+      .catch(() => {});
   }, []);
 
   /* v7：编辑模式下，全局 ESC 退出（即使焦点不在节点内） */
@@ -1767,24 +1920,12 @@ function CanvasInner() {
     /* 用 pointerdown 捕获阶段，抢在画布平移/节点选择之前 */
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [editingId, commitEdit, styles.textNodeEditing, styles.floatingToolbar, styles.imageNodeEditWrap, styles.imageEditPanel]);
+  }, [editingId, commitEdit]);
 
   /* v40.1：click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
-  useClickOutside(
-    showAddMenu,
-    [addMenuRef, addFabBtnRef],
-    () => setShowAddMenu(false),
-  );
-  useClickOutside(
-    agentOpen,
-    [agentDrawerRef, agentBtnRef],
-    () => setAgentOpen(false),
-  );
-  useClickOutside(
-    showLibrary,
-    [libraryRef],
-    () => setShowLibrary(false),
-  );
+  useClickOutside(showAddMenu, [addMenuRef, addFabBtnRef], () => setShowAddMenu(false));
+  useClickOutside(agentOpen, [agentDrawerRef, agentBtnRef], () => setAgentOpen(false));
+  useClickOutside(showLibrary, [libraryRef], () => setShowLibrary(false));
 
   /* 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
@@ -1842,7 +1983,9 @@ function CanvasInner() {
   );
 
   /* 右键菜单状态 */
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; flowPos: { x: number; y: number } } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; flowPos: { x: number; y: number } } | null>(
+    null,
+  );
   const onPaneContextMenu = useCallback(
     (e: React.MouseEvent | MouseEvent) => {
       e.preventDefault();
@@ -1906,11 +2049,15 @@ function CanvasInner() {
   /* v13：连接已存在节点 —— source handle 拖到 target handle 直接建边
      v28：校验必须落在 target handle 上才建边（避免松手在任意节点上误连） */
   const isValidConnection = useCallback(
-    (connection: { source?: string | null; target?: string | null; sourceHandle?: string | null; targetHandle?: string | null }) =>
-      Boolean(connection.target && connection.source && connection.target !== connection.source),
+    (connection: {
+      source?: string | null;
+      target?: string | null;
+      sourceHandle?: string | null;
+      targetHandle?: string | null;
+    }) => Boolean(connection.target && connection.source && connection.target !== connection.source),
     [],
   );
-/* v32.5：连接 helper —— 先移除同节点对的旧边（含隐形残留），再添加带 success 动画的新边 */
+  /* v32.5：连接 helper —— 先移除同节点对的旧边（含隐形残留），再添加带 success 动画的新边 */
   const addEdgeDedup = useCallback(
     (source: string, target: string) => {
       const newEdgeId = `e_${Date.now()}`;
@@ -1931,7 +2078,9 @@ function CanvasInner() {
       /* 动画 320ms 结束后移除 success-draw className，避免 dasharray 残留 */
       window.setTimeout(() => {
         setEdges((es) =>
-          es.map((e) => (e.id === newEdgeId ? { ...e, className: "", style: { stroke: "#9a9aa3", strokeWidth: 1.8 } } : e)),
+          es.map((e) =>
+            e.id === newEdgeId ? { ...e, className: "", style: { stroke: "#9a9aa3", strokeWidth: 1.8 } } : e,
+          ),
         );
       }, 360);
       /* 目标节点闪光 400ms */
@@ -2038,7 +2187,7 @@ function CanvasInner() {
       board.removeEventListener("mouseover", onMouseOver);
       board.removeEventListener("mouseout", onMouseOut);
     };
-  }, [isValidTarget, styles.board]);
+  }, [isValidTarget]);
 
   /* v32：连接失败时短暂显示 toast */
   const showConnectError = useCallback((msg: string) => {
@@ -2127,7 +2276,7 @@ function CanvasInner() {
         clientPos: { x: clientX, y: clientY },
       });
     },
-    [screenToFlowPosition, setEdges, hoverTargetId, previewState, connectError, showConnectError, addEdgeDedup],
+    [screenToFlowPosition, hoverTargetId, previewState, connectError, showConnectError, addEdgeDedup],
   );
 
   /* v29：从「引用该节点生成」菜单中挑一个类型创建节点并连线 */
@@ -2137,9 +2286,33 @@ function CanvasInner() {
       const newId = nextNodeId();
       const { flowPos, sourceNodeId } = connectMenu;
       const meta = (() => {
-        if (kind === "text") return { type: "text", data: { nodeKind: "text", title: "新文本节点", text: "双击编辑内容…" } satisfies TextNodeData };
-        if (kind === "image") return { type: "image", data: { nodeKind: "image", kind: "image", title: "图片节点", category: "图片", tint: "rgba(212, 83, 126, 0.18)", size: { w: 300, h: 200 } } satisfies ImageNodeData };
-        return { type: "video", data: { nodeKind: "video", title: "视频节点", category: "视频", tint: "rgba(55, 138, 221, 0.20)", size: { w: 300, h: 200 } } satisfies VideoNodeData };
+        if (kind === "text")
+          return {
+            type: "text",
+            data: { nodeKind: "text", title: "新文本节点", text: "双击编辑内容…" } satisfies TextNodeData,
+          };
+        if (kind === "image")
+          return {
+            type: "image",
+            data: {
+              nodeKind: "image",
+              kind: "image",
+              title: "图片节点",
+              category: "图片",
+              tint: "rgba(212, 83, 126, 0.18)",
+              size: { w: 300, h: 200 },
+            } satisfies ImageNodeData,
+          };
+        return {
+          type: "video",
+          data: {
+            nodeKind: "video",
+            title: "视频节点",
+            category: "视频",
+            tint: "rgba(55, 138, 221, 0.20)",
+            size: { w: 300, h: 200 },
+          } satisfies VideoNodeData,
+        };
       })();
       setNodes((ns) => [
         ...ns,
@@ -2189,17 +2362,16 @@ function CanvasInner() {
 
   /* 顶部 NodeToolbar：根据选中节点的 kind 决定工具胶囊列表（text 基础节点给编辑类工具） */
   const selData = selectedNode?.data as AnyNodeData | undefined;
-  const selectedKind: NodeKind =
-    selData && "kind" in selData && selData.kind ? selData.kind : "llm";
-  const toolbarItems: { label: string; icon: React.ReactNode }[] =
-    NODE_TOOLBAR[selectedKind] ?? NODE_TOOLBAR.llm ?? [];
+  const selectedKind: NodeKind = selData && "kind" in selData && selData.kind ? selData.kind : "llm";
+  const toolbarItems: { label: string; icon: React.ReactNode }[] = NODE_TOOLBAR[selectedKind] ?? NODE_TOOLBAR.llm ?? [];
 
   return (
     <EnterEditContext.Provider
       value={{
         editingId,
         editingKind: editingId
-          ? ((nodes.find((n) => n.id === editingId)?.data as Record<string, unknown> | undefined)?.nodeKind as string | undefined ?? null)
+          ? (((nodes.find((n) => n.id === editingId)?.data as Record<string, unknown> | undefined)?.nodeKind as
+              string | undefined) ?? null)
           : null,
         buffer: editBuffer,
         setBuffer: setEditBuffer,
@@ -2217,397 +2389,475 @@ function CanvasInner() {
         videoEditStateRef,
       }}
     >
-    <div className={styles.shell}>
-      {/* v39 顶部栏：积分（悬停弹窗）+ Agent 圆头像并列右上角 */}
-      <div className={styles.topbar}>
-        <div className={styles.topbarLeft} />
-        <div className={styles.topbarRight}>
-          <div
-            className={styles.creditWrap}
-            onMouseEnter={openCredit}
-            onMouseLeave={closeCredit}
-          >
-            <button className={styles.creditPill} title="积分">
-              <Coins size={12} />
-              100
-            </button>
-            {creditHover && (
-              <div className={styles.creditPopover} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
-                <div className={styles.creditMemberCard}>
-                  <Coins size={14} className={styles.creditMemberIcon} />
-                  <span className={styles.creditMemberLabel}>个人非会员</span>
-                  <button className={styles.creditMemberBtn}>开通会员</button>
+      <div className={styles.shell}>
+        {/* v39 顶部栏：积分（悬停弹窗）+ Agent 圆头像并列右上角 */}
+        <div className={styles.topbar}>
+          <div className={styles.topbarLeft} />
+          <div className={styles.topbarRight}>
+            <div className={styles.creditWrap} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
+              <button className={styles.creditPill} title="积分">
+                <Coins size={12} />
+                100
+              </button>
+              {creditHover && (
+                <div className={styles.creditPopover} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
+                  <div className={styles.creditMemberCard}>
+                    <Coins size={14} className={styles.creditMemberIcon} />
+                    <span className={styles.creditMemberLabel}>个人非会员</span>
+                    <button className={styles.creditMemberBtn}>开通会员</button>
+                  </div>
+                  <div className={styles.creditBalanceRow}>
+                    <span className={styles.creditBalanceLabel}>
+                      积分余额：<b>100点</b>
+                    </span>
+                    <button className={styles.creditRecharge}>充值</button>
+                  </div>
+                  <div className={styles.creditDetailList}>
+                    <div className={styles.creditDetailRow}>
+                      <span>会员订阅积分</span>
+                      <span>0点</span>
+                    </div>
+                    <div className={styles.creditDetailRow}>
+                      <span>通用充值积分</span>
+                      <span>0点</span>
+                    </div>
+                    <div className={styles.creditDetailRow}>
+                      <span>模型卡积分</span>
+                      <span>0点</span>
+                    </div>
+                    <div className={styles.creditDetailRow}>
+                      <span>免费积分</span>
+                      <span>100点</span>
+                    </div>
+                  </div>
+                  <div className={styles.creditMenuSep} />
+                  <div className={styles.creditMenuList}>
+                    <button className={styles.creditMenuItem} onClick={() => toast("订阅管理：即将上线", "info")}>
+                      <span>订阅管理</span>
+                      <ChevronRight size={13} />
+                    </button>
+                    <button className={styles.creditMenuItem} onClick={() => toast("积分管理：即将上线", "info")}>
+                      <span>积分管理</span>
+                      <ChevronRight size={13} />
+                    </button>
+                    <button
+                      className={styles.creditMenuItem}
+                      onClick={() => toast("积分消耗顺序设置：即将上线", "info")}
+                    >
+                      <span>积分消耗顺序设置</span>
+                      <ChevronRight size={13} />
+                    </button>
+                    <button className={styles.creditMenuItem} onClick={() => toast("联系客服：即将上线", "info")}>
+                      <span>联系客服</span>
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
                 </div>
-                <div className={styles.creditBalanceRow}>
-                  <span className={styles.creditBalanceLabel}>积分余额：<b>100点</b></span>
-                  <button className={styles.creditRecharge}>充值</button>
-                </div>
-                <div className={styles.creditDetailList}>
-                  <div className={styles.creditDetailRow}><span>会员订阅积分</span><span>0点</span></div>
-                  <div className={styles.creditDetailRow}><span>通用充值积分</span><span>0点</span></div>
-                  <div className={styles.creditDetailRow}><span>模型卡积分</span><span>0点</span></div>
-                  <div className={styles.creditDetailRow}><span>免费积分</span><span>100点</span></div>
-                </div>
-                <div className={styles.creditMenuSep} />
-                <div className={styles.creditMenuList}>
-                  <button className={styles.creditMenuItem} onClick={() => toast("订阅管理：即将上线", "info")}>
-                    <span>订阅管理</span><ChevronRight size={13} />
-                  </button>
-                  <button className={styles.creditMenuItem} onClick={() => toast("积分管理：即将上线", "info")}>
-                    <span>积分管理</span><ChevronRight size={13} />
-                  </button>
-                  <button className={styles.creditMenuItem} onClick={() => toast("积分消耗顺序设置：即将上线", "info")}>
-                    <span>积分消耗顺序设置</span><ChevronRight size={13} />
-                  </button>
-                  <button className={styles.creditMenuItem} onClick={() => toast("联系客服：即将上线", "info")}>
-                    <span>联系客服</span><ChevronRight size={13} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          <button
-            ref={agentBtnRef}
-            className={`${styles.agentAvatarBtn} ${agentOpen ? styles.agentAvatarBtnActive : ""}`}
-            title="织光 Agent"
-            aria-label="织光 Agent"
-            onClick={() => setAgentOpen((v) => !v)}
-          >
-            <Bot size={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* v38：Agent 右侧抽屉 —— 气泡式对话 */}
-      {agentOpen && (
-        <div ref={agentDrawerRef} className={styles.agentDrawer}>
-          <div className={styles.agentDrawerHead}>
-            <div className={styles.agentDrawerHeadLeft}>
-              <div className={styles.agentDrawerAvatar}><Bot size={13} /></div>
-              <div className={styles.agentDrawerTitle}>
-                <span className={styles.agentDrawerName}>织光 Agent</span>
-                <span className={styles.agentDrawerModel}>✦ {chatModel}</span>
-              </div>
+              )}
             </div>
-            <button className={styles.agentDrawerClose} onClick={() => setAgentOpen(false)} aria-label="收起">
-              <X size={13} />
+            <button
+              ref={agentBtnRef}
+              className={`${styles.agentAvatarBtn} ${agentOpen ? styles.agentAvatarBtnActive : ""}`}
+              title="织光 Agent"
+              aria-label="织光 Agent"
+              onClick={() => setAgentOpen((v) => !v)}
+            >
+              <Bot size={15} />
             </button>
           </div>
-          <div className={styles.agentDrawerMessages}>
-            {agentMessages.map((m, i) => (
-              <div key={i} className={`${styles.agentBubbleRow} ${m.role === "user" ? styles.agentBubbleRowUser : ""}`}>
-                {m.thumb && <img src={m.thumb} alt="参考图" className={styles.agentBubbleThumb} />}
-                <div className={`${styles.agentBubble} ${m.role === "user" ? styles.agentBubbleUser : ""}`}>
-                  {m.text}
+        </div>
+
+        {/* v38：Agent 右侧抽屉 —— 气泡式对话 */}
+        {agentOpen && (
+          <div ref={agentDrawerRef} className={styles.agentDrawer}>
+            <div className={styles.agentDrawerHead}>
+              <div className={styles.agentDrawerHeadLeft}>
+                <div className={styles.agentDrawerAvatar}>
+                  <Bot size={13} />
+                </div>
+                <div className={styles.agentDrawerTitle}>
+                  <span className={styles.agentDrawerName}>织光 Agent</span>
+                  <span className={styles.agentDrawerModel}>✦ {chatModel}</span>
                 </div>
               </div>
+              <button className={styles.agentDrawerClose} onClick={() => setAgentOpen(false)} aria-label="收起">
+                <X size={13} />
+              </button>
+            </div>
+            <div className={styles.agentDrawerMessages}>
+              {agentMessages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`${styles.agentBubbleRow} ${m.role === "user" ? styles.agentBubbleRowUser : ""}`}
+                >
+                  {m.thumb && <img src={m.thumb} alt="参考图" className={styles.agentBubbleThumb} />}
+                  <div className={`${styles.agentBubble} ${m.role === "user" ? styles.agentBubbleUser : ""}`}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className={styles.agentDrawerInputRow}>
+              <label className={styles.chatPlus} title="添加参考图">
+                <Plus size={14} />
+                <input type="file" accept="image/*" hidden onChange={handleThumb} />
+              </label>
+              {chatThumb && (
+                <div className={styles.chatThumb}>
+                  <img src={chatThumb} alt="参考图" />
+                  <button className={styles.chatThumbClose} onClick={() => setChatThumb(null)} aria-label="移除">
+                    <X size={10} />
+                  </button>
+                </div>
+              )}
+              <input
+                className={styles.agentDrawerInput}
+                placeholder="告诉 Agent 想做什么…"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    submitChat();
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setAgentOpen(false);
+                  }
+                }}
+              />
+              <button
+                className={`${styles.chatSend} ${chatInput.trim() || chatThumb ? styles.chatSendActive : ""}`}
+                onClick={submitChat}
+                disabled={!chatInput.trim() && !chatThumb}
+                title="发送"
+              >
+                <Send size={13} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 选中节点的浮出工具胶囊（按 LibTV 模式） */}
+        {selectedNode && !editingId && (
+          <div className={styles.nodeToolbar}>
+            {toolbarItems.map((t) => (
+              <button key={t.label} className={styles.nodeToolbarItem}>
+                {t.icon}
+                {t.label}
+              </button>
             ))}
           </div>
-          <div className={styles.agentDrawerInputRow}>
-            <label className={styles.chatPlus} title="添加参考图">
-              <Plus size={14} />
-              <input type="file" accept="image/*" hidden onChange={handleThumb} />
-            </label>
-            {chatThumb && (
-              <div className={styles.chatThumb}>
-                <img src={chatThumb} alt="参考图" />
-                <button className={styles.chatThumbClose} onClick={() => setChatThumb(null)} aria-label="移除">
-                  <X size={10} />
-                </button>
-              </div>
-            )}
-            <input
-              className={styles.agentDrawerInput}
-              placeholder="告诉 Agent 想做什么…"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  submitChat();
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setAgentOpen(false);
-                }
-              }}
-            />
-            <button
-              className={`${styles.chatSend} ${chatInput.trim() || chatThumb ? styles.chatSendActive : ""}`}
-              onClick={submitChat}
-              disabled={!chatInput.trim() && !chatThumb}
-              title="发送"
-            >
-              <Send size={13} />
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* 选中节点的浮出工具胶囊（按 LibTV 模式） */}
-      {selectedNode && !editingId && (
-        <div className={styles.nodeToolbar}>
-          {toolbarItems.map((t) => (
-            <button key={t.label} className={styles.nodeToolbarItem}>
-              {t.icon}
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
+        {/* v7：聚焦编辑浮层（顶部格式化工具栏；v10 移除左侧完成/取消面板 —— 点击外部自动保存） */}
+        <FloatingToolbar />
 
-      {/* v7：聚焦编辑浮层（顶部格式化工具栏；v10 移除左侧完成/取消面板 —— 点击外部自动保存） */}
-      <FloatingToolbar />
+        {/* v34：图片节点编辑栏 — 由 Portal 挂到 body，屏宽 40%，距屏底 16px，水平居中对齐当前编辑节点 */}
+        <ImageEditPanel />
+        {/* v34.2：视频节点编辑栏 — 同款外置方案 + 5 chip + 视频字段 */}
+        <VideoEditPanel />
 
-      {/* v34：图片节点编辑栏 — 由 Portal 挂到 body，屏宽 40%，距屏底 16px，水平居中对齐当前编辑节点 */}
-      <ImageEditPanel />
-      {/* v34.2：视频节点编辑栏 — 同款外置方案 + 5 chip + 视频字段 */}
-      <VideoEditPanel />
-
-      {/* 画布主区 */}
-      <div className={styles.board}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onSelectionChange={onSelectionChange}
-          onPaneContextMenu={onPaneContextMenu}
-          onPaneClick={() => { setContextMenu(null); setConnectMenu(null); }}
-          onMoveStart={() => { setContextMenu(null); setConnectMenu(null); }}
-          /* v13：节点之间连线 / 从 source 拖到空白处创建新节点 */
-          onConnect={onConnect}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
-          isValidConnection={isValidConnection}
-          /* v28：strict 模式 —— 只在松手落在明确的 handle 上才算连接（否则默认按就近 handle 误连） */
-          connectionMode={ConnectionMode.Strict}
-          connectionRadius={18}
-          nodeTypes={nodeTypes}
-          fitView
-          minZoom={0.3}
-          maxZoom={2.5}
-          /* v16：Mac 触控板原生手势 —— 双指滚动=平移画布，捏合(ctrl+wheel)=缩放；
+        {/* 画布主区 */}
+        <div className={styles.board}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onSelectionChange={onSelectionChange}
+            onPaneContextMenu={onPaneContextMenu}
+            onPaneClick={() => {
+              setContextMenu(null);
+              setConnectMenu(null);
+            }}
+            onMoveStart={() => {
+              setContextMenu(null);
+              setConnectMenu(null);
+            }}
+            /* v13：节点之间连线 / 从 source 拖到空白处创建新节点 */
+            onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+            isValidConnection={isValidConnection}
+            /* v28：strict 模式 —— 只在松手落在明确的 handle 上才算连接（否则默认按就近 handle 误连） */
+            connectionMode={ConnectionMode.Strict}
+            connectionRadius={18}
+            nodeTypes={nodeTypes}
+            fitView
+            minZoom={0.3}
+            maxZoom={2.5}
+            /* v16：Mac 触控板原生手势 —— 双指滚动=平移画布，捏合(ctrl+wheel)=缩放；
              编辑器容器加 nowheel 后，在节点内滚动不再带动画布 */
-          panOnScroll
-          zoomOnScroll={false}
-          zoomOnPinch
-          /* v32：连接线样式由全局 :global(.react-flow__connection-path) 控制（默认 connectable 态） */
-          proOptions={{ hideAttribution: true }}
-          className={styles.flowRoot}
-        >
-          <Background variant={BackgroundVariant.Dots} gap={24} size={1} className={styles.bg} />
-          <Controls showInteractive={false} className={styles.controls} />
-          <MiniMap pannable zoomable className={styles.minimap} maskColor="rgba(13, 13, 15, 0.7)" />
-        </ReactFlow>
-
-        {/* v32：连线失败 toast */}
-        {connectError && (
-          <div className={styles.connectError} role="alert">
-            <X size={12} />
-            <span>无法连接：{connectError}</span>
-          </div>
-        )}
-
-        {/* 右键菜单：3 类基础节点 */}
-        {contextMenu && (
-          <div
-            className={styles.contextMenu}
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            panOnScroll
+            zoomOnScroll={false}
+            zoomOnPinch
+            /* v32：连接线样式由全局 :global(.react-flow__connection-path) 控制（默认 connectable 态） */
+            proOptions={{ hideAttribution: true }}
+            className={styles.flowRoot}
           >
-            <div className={styles.contextMenuHead}>添加节点</div>
-            <button className={styles.contextMenuItem} onClick={() => addBasicNode("text", contextMenu.flowPos)}>
-              <TypeIcon size={13} />
-              文本
-            </button>
-            <button className={styles.contextMenuItem} onClick={() => addBasicNode("image", contextMenu.flowPos)}>
-              <ImageIcon size={13} />
-              图片
-            </button>
-            <button className={styles.contextMenuItem} onClick={() => addBasicNode("video", contextMenu.flowPos)}>
-              <VideoIcon size={13} />
-              视频
-            </button>
-          </div>
-        )}
+            <Background variant={BackgroundVariant.Dots} gap={24} size={1} className={styles.bg} />
+            <Controls showInteractive={false} className={styles.controls} />
+            <MiniMap pannable zoomable className={styles.minimap} maskColor="rgba(13, 13, 15, 0.7)" />
+          </ReactFlow>
 
-        {/* v29：从节点拖线到空白处 → 弹「引用该节点生成」菜单 */}
-        {connectMenu && (
-          <div
-            className={styles.contextMenu}
-            style={{ left: connectMenu.clientPos.x, top: connectMenu.clientPos.y, minWidth: 220 }}
-          >
-            <div className={styles.contextMenuHead}>引用该节点生成</div>
-            <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("text")}>
-              <TypeIcon size={13} />
-              文本
-            </button>
-            <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("image")}>
-              <ImageIcon size={13} />
-              图片
-            </button>
-            <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("video")}>
-              <VideoIcon size={13} />
-              视频
-            </button>
-            <div className={styles.contextMenuSep} />
-            <button className={styles.contextMenuItem} disabled title="即将上线">
-              <Sparkles size={13} />
-              智能剪辑
-              <span className={styles.contextMenuBadge}>Beta</span>
-            </button>
-            <button className={styles.contextMenuItem} disabled title="即将上线">
-              <Film size={13} />
-              导演台
-              <span className={`${styles.contextMenuBadge} ${styles.contextMenuBadgeNew}`}>NEW</span>
-            </button>
-            <button className={styles.contextMenuItem} disabled title="即将上线">
-              <Layers size={13} />
-              逐帧拉片
-              <span className={styles.contextMenuBadge}>SD 2.5</span>
-            </button>
-            <div className={styles.contextMenuSep} />
-            <button className={styles.contextMenuItem} disabled title="即将上线">
-              <Music size={13} />
-              音频
-            </button>
-            <button className={styles.contextMenuItem} disabled title="即将上线">
-              <FileText size={13} />
-              脚本
-            </button>
-            <button className={styles.contextMenuItem} disabled title="即将上线">
-              <Link2 size={13} />
-              参考节点
-            </button>
-          </div>
-        )}
-
-        {nodes.length === 0 && (
-          <div className={styles.guide}>
-            <div className={styles.guideBubble}>
-<div className={styles.guideTitle}>右键画布 · 添加节点</div>
-            <div className={styles.guideSub}>文本 / 图片 / 视频，也可从节点 handle 拖出连线</div>
+          {/* v32：连线失败 toast */}
+          {connectError && (
+            <div className={styles.connectError} role="alert">
+              <X size={12} />
+              <span>无法连接：{connectError}</span>
             </div>
-            <button
-              className={styles.guideLoad}
-              onClick={() => void loadFromLatest()}
-              disabled={!hasRun}
-            >
-              <RefreshCw size={14} />
-              {hasRun ? "从最近任务加载" : "暂无已完成任务"}
-            </button>
-          </div>
-        )}
+          )}
 
-      </div>
-
-      {/* 底部：5 个工具图标（简化版） + 中央 chat-bar */}
-      {/* v38 底部：仅左下角 + 圆角块（点击弹节点菜单），其余工具与聊天栏全部移除 */}
-      <div className={styles.bottomLeftDock}>
-        <div className={styles.addWrap}>
-          <button
-            ref={addFabBtnRef}
-            className={`${styles.addFab} ${showAddMenu ? styles.addFabActive : ""}`}
-            title="添加节点"
-            onClick={() => { setShowAddMenu((v) => !v); setShowLibrary(false); }}
-          >
-            <Plus size={16} />
-          </button>
-          {showAddMenu && (
-            <div ref={addMenuRef} className={styles.addMenu}>
-              <div className={styles.contextMenuHead}>基础节点</div>
-              <button className={styles.contextMenuItem} onClick={() => { addBasicNode("text"); setShowAddMenu(false); }}>
+          {/* 右键菜单：3 类基础节点 */}
+          {contextMenu && (
+            <div className={styles.contextMenu} style={{ left: contextMenu.x, top: contextMenu.y }}>
+              <div className={styles.contextMenuHead}>添加节点</div>
+              <button className={styles.contextMenuItem} onClick={() => addBasicNode("text", contextMenu.flowPos)}>
                 <TypeIcon size={13} />
                 文本
               </button>
-              <button className={styles.contextMenuItem} onClick={() => { addBasicNode("image"); setShowAddMenu(false); }}>
+              <button className={styles.contextMenuItem} onClick={() => addBasicNode("image", contextMenu.flowPos)}>
                 <ImageIcon size={13} />
                 图片
               </button>
-              <button className={styles.contextMenuItem} onClick={() => { addBasicNode("video"); setShowAddMenu(false); }}>
+              <button className={styles.contextMenuItem} onClick={() => addBasicNode("video", contextMenu.flowPos)}>
                 <VideoIcon size={13} />
                 视频
               </button>
-              <div className={styles.addMenuSep} />
-              <button className={styles.contextMenuItem} onClick={() => { setShowLibrary(true); setShowAddMenu(false); }}>
+            </div>
+          )}
+
+          {/* v29：从节点拖线到空白处 → 弹「引用该节点生成」菜单 */}
+          {connectMenu && (
+            <div
+              className={styles.contextMenu}
+              style={{ left: connectMenu.clientPos.x, top: connectMenu.clientPos.y, minWidth: 220 }}
+            >
+              <div className={styles.contextMenuHead}>引用该节点生成</div>
+              <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("text")}>
+                <TypeIcon size={13} />
+                文本
+              </button>
+              <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("image")}>
+                <ImageIcon size={13} />
+                图片
+              </button>
+              <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("video")}>
+                <VideoIcon size={13} />
+                视频
+              </button>
+              <div className={styles.contextMenuSep} />
+              <button className={styles.contextMenuItem} disabled title="即将上线">
                 <Sparkles size={13} />
-                业务能力…
+                智能剪辑
+                <span className={styles.contextMenuBadge}>Beta</span>
+              </button>
+              <button className={styles.contextMenuItem} disabled title="即将上线">
+                <Film size={13} />
+                导演台
+                <span className={`${styles.contextMenuBadge} ${styles.contextMenuBadgeNew}`}>NEW</span>
+              </button>
+              <button className={styles.contextMenuItem} disabled title="即将上线">
+                <Layers size={13} />
+                逐帧拉片
+                <span className={styles.contextMenuBadge}>SD 2.5</span>
+              </button>
+              <div className={styles.contextMenuSep} />
+              <button className={styles.contextMenuItem} disabled title="即将上线">
+                <Music size={13} />
+                音频
+              </button>
+              <button className={styles.contextMenuItem} disabled title="即将上线">
+                <FileText size={13} />
+                脚本
+              </button>
+              <button className={styles.contextMenuItem} disabled title="即将上线">
+                <Link2 size={13} />
+                参考节点
+              </button>
+            </div>
+          )}
+
+          {nodes.length === 0 && (
+            <div className={styles.guide}>
+              <div className={styles.guideBubble}>
+                <div className={styles.guideTitle}>右键画布 · 添加节点</div>
+                <div className={styles.guideSub}>文本 / 图片 / 视频，也可从节点 handle 拖出连线</div>
+              </div>
+              <button className={styles.guideLoad} onClick={() => void loadFromLatest()} disabled={!hasRun}>
+                <RefreshCw size={14} />
+                {hasRun ? "从最近任务加载" : "暂无已完成任务"}
               </button>
             </div>
           )}
         </div>
-      </div>
 
-      {/* 节点库弹层（基础节点 + 业务能力双区） */}
-      {showLibrary && (
-        <div className={styles.libraryBackdrop} onClick={() => setShowLibrary(false)}>
-          <div ref={libraryRef} className={styles.library} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.libraryHead}>
-              <span>节点库</span>
-              <button onClick={() => setShowLibrary(false)} aria-label="关闭">
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* 基础节点区 */}
-            <div className={styles.librarySectionLabel}>基础节点</div>
-            <div className={styles.basicGrid}>
-              <button className={styles.basicItem} onClick={() => { addBasicNode("text"); setShowLibrary(false); }}>
-                <div className={styles.basicIcon}><TypeIcon size={16} /></div>
-                <span>文本</span>
-                <span className={styles.basicHint}>记录想法 / 说明</span>
-              </button>
-              <button className={styles.basicItem} onClick={() => { addBasicNode("image"); setShowLibrary(false); }}>
-                <div className={`${styles.basicIcon} ${styles.basicImage}`}><ImageIcon size={16} /></div>
-                <span>图片</span>
-                <span className={styles.basicHint}>上传或生成</span>
-              </button>
-              <button className={styles.basicItem} onClick={() => { addBasicNode("video"); setShowLibrary(false); }}>
-                <div className={`${styles.basicIcon} ${styles.basicVideo}`}><VideoIcon size={16} /></div>
-                <span>视频</span>
-                <span className={styles.basicHint}>上传或生成</span>
-              </button>
-            </div>
-
-            <div className={styles.librarySectionLabel} style={{ marginTop: 14 }}>业务能力</div>
-            <div className={styles.libraryGrid}>
-              {NODE_LIBRARY.map((lib, i) => {
-                const meta = KIND_META[lib.kind];
-                return (
-                  <button
-                    key={i}
-                    className={styles.libraryItem}
-                    onClick={() => addFromLibrary(i)}
-                    style={{ borderColor: meta.color.stroke, background: meta.color.bg }}
-                  >
-                    <div className={styles.libraryTop}>
-                      <span className={styles.libraryCategory} style={{ color: meta.color.text, background: meta.color.stroke + "33" }}>
-                        {lib.category}
-                      </span>
-                      <span className={styles.libraryType} style={{ color: meta.color.text }}>
-                        {lib.title}
-                      </span>
-                    </div>
-                    <span className={styles.libraryMeta} style={{ color: meta.color.soft }}>{lib.meta}</span>
-                    {lib.nodeKind === "card" && (
-                      <div className={styles.libraryFields}>
-                        {lib.fields.slice(0, 3).map((f, j) => (
-                          <div key={j} className={styles.libraryField}>
-                            <span className={styles.libraryFieldLabel}>{f.label}</span>
-                            <span className={styles.libraryFieldValue}>{f.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+        {/* 底部：5 个工具图标（简化版） + 中央 chat-bar */}
+        {/* v38 底部：仅左下角 + 圆角块（点击弹节点菜单），其余工具与聊天栏全部移除 */}
+        <div className={styles.bottomLeftDock}>
+          <div className={styles.addWrap}>
+            <button
+              ref={addFabBtnRef}
+              className={`${styles.addFab} ${showAddMenu ? styles.addFabActive : ""}`}
+              title="添加节点"
+              onClick={() => {
+                setShowAddMenu((v) => !v);
+                setShowLibrary(false);
+              }}
+            >
+              <Plus size={16} />
+            </button>
+            {showAddMenu && (
+              <div ref={addMenuRef} className={styles.addMenu}>
+                <div className={styles.contextMenuHead}>基础节点</div>
+                <button
+                  className={styles.contextMenuItem}
+                  onClick={() => {
+                    addBasicNode("text");
+                    setShowAddMenu(false);
+                  }}
+                >
+                  <TypeIcon size={13} />
+                  文本
+                </button>
+                <button
+                  className={styles.contextMenuItem}
+                  onClick={() => {
+                    addBasicNode("image");
+                    setShowAddMenu(false);
+                  }}
+                >
+                  <ImageIcon size={13} />
+                  图片
+                </button>
+                <button
+                  className={styles.contextMenuItem}
+                  onClick={() => {
+                    addBasicNode("video");
+                    setShowAddMenu(false);
+                  }}
+                >
+                  <VideoIcon size={13} />
+                  视频
+                </button>
+                <div className={styles.addMenuSep} />
+                <button
+                  className={styles.contextMenuItem}
+                  onClick={() => {
+                    setShowLibrary(true);
+                    setShowAddMenu(false);
+                  }}
+                >
+                  <Sparkles size={13} />
+                  业务能力…
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      )}
-    </div>
-  );
+
+        {/* 节点库弹层（基础节点 + 业务能力双区） */}
+        {showLibrary && (
+          <div className={styles.libraryBackdrop} onClick={() => setShowLibrary(false)}>
+            <div ref={libraryRef} className={styles.library} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.libraryHead}>
+                <span>节点库</span>
+                <button onClick={() => setShowLibrary(false)} aria-label="关闭">
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* 基础节点区 */}
+              <div className={styles.librarySectionLabel}>基础节点</div>
+              <div className={styles.basicGrid}>
+                <button
+                  className={styles.basicItem}
+                  onClick={() => {
+                    addBasicNode("text");
+                    setShowLibrary(false);
+                  }}
+                >
+                  <div className={styles.basicIcon}>
+                    <TypeIcon size={16} />
+                  </div>
+                  <span>文本</span>
+                  <span className={styles.basicHint}>记录想法 / 说明</span>
+                </button>
+                <button
+                  className={styles.basicItem}
+                  onClick={() => {
+                    addBasicNode("image");
+                    setShowLibrary(false);
+                  }}
+                >
+                  <div className={`${styles.basicIcon} ${styles.basicImage}`}>
+                    <ImageIcon size={16} />
+                  </div>
+                  <span>图片</span>
+                  <span className={styles.basicHint}>上传或生成</span>
+                </button>
+                <button
+                  className={styles.basicItem}
+                  onClick={() => {
+                    addBasicNode("video");
+                    setShowLibrary(false);
+                  }}
+                >
+                  <div className={`${styles.basicIcon} ${styles.basicVideo}`}>
+                    <VideoIcon size={16} />
+                  </div>
+                  <span>视频</span>
+                  <span className={styles.basicHint}>上传或生成</span>
+                </button>
+              </div>
+
+              <div className={styles.librarySectionLabel} style={{ marginTop: 14 }}>
+                业务能力
+              </div>
+              <div className={styles.libraryGrid}>
+                {NODE_LIBRARY.map((lib, i) => {
+                  const meta = KIND_META[lib.kind];
+                  return (
+                    <button
+                      key={i}
+                      className={styles.libraryItem}
+                      onClick={() => addFromLibrary(i)}
+                      style={{ borderColor: meta.color.stroke, background: meta.color.bg }}
+                    >
+                      <div className={styles.libraryTop}>
+                        <span
+                          className={styles.libraryCategory}
+                          style={{ color: meta.color.text, background: meta.color.stroke + "33" }}
+                        >
+                          {lib.category}
+                        </span>
+                        <span className={styles.libraryType} style={{ color: meta.color.text }}>
+                          {lib.title}
+                        </span>
+                      </div>
+                      <span className={styles.libraryMeta} style={{ color: meta.color.soft }}>
+                        {lib.meta}
+                      </span>
+                      {lib.nodeKind === "card" && (
+                        <div className={styles.libraryFields}>
+                          {lib.fields.slice(0, 3).map((f, j) => (
+                            <div key={j} className={styles.libraryField}>
+                              <span className={styles.libraryFieldLabel}>{f.label}</span>
+                              <span className={styles.libraryFieldValue}>{f.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      );
     </EnterEditContext.Provider>
   );
 }

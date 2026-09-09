@@ -7,7 +7,12 @@
   display: flex;
   flex-direction: column;
   color: #e6e8ec;
-  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "PingFang SC",
+    sans-serif;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -26,7 +31,8 @@
   z-index: 10;
 }
 
-.topbarLeft, .topbarRight {
+.topbarLeft,
+.topbarRight {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -43,13 +49,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s, border-color 0.15s;
-  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+  &:hover {
+    color: #e6e8ec;
+    border-color: #3a3a41;
+  }
 }
 
-.canvasName { font-size: 12px; font-weight: 400; color: #a8a8b2; }
-.canvasSep { font-size: 11px; color: #5e5e66; }
-.canvasStatus { font-size: 12px; font-weight: 500; color: #e6e8ec; }
+.canvasName {
+  font-size: 12px;
+  font-weight: 400;
+  color: #a8a8b2;
+}
+.canvasSep {
+  font-size: 11px;
+  color: #5e5e66;
+}
+.canvasStatus {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e6e8ec;
+}
 .canvasSwitch {
   display: inline-flex;
   align-items: center;
@@ -61,7 +83,10 @@
   background: transparent;
   color: #8a8a92;
   cursor: pointer;
-  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+  &:hover {
+    color: #e6e8ec;
+    border-color: #3a3a41;
+  }
 }
 
 .creditPill {
@@ -77,7 +102,9 @@
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  &:hover { background: rgba(245, 158, 11, 0.18); }
+  &:hover {
+    background: rgba(245, 158, 11, 0.18);
+  }
 }
 
 .avatar {
@@ -111,8 +138,14 @@
 }
 
 @keyframes slideDown {
-  from { transform: translate(-50%, -8px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+  from {
+    transform: translate(-50%, -8px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 }
 
 .nodeToolbarItem {
@@ -130,7 +163,9 @@
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
   &:hover {
     color: #e6e8ec;
     background: rgba(255, 255, 255, 0.05);
@@ -145,16 +180,27 @@
   overflow: hidden;
 }
 
-.flowRoot { background: #101012; width: 100%; height: 100%; }
-.bg :global(.react-flow__background-pattern.dots) { fill: rgba(255, 255, 255, 0.12); }
+.flowRoot {
+  background: #101012;
+  width: 100%;
+  height: 100%;
+}
+.bg :global(.react-flow__background-pattern.dots) {
+  fill: rgba(255, 255, 255, 0.12);
+}
 
 .controls :global(button) {
   background: #161618;
   border-color: #242428;
   color: #a8a8b2;
   border-bottom: 0.5px solid #242428;
-  &:hover { background: #1a1a1e; color: #e6e8ec; }
-  svg { fill: currentColor; }
+  &:hover {
+    background: #1a1a1e;
+    color: #e6e8ec;
+  }
+  svg {
+    fill: currentColor;
+  }
 }
 
 .minimap {
@@ -216,7 +262,11 @@
   background: rgba(20, 20, 22, 0.5);
 }
 
-.cardFields { display: flex; flex-direction: column; gap: 4px; }
+.cardFields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
 .cardField {
   display: grid;
@@ -226,8 +276,18 @@
   line-height: 1.5;
 }
 
-.cardFieldLabel { color: #f59e0b; font-weight: 500; text-align: right; opacity: 0.8; }
-.cardFieldValue { color: #a8a8b2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardFieldLabel {
+  color: #f59e0b;
+  font-weight: 500;
+  text-align: right;
+  opacity: 0.8;
+}
+.cardFieldValue {
+  color: #a8a8b2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* v26：handle 加大、加 hover 可见度，便于拖线对准 */
 .cardHandle {
@@ -238,7 +298,10 @@
   border-radius: 50%;
   opacity: 0.45;
   cursor: crosshair;
-  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    background 0.15s;
 }
 .cardHandle:hover {
   opacity: 1;
@@ -283,9 +346,13 @@
 :global(.react-flow__node.connectable-target) {
   outline: 1.5px solid #b5d4f4;
   outline-offset: 4px;
-  box-shadow: 0 0 0 4px rgba(181, 212, 244, 0.15), 0 8px 24px rgba(181, 212, 244, 0.25);
+  box-shadow:
+    0 0 0 4px rgba(181, 212, 244, 0.15),
+    0 8px 24px rgba(181, 212, 244, 0.25);
   transform: scale(1.02);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 :global(.react-flow__node.blocked-target) {
   outline: 0.5px dashed #3a3a41;
@@ -296,9 +363,18 @@
 
 /* v32：新边 success 描绘动画 —— dashoffset 从大到 0（绘出），然后关键帧末尾 dasharray 变 0 让全长实线 */
 @keyframes edgeDraw {
-  0% { stroke-dasharray: 220; stroke-dashoffset: 220; }
-  85% { stroke-dasharray: 220; stroke-dashoffset: 0; }
-  100% { stroke-dasharray: 1000; stroke-dashoffset: 0; }
+  0% {
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+  }
+  85% {
+    stroke-dasharray: 220;
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 0;
+  }
 }
 :global(.react-flow__edge.success-draw .react-flow__edge-path) {
   animation: edgeDraw 0.32s ease-out forwards;
@@ -306,11 +382,22 @@
 
 /* v32：失败边 shake */
 @keyframes edgeShake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-3px); }
-  40% { transform: translateX(3px); }
-  60% { transform: translateX(-2px); }
-  80% { transform: translateX(2px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
 }
 :global(.react-flow__edge.blocked-shake .react-flow__edge-path) {
   stroke: #e24b4a !important;
@@ -382,8 +469,13 @@
   font-weight: 500;
   white-space: nowrap;
   pointer-events: none;
-  svg { pointer-events: none; }
-  span, input { pointer-events: auto; }
+  svg {
+    pointer-events: none;
+  }
+  span,
+  input {
+    pointer-events: auto;
+  }
 }
 
 /* v23：编辑态标题输入 —— 与静态标题视觉一致（透明无边框），focus 才露微弱底色 */
@@ -401,8 +493,12 @@
   cursor: text;
   min-width: 60px;
   width: 12em;
-  &::placeholder { color: #5e5e66; }
-  &:focus { background: rgba(255, 255, 255, 0.06); }
+  &::placeholder {
+    color: #5e5e66;
+  }
+  &:focus {
+    background: rgba(255, 255, 255, 0.06);
+  }
 }
 
 /* v18：节点选中态默认样式统一为无边框高亮 */
@@ -471,7 +567,9 @@
   letter-spacing: 0.2px;
 }
 
-.imageTitle { font-size: 11px; }
+.imageTitle {
+  font-size: 11px;
+}
 
 /* 普通态已上传真图 */
 .imageReal {
@@ -507,8 +605,17 @@
   font-size: 11px;
   font-family: inherit;
   cursor: pointer;
-  svg { color: #a8a8b2; flex-shrink: 0; }
-  &:hover { border-color: #3a3a41; background: rgba(26, 26, 30, 0.95); svg { color: #e6e8ec; } }
+  svg {
+    color: #a8a8b2;
+    flex-shrink: 0;
+  }
+  &:hover {
+    border-color: #3a3a41;
+    background: rgba(26, 26, 30, 0.95);
+    svg {
+      color: #e6e8ec;
+    }
+  }
 }
 
 // =============== ImageNodeEditor（v22：原卡片不动 + 底部追加编辑栏） ===============
@@ -574,8 +681,14 @@
   font-family: inherit;
   cursor: pointer;
   flex-shrink: 0;
-  &:hover { border-color: #3a3a41; background: #1a1a1e; color: #e6e8ec; }
-  svg { color: #a8a8b2; }
+  &:hover {
+    border-color: #3a3a41;
+    background: #1a1a1e;
+    color: #e6e8ec;
+  }
+  svg {
+    color: #a8a8b2;
+  }
 }
 
 /* v34.2：视频版发送按钮（白色 —— 与图片版橙色形成视觉区分） */
@@ -591,7 +704,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  &:hover { filter: brightness(1.05); }
+  &:hover {
+    filter: brightness(1.05);
+  }
 }
 
 /* 编辑态卡片列：完全复用默认态卡片尺寸，居中 */
@@ -649,8 +764,13 @@
   font-size: 11px;
   font-family: inherit;
   cursor: pointer;
-  &:hover { border-color: #3a3a41; background: #1a1a1e; }
-  svg { color: #a8a8b2; }
+  &:hover {
+    border-color: #3a3a41;
+    background: #1a1a1e;
+  }
+  svg {
+    color: #a8a8b2;
+  }
 }
 
 .imageEditTagIcon {
@@ -670,7 +790,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  &:hover { color: #e6e8ec; background: rgba(255, 255, 255, 0.05); border-color: #3a3a41; }
+  &:hover {
+    color: #e6e8ec;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #3a3a41;
+  }
 }
 
 .imageEditInputWrap {
@@ -691,8 +815,12 @@
   font-family: inherit;
   outline: none;
   cursor: text;
-  &::placeholder { color: #5e5e66; }
-  &:focus { border-color: rgba(245, 158, 11, 0.45); }
+  &::placeholder {
+    color: #5e5e66;
+  }
+  &:focus {
+    border-color: rgba(245, 158, 11, 0.45);
+  }
 }
 
 .imageEditParams {
@@ -716,8 +844,12 @@
   color: #e6e8ec;
   font-size: 11px;
   cursor: pointer;
-  &:hover { background: rgba(255, 255, 255, 0.04); }
-  svg { color: #d4537e; }
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  svg {
+    color: #d4537e;
+  }
 }
 
 .imageEditParamSep {
@@ -741,8 +873,12 @@
   color: #e6e8ec;
   font-size: 11px;
   cursor: pointer;
-  &:hover { background: rgba(255, 255, 255, 0.04); }
-  svg { color: #a8a8b2; }
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  svg {
+    color: #a8a8b2;
+  }
 }
 
 .imageEditRatioMenu {
@@ -778,7 +914,10 @@
   font-size: 11px;
   text-align: left;
   cursor: pointer;
-  &:hover { background: rgba(255, 255, 255, 0.05); color: #e6e8ec; }
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e6e8ec;
+  }
 }
 
 .imageEditRatioItemActive {
@@ -797,7 +936,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  &:hover { background: rgba(255, 255, 255, 0.05); color: #e6e8ec; }
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e6e8ec;
+  }
 }
 
 .imageEditCost {
@@ -807,7 +949,9 @@
   gap: 3px;
   color: #a8a8b2;
   font-size: 11px;
-  svg { color: #f59e0b; }
+  svg {
+    color: #f59e0b;
+  }
 }
 
 .imageEditSend {
@@ -822,7 +966,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  &:hover { filter: brightness(1.08); }
+  &:hover {
+    filter: brightness(1.08);
+  }
 }
 
 // =============== 空态引导 ===============
@@ -836,7 +982,9 @@
   align-items: center;
   gap: 16px;
   pointer-events: none;
-  > * { pointer-events: auto; }
+  > * {
+    pointer-events: auto;
+  }
 }
 
 .guideBubble {
@@ -862,8 +1010,16 @@
   }
 }
 
-.guideTitle { font-size: 13px; font-weight: 500; color: #e6e8ec; margin-bottom: 4px; }
-.guideSub { font-size: 11px; color: #8a8a92; }
+.guideTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e6e8ec;
+  margin-bottom: 4px;
+}
+.guideSub {
+  font-size: 11px;
+  color: #8a8a92;
+}
 
 .guideLoad {
   display: inline-flex;
@@ -878,8 +1034,13 @@
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
-  &:hover:not(:disabled) { background: rgba(245, 158, 11, 0.2); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.2);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
 // =============== 底部布局（5 工具按钮 + chat-bar） ===============
@@ -894,7 +1055,8 @@
   flex-shrink: 0;
 }
 
-.bottomLeft, .bottomRight {
+.bottomLeft,
+.bottomRight {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -912,7 +1074,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
   &:hover {
     color: #e6e8ec;
     background: rgba(255, 255, 255, 0.04);
@@ -945,7 +1110,9 @@
   background: #161618;
   border: 0.5px solid #232326;
   border-radius: 14px;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
   &:focus-within {
     border-color: rgba(245, 158, 11, 0.5);
     background: #1a1a1e;
@@ -964,7 +1131,10 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+  &:hover {
+    color: #e6e8ec;
+    border-color: #3a3a41;
+  }
 }
 
 .chatThumb {
@@ -975,7 +1145,12 @@
   overflow: hidden;
   flex-shrink: 0;
   border: 0.5px solid #3a3a41;
-  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 }
 
 .chatThumbClose {
@@ -992,7 +1167,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  &:hover { background: #161618; }
+  &:hover {
+    background: #161618;
+  }
 }
 
 .chatInput {
@@ -1004,7 +1181,9 @@
   color: #e6e8ec;
   font-size: 12px;
   font-family: inherit;
-  &::placeholder { color: #5e5e66; }
+  &::placeholder {
+    color: #5e5e66;
+  }
 }
 
 .chatModel {
@@ -1021,7 +1200,10 @@
   font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
-  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+  &:hover {
+    color: #e6e8ec;
+    border-color: #3a3a41;
+  }
 }
 
 .chatSend {
@@ -1044,7 +1226,9 @@
   border-color: transparent;
   color: #1a1205;
   cursor: pointer;
-  &:hover { filter: brightness(1.08); }
+  &:hover {
+    filter: brightness(1.08);
+  }
 }
 
 // =============== TextNode（基础文本） ===============
@@ -1135,8 +1319,14 @@
   overflow: hidden;
   /* 右下角 resize handle：琥珀色双斜杠风格 */
   &::-webkit-resizer {
-    background:
-      linear-gradient(135deg, transparent 0 54%, rgba(245, 158, 11, 0.65) 54% 60%, transparent 60% 72%, rgba(245, 158, 11, 0.65) 72% 78%, transparent 78% 100%);
+    background: linear-gradient(
+      135deg,
+      transparent 0 54%,
+      rgba(245, 158, 11, 0.65) 54% 60%,
+      transparent 60% 72%,
+      rgba(245, 158, 11, 0.65) 72% 78%,
+      transparent 78% 100%
+    );
     border-radius: 0 0 12px 0;
     cursor: nwse-resize;
   }
@@ -1200,11 +1390,18 @@
 }
 
 @keyframes toolbarDrop {
-  from { transform: translate(-50%, -10px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+  from {
+    transform: translate(-50%, -10px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 }
 
-.tbSelect, .tbSelectNarrow {
+.tbSelect,
+.tbSelectNarrow {
   appearance: none;
   -webkit-appearance: none;
   height: 28px;
@@ -1220,11 +1417,19 @@
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M1 1 L4 4 L7 1' stroke='%238a8a92' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 8px center;
-  &:hover { border-color: #3a3a41; }
-  &:focus { outline: none; border-color: rgba(245, 158, 11, 0.45); }
+  &:hover {
+    border-color: #3a3a41;
+  }
+  &:focus {
+    outline: none;
+    border-color: rgba(245, 158, 11, 0.45);
+  }
 }
 
-.tbSelectNarrow { min-width: 56px; padding: 0 22px 0 10px; }
+.tbSelectNarrow {
+  min-width: 56px;
+  padding: 0 22px 0 10px;
+}
 
 .tbSep {
   width: 0.5px;
@@ -1249,10 +1454,13 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: color 0.12s, background 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    background 0.12s,
+    border-color 0.12s;
   &:hover {
     color: #f59e0b;
-    background: rgba(245, 158, 11, 0.10);
+    background: rgba(245, 158, 11, 0.1);
     border-color: rgba(245, 158, 11, 0.35);
   }
 }
@@ -1264,8 +1472,13 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
-  &::-webkit-color-swatch-wrapper { padding: 0; }
-  &::-webkit-color-swatch { border: 0.5px solid #3a3a41; border-radius: 6px; }
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  &::-webkit-color-swatch {
+    border: 0.5px solid #3a3a41;
+    border-radius: 6px;
+  }
 }
 
 // （v10 移除左侧完成/取消面板 —— 点击编辑节点外部自动保存；样式块已删）
@@ -1306,7 +1519,9 @@
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
   &:hover:not(:disabled) {
     background: rgba(245, 158, 11, 0.12);
     color: #f59e0b;
@@ -1360,8 +1575,14 @@
   animation: toastDrop 0.2s ease;
 }
 @keyframes toastDrop {
-  from { transform: translate(-50%, -8px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+  from {
+    transform: translate(-50%, -8px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 }
 
 // 底部添加弹层（复用 contextMenu 视觉）
@@ -1405,8 +1626,14 @@
 }
 
 @keyframes nodeGrow {
-  from { transform: scale(0.92); opacity: 0.6; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .nodeEditorHead {
@@ -1421,7 +1648,7 @@
   display: inline-flex;
   padding: 2px 8px;
   border-radius: 6px;
-  background: rgba(245, 158, 11, 0.10);
+  background: rgba(245, 158, 11, 0.1);
   font-size: 10px;
   font-weight: 600;
 }
@@ -1448,8 +1675,12 @@
   font-weight: 500;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
-  &::placeholder { color: #5e5e66; }
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  &::placeholder {
+    color: #5e5e66;
+  }
   &:focus {
     border-color: rgba(245, 158, 11, 0.45);
     background: rgba(255, 255, 255, 0.03);
@@ -1468,9 +1699,18 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: color 0.12s, border-color 0.12s;
-  &:hover:not(:disabled) { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
-  &:disabled { color: #4a4a52; cursor: not-allowed; border-color: #1f1f23; }
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+  &:hover:not(:disabled) {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+  &:disabled {
+    color: #4a4a52;
+    cursor: not-allowed;
+    border-color: #1f1f23;
+  }
 }
 
 .nodeEditorArea {
@@ -1485,7 +1725,9 @@
   font-size: 12px;
   line-height: 1.8;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  &::placeholder { color: #5e5e66; }
+  &::placeholder {
+    color: #5e5e66;
+  }
 }
 
 .nodeEditorFoot {
@@ -1525,8 +1767,14 @@
 }
 
 @keyframes popIn {
-  from { transform: scale(0.96); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .editHead {
@@ -1574,7 +1822,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  &:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); }
+  &:hover {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.45);
+  }
 }
 
 .editClose {
@@ -1588,7 +1839,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+  &:hover {
+    color: #e6e8ec;
+    border-color: #3a3a41;
+  }
 }
 
 // 格式化工具条
@@ -1614,10 +1868,12 @@
   font-family: inherit;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.12s, background 0.12s;
+  transition:
+    color 0.12s,
+    background 0.12s;
   &:hover {
     color: #f59e0b;
-    background: rgba(245, 158, 11, 0.10);
+    background: rgba(245, 158, 11, 0.1);
   }
 }
 
@@ -1641,7 +1897,9 @@
   font-size: 13px;
   line-height: 1.8;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  &::placeholder { color: #5e5e66; }
+  &::placeholder {
+    color: #5e5e66;
+  }
 }
 
 .editFoot {
@@ -1671,7 +1929,10 @@
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
-  &:hover { color: #e6e8ec; border-color: #3a3a41; }
+  &:hover {
+    color: #e6e8ec;
+    border-color: #3a3a41;
+  }
 }
 
 .editSave {
@@ -1684,7 +1945,9 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  &:hover { filter: brightness(1.08); }
+  &:hover {
+    filter: brightness(1.08);
+  }
 }
 
 // =============== 节点库基础区 ===============
@@ -1715,7 +1978,9 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
   &:hover {
     border-color: rgba(245, 158, 11, 0.5);
     background: #1a1a1e;
@@ -1762,7 +2027,14 @@
   animation: fade 0.15s ease;
 }
 
-@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
 .library {
   background: #161618;
@@ -1795,7 +2067,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    &:hover { background: #1a1a1e; color: #e6e8ec; }
+    &:hover {
+      background: #1a1a1e;
+      color: #e6e8ec;
+    }
   }
 }
 
@@ -1815,8 +2090,13 @@
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  transition: transform 0.1s, box-shadow 0.15s;
-  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+  transition:
+    transform 0.1s,
+    box-shadow 0.15s;
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .libraryTop {
@@ -1834,8 +2114,13 @@
   letter-spacing: 0.2px;
 }
 
-.libraryType { font-size: 12px; font-weight: 500; }
-.libraryMeta { font-size: 10px; }
+.libraryType {
+  font-size: 12px;
+  font-weight: 500;
+}
+.libraryMeta {
+  font-size: 10px;
+}
 
 .libraryFields {
   display: flex;
@@ -1852,8 +2137,17 @@
   line-height: 1.4;
 }
 
-.libraryFieldLabel { color: #f59e0b; opacity: 0.7; text-align: right; }
-.libraryFieldValue { color: #8a8a92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.libraryFieldLabel {
+  color: #f59e0b;
+  opacity: 0.7;
+  text-align: right;
+}
+.libraryFieldValue {
+  color: #8a8a92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 // =============== v38：+ 圆角块位于左下角缩放控件右侧（不动缩放控件默认位置） ===============
 .bottomLeftDock {
@@ -1874,8 +2168,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, border-color 0.15s;
-  &:hover { background: #26262c; border-color: #4a4a52; }
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  &:hover {
+    background: #26262c;
+    border-color: #4a4a52;
+  }
 }
 
 .addFabActive {
@@ -1896,8 +2195,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, border-color 0.15s;
-  &:hover { background: #2d2d33; }
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  &:hover {
+    background: #2d2d33;
+  }
 }
 
 .agentAvatarBtnActive {
@@ -1925,8 +2228,14 @@
 }
 
 @keyframes drawerIn {
-  from { transform: translateX(12px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .agentDrawerHead {
@@ -1983,7 +2292,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  &:hover { background: rgba(255, 255, 255, 0.05); color: #e6e8ec; }
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e6e8ec;
+  }
 }
 
 .agentDrawerMessages {
@@ -2047,8 +2359,12 @@
   font-family: inherit;
   outline: none;
   cursor: text;
-  &::placeholder { color: #5e5e66; }
-  &:focus { border-color: rgba(83, 74, 183, 0.6); }
+  &::placeholder {
+    color: #5e5e66;
+  }
+  &:focus {
+    border-color: rgba(83, 74, 183, 0.6);
+  }
 }
 
 // =============== v39：积分悬停弹窗 ===============
@@ -2072,8 +2388,14 @@
 }
 
 @keyframes creditIn {
-  from { transform: translateY(-4px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .creditMemberCard {
@@ -2106,7 +2428,9 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  &:hover { filter: brightness(1.08); }
+  &:hover {
+    filter: brightness(1.08);
+  }
 }
 
 .creditBalanceRow {
@@ -2119,7 +2443,9 @@
 .creditBalanceLabel {
   color: #e6e8ec;
   font-size: 13px;
-  b { font-weight: 500; }
+  b {
+    font-weight: 500;
+  }
 }
 
 .creditRecharge {
@@ -2131,7 +2457,9 @@
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 6px;
-  &:hover { background: rgba(245, 158, 11, 0.1); }
+  &:hover {
+    background: rgba(245, 158, 11, 0.1);
+  }
 }
 
 .creditDetailList {
@@ -2147,7 +2475,9 @@
   justify-content: space-between;
   color: #a8a8b2;
   font-size: 12px;
-  span:last-child { color: #e6e8ec; }
+  span:last-child {
+    color: #e6e8ec;
+  }
 }
 
 .creditMenuSep {
@@ -2173,6 +2503,10 @@
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  &:hover { background: rgba(255, 255, 255, 0.04); }
-  svg { color: #5e5e66; }
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  svg {
+    color: #5e5e66;
+  }
 }

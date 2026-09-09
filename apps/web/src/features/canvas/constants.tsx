@@ -1,16 +1,4 @@
-import {
-  Crop,
-  Download,
-  Film,
-  Grid3x3,
-  Layers,
-  Music,
-  RefreshCw,
-  Sliders,
-  Sparkles,
-  Sun,
-  Wand2,
-} from "lucide-react";
+import { Crop, Download, Film, Grid3x3, Layers, Music, RefreshCw, Sliders, Sparkles, Sun, Wand2 } from "lucide-react";
 import type { CardField, NodeKind } from "./types/nodes";
 
 export type { NodeKind };
@@ -18,12 +6,32 @@ export type { NodeKind };
 /** 节点库（4 个能力）— 右下角或工具栏点击展开 */
 export type NodeLibraryItem =
   | { kind: "llm"; title: string; meta: string; nodeKind: "card"; fields: CardField[]; category: string }
-  | { kind: "image"; title: string; meta: string; nodeKind: "image"; tint: string; size?: { w: number; h: number }; category: string }
-  | { kind: "video"; title: string; meta: string; nodeKind: "image"; tint: string; size?: { w: number; h: number }; category: string };
+  | {
+      kind: "image";
+      title: string;
+      meta: string;
+      nodeKind: "image";
+      tint: string;
+      size?: { w: number; h: number };
+      category: string;
+    }
+  | {
+      kind: "video";
+      title: string;
+      meta: string;
+      nodeKind: "image";
+      tint: string;
+      size?: { w: number; h: number };
+      category: string;
+    };
 
 export const NODE_LIBRARY: NodeLibraryItem[] = [
   {
-    kind: "llm", title: "故事脚本生成", meta: "LLM · 60-90秒", nodeKind: "card", category: "脚本",
+    kind: "llm",
+    title: "故事脚本生成",
+    meta: "LLM · 60-90秒",
+    nodeKind: "card",
+    category: "脚本",
     fields: [
       { label: "类型", value: "古风/穿越" },
       { label: "时长建议", value: "60-90秒" },
@@ -32,16 +40,31 @@ export const NODE_LIBRARY: NodeLibraryItem[] = [
     ],
   },
   {
-    kind: "image", title: "角色三视图", meta: "图像 · 形象锁定", nodeKind: "image", category: "多角度",
-    tint: "rgba(212, 83, 126, 0.20)", size: { w: 280, h: 180 },
+    kind: "image",
+    title: "角色三视图",
+    meta: "图像 · 形象锁定",
+    nodeKind: "image",
+    category: "多角度",
+    tint: "rgba(212, 83, 126, 0.20)",
+    size: { w: 280, h: 180 },
   },
   {
-    kind: "image", title: "封面方案", meta: "图像 · 3:4", nodeKind: "image", category: "封面",
-    tint: "rgba(212, 83, 126, 0.18)", size: { w: 200, h: 260 },
+    kind: "image",
+    title: "封面方案",
+    meta: "图像 · 3:4",
+    nodeKind: "image",
+    category: "封面",
+    tint: "rgba(212, 83, 126, 0.18)",
+    size: { w: 200, h: 260 },
   },
   {
-    kind: "video", title: "全能参考生视频", meta: "视频 · 30s", nodeKind: "image", category: "成片",
-    tint: "rgba(55, 138, 221, 0.20)", size: { w: 320, h: 180 },
+    kind: "video",
+    title: "全能参考生视频",
+    meta: "视频 · 30s",
+    nodeKind: "image",
+    category: "成片",
+    tint: "rgba(55, 138, 221, 0.20)",
+    size: { w: 320, h: 180 },
   },
 ];
 
