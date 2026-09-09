@@ -28,7 +28,7 @@ export default function ProjectsPage() {
             </h2>
             <p className={styles.sub}>点击项目进入画布编排，节点式工作流创作</p>
           </div>
-          <button className={styles.newBtn}>
+          <button className={styles.newBtn} onClick={() => router.push("/canvas")}>
             <Plus size={14} />
             新建项目
           </button>

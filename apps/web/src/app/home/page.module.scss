@@ -1,31 +1,24 @@
-// 首页 · Home
+// 首页 · Home —— 画布工作流 × Agent 指挥台（LibTV × Coze）
 
 .container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 26px;
 }
 
-// ---- Hero ----
+// ---- Hero：Agent 主入口 ----
 .hero {
-  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 40px;
-  padding: 28px;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 20px 24px;
+  border-radius: 20px;
+  background: radial-gradient(ellipse 55% 75% at 50% 0%, rgba(83, 74, 183, 0.14), transparent), var(--surface);
   border: 1px solid var(--surface-border);
-  border-radius: 24px;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.heroIntro {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  text-align: center;
 }
 
 .heroTitle {
@@ -41,312 +34,541 @@
   color: var(--muted-foreground);
 }
 
-.promptWrap {
-  position: relative;
+.promptBar {
+  width: min(560px, 92%);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 13px;
+  background: var(--input);
+  border: 1px solid var(--input-border);
+  border-radius: 14px;
+  transition: border-color 0.2s;
+
+  &:focus-within {
+    border-color: rgba(127, 119, 221, 0.55);
+  }
+}
+
+.promptBotIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(83, 74, 183, 0.16);
+  color: #7f77dd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .promptInput {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 14px 48px 14px 16px;
-  border: 1px solid var(--input-border);
-  border-radius: 16px;
-  background: var(--input);
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
   font-size: 12px;
+  font-family: inherit;
   color: var(--foreground);
   outline: none;
-  transition: border-color 0.2s;
-
-  &:focus {
-    border-color: var(--surface-hover-border);
-  }
 
   &::placeholder {
     color: var(--faint-foreground);
   }
 }
 
-.promptBtn {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border: none;
-  border-radius: 8px;
+.promptPlus {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--input-border);
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 
   &:hover {
     color: var(--foreground);
+    border-color: var(--surface-hover-border);
   }
 }
 
-.quickTags {
+.promptGo {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.15s;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
+.hotTags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
 }
 
-.tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--surface-border);
+.hotTag {
+  padding: 5px 14px;
   border-radius: 999px;
   background: var(--subcard);
+  border: 1px solid var(--subcard-border);
   font-size: 11px;
-  font-weight: 500;
+  font-family: inherit;
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 
   &:hover {
-    border-color: var(--surface-hover-border);
     color: var(--foreground);
+    border-color: var(--surface-hover-border);
   }
 }
 
-// ---- 区块标题行 ----
+// ---- 三入口卡 ----
+.entries {
+  display: flex;
+  gap: 12px;
+}
+
+.entryCard {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 17px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+    transform: translateY(-1px);
+  }
+}
+
+.entryCardPrimary {
+  flex: 1.9;
+  background: linear-gradient(135deg, rgba(83, 74, 183, 0.22), rgba(83, 74, 183, 0.05)), var(--surface);
+  border-color: rgba(127, 119, 221, 0.38);
+
+  &:hover {
+    border-color: rgba(127, 119, 221, 0.6);
+  }
+}
+
+.entryIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--subcard);
+  border: 1px solid var(--subcard-border);
+  color: var(--muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.entryIconPrimary {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #534ab7;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.entryTexts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.entryTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.entryCardPrimary .entryTitle {
+  font-size: 13.5px;
+}
+
+.entryDesc {
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+}
+
+.entryArrow {
+  margin-left: auto;
+  color: #7f77dd;
+}
+
+// ---- 区块标题 ----
 .sectionHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sectionBadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .moreLink {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   border: none;
   background: transparent;
-  padding: 0;
-  font-size: 12px;
-  color: var(--muted-foreground);
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--faint-foreground);
   cursor: pointer;
-  transition: color 0.2s;
+  padding: 2px 4px;
+  transition: color 0.15s;
 
   &:hover {
     color: var(--foreground);
   }
 }
 
-// ---- 快捷开始 ----
-.quickGrid {
+// ---- 工作流模板 ----
+.tplGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 12px;
 
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-.quickCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border: 1px solid var(--surface-border);
-  border-radius: 16px;
+.tplCard {
   background: var(--surface);
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: var(--surface-hover-border);
-    background: var(--surface-hover);
-
-    .quickTitle {
-      color: var(--accent);
-    }
-  }
-}
-
-.quickInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.quickTitle {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  transition: color 0.2s;
-}
-
-.quickDesc {
-  margin: 0;
-  font-size: 11px;
-  color: var(--muted-foreground);
-}
-
-.quickIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--subcard-border);
+  border: 1px solid var(--surface-border);
   border-radius: 12px;
-  background: var(--subcard);
-  color: var(--muted-foreground);
-  transition: transform 0.2s;
-
-  .quickCard:hover & {
-    transform: scale(1.08);
-  }
-}
-
-// ---- 灵感广场 ----
-.galleryGrid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
-
-  @media (max-width: 1100px) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.galleryCard {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--surface-border);
-  border-radius: 16px;
-  background: var(--surface);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
+  font-family: inherit;
+  text-align: left;
+  padding: 0;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
 
   &:hover {
     border-color: var(--surface-hover-border);
-    background: var(--surface-hover);
+    transform: translateY(-1px);
   }
 }
 
-.galleryCover {
+.tplCover {
+  height: 64px;
+  background: var(--canvas);
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 112px;
-  background: linear-gradient(to bottom right, var(--pill-inactive-hover), var(--sider));
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--surface-border);
 }
 
-.galleryPlay {
-  display: flex;
+.tplFlow {
+  display: inline-flex;
   align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  color: rgba(255, 255, 255, 0.7);
-  transition: transform 0.2s;
-
-  .galleryCard:hover & {
-    transform: scale(1.1);
-  }
 }
 
-.galleryBody {
+.tplFlowWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tplFlowLine {
+  font-size: 8px;
+  color: var(--faint-foreground);
+  opacity: 0.5;
+}
+
+.tplFlowNode {
+  width: 22px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.tplBody {
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
+  gap: 3px;
 }
 
-.galleryTitle {
+.tplName {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  color: var(--foreground);
 }
 
-.galleryMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
+.tplDesc {
+  margin: 0;
+  font-size: 10.5px;
   color: var(--muted-foreground);
 }
 
-.galleryLikes {
+.tplMeta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
-// ---- 我的创作 ----
-.worksGrid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
+.tplTag {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(212, 83, 126, 0.1);
+  color: #d4839c;
+  font-size: 9.5px;
+}
 
-  @media (max-width: 1100px) {
-    grid-template-columns: repeat(4, 1fr);
+.tplUses {
+  font-size: 9.5px;
+  color: var(--faint-foreground);
+}
+
+// ---- 最近画布 + 我的 Agent ----
+.bottomSplit {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+
+  @media (max-width: 1000px) {
+    flex-direction: column;
   }
 }
 
-.workCard {
-  padding: 12px;
-  border: 1px solid var(--surface-border);
-  border-radius: 16px;
+.recentCol {
+  flex: 1.55;
+  min-width: 0;
+}
+
+.agentCol {
+  flex: 1;
+  min-width: 0;
+}
+
+.recentList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recentRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
   background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 11px;
   cursor: pointer;
-  transition: all 0.2s;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s;
 
   &:hover {
     border-color: var(--surface-hover-border);
-    background: var(--surface-hover);
   }
 }
 
-.workCover {
+.recentThumb {
+  width: 48px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--canvas);
+  border: 1px solid var(--surface-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+  flex-shrink: 0;
+}
+
+.recentNode {
+  width: 10px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.recentTexts {
   display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.recentName {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.recentMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--faint-foreground);
+}
+
+.recentGo {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--subcard-border);
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  flex-shrink: 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+
+  .recentRow:hover & {
+    color: var(--foreground);
+    border-color: var(--surface-hover-border);
+  }
+}
+
+// ---- 我的 Agent ----
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.agentCard {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 11px;
+  padding: 13px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+    transform: translateY(-1px);
+  }
+}
+
+.agentAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 80px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  background: linear-gradient(to top right, var(--pill-inactive-hover), var(--subcard));
-  color: rgba(255, 255, 255, 0.5);
 }
 
-.workName {
-  margin: 0;
-  font-size: 12px;
+.agentName {
+  font-size: 11.5px;
   font-weight: 500;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  color: var(--foreground);
 }
 
-.workMeta {
+.agentRuns {
+  font-size: 9.5px;
+  color: var(--faint-foreground);
+}
+
+.agentCardAdd {
+  background: transparent;
+  border: 1px dashed var(--surface-hover-border);
+  border-radius: 11px;
+  padding: 13px 8px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 10px;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 96px;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
+.agentAddIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--subcard);
+  color: var(--muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agentAddText {
+  font-size: 10.5px;
   color: var(--muted-foreground);
 }

@@ -1,0 +1,425 @@
+/* IF 选择器侧边栏 —— 多分支版（参考扣子条件分支卡片结构） */
+
+.inspectorBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 12px 16px 24px;
+}
+
+.inspectorBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.inspectorBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.inspectorBody::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 3px;
+
+  &:hover {
+    background: var(--muted-foreground);
+  }
+}
+
+/* ============================== 分支列表 ============================== */
+.branchList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============================== "如果" 分组卡片 ============================== */
+.ifGroup {
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.ifGroupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--subcard);
+}
+
+.ifGroupLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gripIcon {
+  color: var(--faint-foreground);
+  cursor: grab;
+}
+
+.ifGroupTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.priorityTag {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(83, 74, 183, 0.12);
+  color: #534ab7;
+  font-weight: 500;
+}
+
+.ifGroupDelete {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--background);
+    color: #e5484d;
+  }
+}
+
+.ifGroupBody {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================== 条件行（左侧 L 形 + 右侧主体） ============================== */
+.condRow {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 0;
+  position: relative;
+}
+
+/* 左 L 形连接线 + 且/或 select */
+.condRail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 36px;
+}
+
+.railLine {
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  background: var(--surface-border);
+  pointer-events: none;
+
+  /* 默认：贯穿上下（中间条件） */
+  top: 0;
+  bottom: 0;
+}
+
+.railLineTopOnly {
+  /* 首行条件：只画上半段 */
+  top: 0;
+  bottom: 50%;
+}
+
+.railLineBottomOnly {
+  /* 末行条件：只画下半段，并加底部水平线（参考扣子的 ∟） */
+  top: 50%;
+  bottom: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 1px;
+    background: var(--surface-border);
+  }
+}
+
+.logicSelect {
+  position: relative;
+  z-index: 1;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--surface-border);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 10.5px;
+  font-family: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  outline: none;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
+/* 右侧条件主体 */
+.condBody {
+  display: grid;
+  grid-template-columns: 88px 1fr 1fr 24px;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+/* ============================== 操作符 select ============================== */
+.opSelect {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.opSelectError {
+  border-color: #e5484d;
+}
+
+/* ============================== 左值：变量 icon + 复合输入 + ⌄ ============================== */
+.leftInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 24px 0 4px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-sizing: border-box;
+
+  &:focus-within {
+    border-color: var(--accent);
+  }
+}
+
+.leftInputError {
+  border-color: #e5484d;
+}
+
+.typeIcon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  border-radius: 3px;
+  background: rgba(55, 138, 221, 0.18);
+  color: #378add;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.leftInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+}
+
+.typeArrow {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+/* ============================== 右值：字面量输入 + ⊕ 按钮 ============================== */
+.rightInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-sizing: border-box;
+
+  &:focus-within {
+    border-color: var(--accent);
+  }
+}
+
+.rightInputError {
+  border-color: #e5484d;
+}
+
+.rightInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 32px 0 8px;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+}
+
+.applyBtn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.applyIcon {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ============================== 行内删除按钮 ============================== */
+.rowDelete {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--subcard);
+    color: #e5484d;
+  }
+}
+
+/* ============================== 条件字段 + 错误文案 ============================== */
+.condField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.errorText {
+  font-size: 10px;
+  color: #e5484d;
+  padding-left: 2px;
+}
+
+/* ============================== + 新增 条件按钮 ============================== */
+.condAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  align-self: flex-start;
+  margin-top: 4px;
+  margin-left: 50px; /* 偏移到 L 形线右侧 */
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #378add;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: #2563eb;
+  }
+}
+
+/* ============================== "否则" 固定分组（不可删） ============================== */
+.elseGroup {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: var(--subcard);
+}
+
+.elseTitle {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/* ============================== 添加分支按钮 ============================== */
+.addBranchWrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.addBranchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(55, 138, 221, 0.12);
+  color: #378add;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(55, 138, 221, 0.2);
+  }
+}

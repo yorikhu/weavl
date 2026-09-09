@@ -1,0 +1,345 @@
+/* ============================== EndInspector（参考扣子） ============================== */
+
+.inspectorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+}
+
+.desc {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  line-height: 1.55;
+}
+
+/* ============================== 核心 radio：返回变量 / 返回文本 ============================== */
+.modeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  background: var(--background);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+}
+
+.modeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+.modeBtnActive {
+  background: var(--surface);
+  color: var(--foreground);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* 未激活态：空心圆点 */
+.modeDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+/* 激活态：实心圆点 */
+.modeRadio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--foreground);
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--background);
+  }
+}
+
+/* ============================== 折叠卡片 ============================== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  background: var(--background);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--subcard);
+  }
+}
+
+.card:has(.cardHead) + .card .cardHead,
+.card .cardHead:has(+ *) {
+  border-bottom-color: var(--surface-border);
+}
+
+.chev {
+  color: var(--muted-foreground);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.chevClosed {
+  transform: rotate(-90deg);
+}
+
+.cardLabel {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  flex: 1;
+}
+
+.headRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+}
+
+/* ============================== 输出变量 group ============================== */
+.outputsBody {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.outputRow {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.outputName,
+.outputValue {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 5px;
+  background: var(--background);
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+
+  &:focus {
+    border-color: var(--foreground);
+  }
+}
+
+.outputValueWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.varTypeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--surface-border);
+  border-radius: 4px;
+  background: var(--subcard);
+  font-size: 9.5px;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface);
+    color: var(--foreground);
+  }
+}
+
+.outputValueInner {
+  flex: 1;
+  min-width: 0;
+}
+
+.outputValue {
+  /* 与 outputName 同款 */
+}
+
+.removeBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+  }
+}
+
+.emptyAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px dashed var(--surface-border);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover {
+    border-color: var(--foreground);
+    color: var(--foreground);
+  }
+}
+
+/* ============================== 回答内容（流式输出 + textarea） ============================== */
+.switchLabel {
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+}
+
+.switch {
+  position: relative;
+  width: 26px;
+  height: 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--surface-border);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--muted-foreground);
+  }
+}
+
+.switchOn {
+  background: var(--foreground);
+
+  &:hover {
+    background: var(--foreground);
+  }
+}
+
+.switchKnob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--background);
+  transition: transform 0.15s;
+}
+
+.switchOn .switchKnob {
+  transform: translateX(12px);
+}
+
+.textBody {
+  padding: 8px 12px 12px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--background);
+  font-size: 11.5px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--foreground);
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.55;
+
+  &::placeholder {
+    color: var(--faint-foreground);
+  }
+
+  &:focus {
+    border-color: var(--foreground);
+  }
+}

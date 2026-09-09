@@ -1581,6 +1581,22 @@ function CanvasInner() {
   const [agentMessages, setAgentMessages] = useState<{ role: "user" | "agent"; text: string; thumb?: string | null }[]>(
     [{ role: "agent", text: "你好，我是织光 Agent。告诉我想要的内容，我来帮你编排画布。" }],
   );
+  /* v41：首页「开始创作」带参进入 —— ?agent=1 自动唤起抽屉，sessionStorage 取 prompt 预填 */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("agent") !== "1") return;
+    const saved = sessionStorage.getItem("weavl:agent-prompt");
+    if (saved) {
+      sessionStorage.removeItem("weavl:agent-prompt");
+      setAgentMessages((ms) => [
+        ...ms,
+        { role: "user", text: saved },
+        { role: "agent", text: "已收到你的想法。编排能力即将上线，我会先在画布上为你规划节点。" },
+      ]);
+    }
+    setAgentOpen(true);
+  }, []);
   const [chatInput, setChatInput] = useState("");
   const [chatThumb, setChatThumb] = useState<string | null>(null);
   const [chatModel] = useState("Weavl LLM");
