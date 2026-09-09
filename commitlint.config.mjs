@@ -5,19 +5,7 @@ export default {
     "type-enum": [
       2,
       "always",
-      [
-        "feat",
-        "fix",
-        "docs",
-        "style",
-        "refactor",
-        "perf",
-        "test",
-        "build",
-        "ci",
-        "chore",
-        "revert",
-      ],
+      ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"],
     ],
     // 中文 subject 允许，但不允许句号结尾（与 config-conventional 默认一致，显式声明意图）
     "subject-full-stop": [2, "never", "。"],

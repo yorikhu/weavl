@@ -39,7 +39,9 @@
   font-family: inherit;
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 
   &:hover {
     background: var(--subcard);
@@ -262,7 +264,9 @@
   color: var(--muted-foreground);
   cursor: pointer;
   align-self: flex-start;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 
   &:hover {
     border-color: var(--foreground);

@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  Bot,
-  Clock,
-  Layers,
-  Plus,
-  Workflow,
-} from "lucide-react";
+import { ArrowRight, Bot, Clock, Layers, Plus, Workflow } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import styles from "./page.module.scss";
 
@@ -90,7 +83,9 @@ export default function HomePage() {
           <h1 className={styles.heroTitle}>你好，织光师</h1>
           <p className={styles.heroSub}>描述你想做的事，Agent 为你编排画布工作流</p>
           <div className={styles.promptBar}>
-            <span className={styles.promptBotIcon}><Bot size={14} /></span>
+            <span className={styles.promptBotIcon}>
+              <Bot size={14} />
+            </span>
             <input
               type="text"
               value={prompt}
@@ -99,11 +94,7 @@ export default function HomePage() {
               placeholder="帮我做一支古风穿搭种草视频，从脚本到成片…"
               className={styles.promptInput}
             />
-            <button
-              className={styles.promptPlus}
-              title="添加参考素材"
-              aria-label="添加参考素材"
-            >
+            <button className={styles.promptPlus} title="添加参考素材" aria-label="添加参考素材">
               <Plus size={13} />
             </button>
             <button className={styles.promptGo} onClick={startAgent}>
@@ -127,11 +118,10 @@ export default function HomePage() {
 
         {/* ---- 三入口卡 ---- */}
         <section className={styles.entries}>
-          <button
-            className={`${styles.entryCard} ${styles.entryCardPrimary}`}
-            onClick={() => router.push("/canvas")}
-          >
-            <span className={styles.entryIconPrimary}><Workflow size={16} /></span>
+          <button className={`${styles.entryCard} ${styles.entryCardPrimary}`} onClick={() => router.push("/canvas")}>
+            <span className={styles.entryIconPrimary}>
+              <Workflow size={16} />
+            </span>
             <span className={styles.entryTexts}>
               <span className={styles.entryTitle}>新建空白画布</span>
               <span className={styles.entryDesc}>从零搭建你的工作流 · 空画布起步</span>
@@ -139,14 +129,18 @@ export default function HomePage() {
             <ArrowRight size={15} className={styles.entryArrow} />
           </button>
           <button className={styles.entryCard} onClick={() => router.push("/agent")}>
-            <span className={styles.entryIcon}><Bot size={14} /></span>
+            <span className={styles.entryIcon}>
+              <Bot size={14} />
+            </span>
             <span className={styles.entryTexts}>
               <span className={styles.entryTitle}>找 Agent</span>
               <span className={styles.entryDesc}>对话式创建</span>
             </span>
           </button>
           <button className={styles.entryCard} onClick={() => router.push("/projects")}>
-            <span className={styles.entryIcon}><Layers size={14} /></span>
+            <span className={styles.entryIcon}>
+              <Layers size={14} />
+            </span>
             <span className={styles.entryTexts}>
               <span className={styles.entryTitle}>导入工作流</span>
               <span className={styles.entryDesc}>JSON / 模板文件</span>
@@ -161,7 +155,9 @@ export default function HomePage() {
               工作流模板
               <span className={styles.sectionBadge}>新品</span>
             </h3>
-            <button className={styles.moreLink}>全部模板 <ArrowRight size={11} /></button>
+            <button className={styles.moreLink}>
+              全部模板 <ArrowRight size={11} />
+            </button>
           </div>
           <div className={styles.tplGrid}>
             {TEMPLATES.map((tpl) => (
@@ -207,18 +203,10 @@ export default function HomePage() {
             </div>
             <div className={styles.recentList}>
               {RECENT.map((r) => (
-                <button
-                  key={r.name}
-                  className={styles.recentRow}
-                  onClick={() => router.push("/canvas")}
-                >
+                <button key={r.name} className={styles.recentRow} onClick={() => router.push("/canvas")}>
                   <span className={styles.recentThumb}>
                     {r.flow.map((kind, i) => (
-                      <span
-                        key={i}
-                        className={styles.recentNode}
-                        style={{ background: `${FLOW_COLORS[kind]}66` }}
-                      />
+                      <span key={i} className={styles.recentNode} style={{ background: `${FLOW_COLORS[kind]}66` }} />
                     ))}
                   </span>
                   <span className={styles.recentTexts}>
@@ -237,7 +225,9 @@ export default function HomePage() {
           <div className={styles.agentCol}>
             <div className={styles.sectionHead}>
               <h3 className={styles.sectionTitle}>我的 Agent</h3>
-              <button className={styles.moreLink}>管理 <ArrowRight size={11} /></button>
+              <button className={styles.moreLink}>
+                管理 <ArrowRight size={11} />
+              </button>
             </div>
             <div className={styles.agentGrid}>
               {MY_AGENTS.map((a) => (
@@ -253,7 +243,9 @@ export default function HomePage() {
                 </button>
               ))}
               <button className={styles.agentCardAdd}>
-                <span className={styles.agentAddIcon}><Plus size={13} /></span>
+                <span className={styles.agentAddIcon}>
+                  <Plus size={13} />
+                </span>
                 <span className={styles.agentAddText}>创建 Agent</span>
               </button>
             </div>

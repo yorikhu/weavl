@@ -1,32 +1,26 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
   Coins,
   Plus,
-  FileCheck2,
   Clock,
   Sparkles,
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle2,
   AlertCircle,
-  MoreHorizontal,
   LayoutGrid,
   History,
   Settings,
   BookOpen,
   Image as ImageIcon,
-  Download,
   Upload,
   Bot,
-  Sun,
   Bell,
   User as UserIcon,
-  Wand2,
-  ChevronRight,
 } from "lucide-react";
 import type { RunView } from "@weavl/shared";
 import styles from "./page.module.scss";
@@ -66,9 +60,12 @@ function Topbar() {
           <Bell size={14} />
         </button>
         <button className={styles.creditPill}>
-          <Coins size={12} />45
+          <Coins size={12} />
+          45
         </button>
-        <div className={styles.avatar}><UserIcon size={14} /></div>
+        <div className={styles.avatar}>
+          <UserIcon size={14} />
+        </div>
       </div>
     </div>
   );
@@ -106,7 +103,9 @@ function Tabs({ active, onChange }: { active: Tab; onChange: (t: Tab) => void })
 function ComingSoon({ title }: { title: string }) {
   return (
     <div className={styles.placeholder}>
-      <div className={styles.placeholderIcon}><Sparkles size={24} /></div>
+      <div className={styles.placeholderIcon}>
+        <Sparkles size={24} />
+      </div>
       <div className={styles.placeholderTitle}>{title}</div>
       <div className={styles.placeholderSub}>即将上线 · 当前 MVP 阶段仅总览可用</div>
     </div>
@@ -133,7 +132,12 @@ function OverviewTab({ onGoPreset }: { onGoPreset: () => void }) {
               id: data.id,
               name: data.contentPackage?.fields?.[0]?.value?.slice(0, 24) ?? data.templateId,
               meta: `${data.templateId} · ${data.decisions?.length ?? 0} 决策${data.actualCost ? ` · ¥${data.actualCost}` : ""}`,
-              status: data.status === "succeeded" ? "success" : data.status === "awaiting_confirmation" ? "pending" : "pending",
+              status:
+                data.status === "succeeded"
+                  ? "success"
+                  : data.status === "awaiting_confirmation"
+                    ? "pending"
+                    : "pending",
               time: "刚刚",
             },
           ];
@@ -143,7 +147,9 @@ function OverviewTab({ onGoPreset }: { onGoPreset: () => void }) {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   return (
@@ -178,13 +184,22 @@ function OverviewTab({ onGoPreset }: { onGoPreset: () => void }) {
           <svg className={styles.northChart} viewBox="0 0 280 60" preserveAspectRatio="none">
             <defs>
               <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3"/>
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/>
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
               </linearGradient>
             </defs>
-            <polygon points="0,42 35,38 70,40 105,30 140,32 175,22 210,18 245,12 280,8 280,60 0,60" fill="url(#trendFill)"/>
-            <polyline points="0,42 35,38 70,40 105,30 140,32 175,22 210,18 245,12 280,8" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round"/>
-            <circle cx="280" cy="8" r="3" fill="#f59e0b"/>
+            <polygon
+              points="0,42 35,38 70,40 105,30 140,32 175,22 210,18 245,12 280,8 280,60 0,60"
+              fill="url(#trendFill)"
+            />
+            <polyline
+              points="0,42 35,38 70,40 105,30 140,32 175,22 210,18 245,12 280,8"
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <circle cx="280" cy="8" r="3" fill="#f59e0b" />
           </svg>
         </div>
       </div>
@@ -207,7 +222,10 @@ function OverviewTab({ onGoPreset }: { onGoPreset: () => void }) {
           <div className={styles.recentEmpty}>加载中…</div>
         ) : recent.length === 0 ? (
           <div className={styles.recentEmpty}>
-            暂无任务记录 · <button className={styles.linkBtn} onClick={onGoPreset}>去新建一个 →</button>
+            暂无任务记录 ·{" "}
+            <button className={styles.linkBtn} onClick={onGoPreset}>
+              去新建一个 →
+            </button>
           </div>
         ) : (
           <div className={styles.recentList}>
@@ -233,13 +251,23 @@ function OverviewTab({ onGoPreset }: { onGoPreset: () => void }) {
 }
 
 function MetricCard({
-  label, value, delta, trend,
-}: { label: string; value: string; delta: string; trend: "up" | "down" | "flat" }) {
+  label,
+  value,
+  delta,
+  trend,
+}: {
+  label: string;
+  value: string;
+  delta: string;
+  trend: "up" | "down" | "flat";
+}) {
   return (
     <div className={styles.metricCard}>
       <div className={styles.metricLabel}>{label}</div>
       <div className={styles.metricValue}>{value}</div>
-      <div className={`${styles.metricDelta} ${trend === "up" ? styles.metricUp : trend === "down" ? styles.metricDown : styles.metricFlat}`}>
+      <div
+        className={`${styles.metricDelta} ${trend === "up" ? styles.metricUp : trend === "down" ? styles.metricDown : styles.metricFlat}`}
+      >
         {trend === "up" && <ArrowUpRight size={10} />}
         {trend === "down" && <ArrowDownRight size={10} />}
         {trend === "flat" && <span>—</span>}
@@ -298,19 +326,27 @@ export default function ProfilePage() {
           <div className={styles.shortcuts}>
             <div className={styles.blockLabel}>快捷入口</div>
             <button className={styles.shortcutBtn} onClick={() => router.push("/preset")}>
-              <span className={`${styles.shortcutIcon} ${styles.scAmber}`}><Plus size={12} /></span>
+              <span className={`${styles.shortcutIcon} ${styles.scAmber}`}>
+                <Plus size={12} />
+              </span>
               新建任务
             </button>
             <button className={styles.shortcutBtn} onClick={() => alert("导入素材：即将上线")}>
-              <span className={`${styles.shortcutIcon} ${styles.scBlue}`}><Upload size={12} /></span>
+              <span className={`${styles.shortcutIcon} ${styles.scBlue}`}>
+                <Upload size={12} />
+              </span>
               导入素材
             </button>
             <button className={styles.shortcutBtn} onClick={() => alert("创建品牌库：即将上线")}>
-              <span className={`${styles.shortcutIcon} ${styles.scPink}`}><Plus size={12} /></span>
+              <span className={`${styles.shortcutIcon} ${styles.scPink}`}>
+                <Plus size={12} />
+              </span>
               创建品牌库
             </button>
             <button className={styles.shortcutBtn} onClick={() => alert("Agent 设置：即将上线")}>
-              <span className={`${styles.shortcutIcon} ${styles.scGreen}`}><Bot size={12} /></span>
+              <span className={`${styles.shortcutIcon} ${styles.scGreen}`}>
+                <Bot size={12} />
+              </span>
               Agent 设置
             </button>
           </div>

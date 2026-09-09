@@ -16,9 +16,7 @@ export default function AgentPage() {
               </span>
               <div>
                 <h3 className={styles.botName}>织光官方导演 Agent</h3>
-                <p className={styles.botDesc}>
-                  具备全局上下文感知能力 · 支持精准局部调优与重算
-                </p>
+                <p className={styles.botDesc}>具备全局上下文感知能力 · 支持精准局部调优与重算</p>
               </div>
             </div>
             <div className={styles.online}>
@@ -42,11 +40,7 @@ export default function AgentPage() {
           </div>
 
           <div className={`${styles.inputBar} frost-header`}>
-            <input
-              type="text"
-              placeholder="与织光导演交流创意，按 Enter 发送..."
-              className={styles.input}
-            />
+            <input type="text" placeholder="与织光导演交流创意，按 Enter 发送..." className={styles.input} />
             <button className={styles.sendBtn} aria-label="发送">
               <Send size={16} />
             </button>

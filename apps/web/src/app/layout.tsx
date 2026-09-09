@@ -5,8 +5,7 @@ import "@/styles/globals.scss";
 
 export const metadata: Metadata = {
   title: "织光 · Weavl",
-  description:
-    "AIGC content production studio. Every template is a declarative, model-agnostic workflow pack.",
+  description: "AIGC content production studio. Every template is a declarative, model-agnostic workflow pack.",
 };
 
 export default function RootLayout({

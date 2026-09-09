@@ -85,7 +85,10 @@
   font-family: inherit;
   color: var(--faint-foreground);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 
   &:hover {
     color: var(--foreground);
@@ -125,7 +128,10 @@
   font-family: inherit;
   text-align: left;
   padding: 0;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 
   &:hover {
     border-color: var(--surface-hover-border);
@@ -141,7 +147,9 @@
   box-shadow: 0 0 0 2px rgba(83, 74, 183, 0.08);
 
   &:hover {
-    box-shadow: 0 0 0 2px rgba(83, 74, 183, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06);
+    box-shadow:
+      0 0 0 2px rgba(83, 74, 183, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.06);
   }
 }
 
@@ -178,10 +186,18 @@
   border-radius: 3.5px;
   background: rgba(60, 60, 65, 0.12);
 
-  &[data-kind="llm"] { background: rgba(60, 60, 65, 0.18); }
-  &[data-kind="image"] { background: rgba(60, 60, 65, 0.32); }
-  &[data-kind="video"] { background: rgba(60, 60, 65, 0.45); }
-  &[data-kind="output"] { background: var(--foreground); }
+  &[data-kind="llm"] {
+    background: rgba(60, 60, 65, 0.18);
+  }
+  &[data-kind="image"] {
+    background: rgba(60, 60, 65, 0.32);
+  }
+  &[data-kind="video"] {
+    background: rgba(60, 60, 65, 0.45);
+  }
+  &[data-kind="output"] {
+    background: var(--foreground);
+  }
 }
 
 .body {
@@ -339,7 +355,9 @@
   font-family: inherit;
   color: var(--foreground);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 
   &:hover {
     background: var(--subcard);
@@ -436,8 +454,12 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 推荐卡片按钮（agent 回复后追加） */
@@ -512,7 +534,9 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: filter 0.15s, opacity 0.15s;
+  transition:
+    filter 0.15s,
+    opacity 0.15s;
 
   &:hover:not(:disabled) {
     filter: brightness(1.1);

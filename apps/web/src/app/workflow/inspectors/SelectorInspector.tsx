@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronDown, GripVertical, Plus, Trash2 } from "lucide-react";
 import styles from "./SelectorInspector.module.scss";
 
@@ -17,10 +16,7 @@ export interface SelectorCondition {
   leftType: "str" | "int" | "float" | "bool";
 }
 
-export type Op =
-  | "==" | "!=" | ">" | ">=" | "<" | "<="
-  | "contains" | "not-contains"
-  | "is-empty" | "is-not-empty";
+export type Op = "==" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "not-contains" | "is-empty" | "is-not-empty";
 
 export const OPS: Array<{ value: Op; label: string; compact: string }> = [
   { value: "==", label: "等于", compact: "=" },
@@ -51,17 +47,13 @@ export interface SelectorConfig {
 export function normalizeSelectorConfig(c: Partial<SelectorConfig>): SelectorConfig {
   return {
     description: c.description,
-    branches:
-      c.branches ??
-      [
-        {
-          id: "b1",
-          logic: "and",
-          conditions: [
-            { id: "c1", op: "==", left: "", right: "", leftType: "str" },
-          ],
-        },
-      ],
+    branches: c.branches ?? [
+      {
+        id: "b1",
+        logic: "and",
+        conditions: [{ id: "c1", op: "==", left: "", right: "", leftType: "str" }],
+      },
+    ],
   };
 }
 
@@ -79,8 +71,7 @@ const TYPE_ICONS: Record<SelectorCondition["leftType"], string> = {
 };
 
 export function SelectorInspector({ config, onChange }: Props) {
-  const update = <K extends keyof SelectorConfig>(k: K, v: SelectorConfig[K]) =>
-    onChange({ ...config, [k]: v });
+  const update = <K extends keyof SelectorConfig>(k: K, v: SelectorConfig[K]) => onChange({ ...config, [k]: v });
 
   const addBranch = () => {
     update("branches", [
@@ -88,15 +79,16 @@ export function SelectorInspector({ config, onChange }: Props) {
       {
         id: `b${Date.now().toString(36)}`,
         logic: "and",
-        conditions: [
-          { id: `c${Date.now().toString(36)}`, op: "==", left: "", right: "", leftType: "str" },
-        ],
+        conditions: [{ id: `c${Date.now().toString(36)}`, op: "==", left: "", right: "", leftType: "str" }],
       },
     ]);
   };
 
   const removeBranch = (bIndex: number) =>
-    update("branches", config.branches.filter((_, i) => i !== bIndex));
+    update(
+      "branches",
+      config.branches.filter((_, i) => i !== bIndex),
+    );
 
   const addCond = (bIndex: number) => {
     const next = [...config.branches];
@@ -121,11 +113,7 @@ export function SelectorInspector({ config, onChange }: Props) {
     update("branches", next);
   };
 
-  const updateCond = (
-    bIndex: number,
-    cIndex: number,
-    patch: Partial<SelectorCondition>,
-  ) => {
+  const updateCond = (bIndex: number, cIndex: number, patch: Partial<SelectorCondition>) => {
     const next = [...config.branches];
     const cs = [...next[bIndex]!.conditions];
     cs[cIndex] = { ...cs[cIndex]!, ...patch } as SelectorCondition;
@@ -149,9 +137,7 @@ export function SelectorInspector({ config, onChange }: Props) {
             <header className={styles.ifGroupHead}>
               <div className={styles.ifGroupLeft}>
                 <GripVertical size={12} className={styles.gripIcon} />
-                <span className={styles.ifGroupTitle}>
-                  {bIndex === 0 ? "如果" : "否则如果"}
-                </span>
+                <span className={styles.ifGroupTitle}>{bIndex === 0 ? "如果" : "否则如果"}</span>
                 <span className={styles.priorityTag}>优先级 {bIndex + 1}</span>
               </div>
               <button
@@ -215,11 +201,7 @@ export function SelectorInspector({ config, onChange }: Props) {
 
                       <div className={styles.condField}>
                         <div className={styles.leftInputWrap}>
-                          <span
-                            className={styles.typeIcon}
-                            title={c.leftType}
-                            aria-hidden="true"
-                          >
+                          <span className={styles.typeIcon} title={c.leftType} aria-hidden="true">
                             {TYPE_ICONS[c.leftType]}
                           </span>
                           <input
@@ -241,11 +223,7 @@ export function SelectorInspector({ config, onChange }: Props) {
                             value={c.right}
                             onChange={(e) => updateCond(bIndex, cIndex, { right: e.target.value })}
                           />
-                          <button
-                            className={styles.applyBtn}
-                            type="button"
-                            title="选择变量"
-                          >
+                          <button className={styles.applyBtn} type="button" title="选择变量">
                             <span className={styles.applyIcon}>⊕</span>
                           </button>
                         </div>
@@ -268,12 +246,7 @@ export function SelectorInspector({ config, onChange }: Props) {
               })}
 
               {/* 底部 + 新增 按钮（左缩进 48px 模拟 L 形线位置） */}
-              <button
-                className={styles.condAddBtn}
-                type="button"
-                title="新增条件"
-                onClick={() => addCond(bIndex)}
-              >
+              <button className={styles.condAddBtn} type="button" title="新增条件" onClick={() => addCond(bIndex)}>
                 <Plus size={11} /> 新增
               </button>
             </div>
@@ -288,12 +261,7 @@ export function SelectorInspector({ config, onChange }: Props) {
 
       {/* ============== 添加分支按钮 ============== */}
       <div className={styles.addBranchWrap}>
-        <button
-          className={styles.addBranchBtn}
-          type="button"
-          title="添加分支"
-          onClick={addBranch}
-        >
+        <button className={styles.addBranchBtn} type="button" title="添加分支" onClick={addBranch}>
           <Plus size={12} /> 添加分支
         </button>
       </div>

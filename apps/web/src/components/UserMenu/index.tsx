@@ -1,23 +1,8 @@
 "use client";
 
-import {
-  DropdownMenu as DropdownMenuPrimitive,
-  Switch as SwitchPrimitive,
-} from "radix-ui";
+import { DropdownMenu as DropdownMenuPrimitive, Switch as SwitchPrimitive } from "radix-ui";
 import { useRouter } from "next/navigation";
-import {
-  Bell,
-  Coins,
-  CreditCard,
-  Crown,
-  HardDrive,
-  LogOut,
-  Moon,
-  Settings,
-  Terminal,
-  User,
-  UserCircle2,
-} from "lucide-react";
+import { Bell, CreditCard, Crown, LogOut, Moon, Terminal, User, UserCircle2 } from "lucide-react";
 import { useTheme } from "@/provider/ThemeProvider";
 import styles from "./index.module.scss";
 
@@ -43,11 +28,7 @@ export function UserMenu() {
       </DM.Trigger>
 
       <DM.Portal>
-        <DM.Content
-          sideOffset={8}
-          align="end"
-          className={`${styles.content} glass-strong glass-sheen`}
-        >
+        <DM.Content sideOffset={8} align="end" className={`${styles.content} glass-strong glass-sheen`}>
           {/* 会员头卡 */}
           <div className={`${styles.profileCard} glass`}>
             <div className={styles.profileLeft}>
@@ -81,10 +62,7 @@ export function UserMenu() {
 
           <DM.Separator className={styles.separator} />
 
-          <DM.Item
-            className={styles.item}
-            onSelect={() => router.push("/profile")}
-          >
+          <DM.Item className={styles.item} onSelect={() => router.push("/profile")}>
             <span className={styles.itemLeft}>
               <UserCircle2 size={14} className={styles.itemIcon} />
               个人中心

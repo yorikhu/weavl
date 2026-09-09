@@ -4,29 +4,19 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Bell,
   Bot,
   Bookmark,
   CircleHelp,
-  Coins,
-  CreditCard,
   Crown,
-  HardDrive,
   Heart,
   Layers,
   LayoutGrid,
-  LogOut,
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings,
   ShoppingBag,
-  Terminal,
   Trash2,
-  User,
   Wand2,
 } from "lucide-react";
-import { useTheme } from "@/provider/ThemeProvider";
 import { CreditsBadge } from "@/components/CreditsBadge";
 import { StarburstLogo } from "@/components/StarburstLogo";
 import { UserMenu } from "@/components/UserMenu";
@@ -59,11 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* 品牌行：logo + 标题 + 常显收起按钮 */}
           {collapsed ? (
             // 收起态：logo 位，hover 变展开按钮
-            <button
-              className={styles.logoSlot}
-              onClick={() => setCollapsed(false)}
-              title="展开侧栏"
-            >
+            <button className={styles.logoSlot} onClick={() => setCollapsed(false)} title="展开侧栏">
               <span className={styles.logoSlotRoot}>
                 <span className={styles.logoLayer}>
                   <StarburstLogo size={22} />
@@ -83,11 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className={styles.brandSub}>织光</span>
                 </span>
               </Link>
-              <button
-                className={styles.collapseBtn}
-                onClick={() => setCollapsed(true)}
-                title="收起侧栏"
-              >
+              <button className={styles.collapseBtn} onClick={() => setCollapsed(true)} title="收起侧栏">
                 <PanelLeftClose size={16} />
               </button>
             </div>
@@ -141,9 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ============ 右侧：header + 内容 ============ */}
       <div className={styles.right}>
         <header className={`${styles.header} frost-header`}>
-          <span className={styles.pageTitle}>
-            {NAV_ITEMS.find((i) => i.href === pathname)?.label ?? "Weavl 织光"}
-          </span>
+          <span className={styles.pageTitle}>{NAV_ITEMS.find((i) => i.href === pathname)?.label ?? "Weavl 织光"}</span>
           <div className={styles.headerRight}>
             <button className={styles.proBtn}>
               <Crown size={14} />

@@ -10,11 +10,11 @@
 /* ---------------------------------- 垂直 ---------------------------------- */
 
 /** 已注册的垂直。新增垂直 = 在注册中心加记录，不改核心代码 */
-export type VerticalId = 'ecom' | 'short-drama' | 'local-life' | (string & {});
+export type VerticalId = "ecom" | "short-drama" | "local-life" | (string & {});
 
 /* --------------------------------- 模板包 ---------------------------------- */
 
-export type TemplateCategory = 'image' | 'video' | 'script' | 'voice';
+export type TemplateCategory = "image" | "video" | "script" | "voice";
 
 /** 模板包 = 一个目录：manifest.json + prompts/ + assets/ */
 export interface TemplateManifest {
@@ -34,7 +34,7 @@ export interface TemplateManifest {
   output?: OutputSpec;
   /** 单次运行预估成本（¥）—— 定价与毛利依据 */
   cost: { min: number; max: number };
-  price: 'free' | 'standard' | 'premium';
+  price: "free" | "standard" | "premium";
   /** 模板市场封面 */
   cover?: string;
   /** 示例成片 —— 模板市场的"买家秀" */
@@ -44,11 +44,11 @@ export interface TemplateManifest {
 /* ---------------------------------- 输入 ---------------------------------- */
 
 export type InputDef =
-  | { type: 'text'; name: string; label: string; required?: boolean; placeholder?: string; maxLength?: number }
-  | { type: 'textarea'; name: string; label: string; required?: boolean; placeholder?: string; maxLength?: number }
-  | { type: 'number'; name: string; label: string; required?: boolean; min?: number; max?: number; default?: number }
-  | { type: 'select'; name: string; label: string; required?: boolean; options: { value: string; label: string }[] }
-  | { type: 'image'; name: string; label: string; required?: boolean; accept?: string[] };
+  | { type: "text"; name: string; label: string; required?: boolean; placeholder?: string; maxLength?: number }
+  | { type: "textarea"; name: string; label: string; required?: boolean; placeholder?: string; maxLength?: number }
+  | { type: "number"; name: string; label: string; required?: boolean; min?: number; max?: number; default?: number }
+  | { type: "select"; name: string; label: string; required?: boolean; options: { value: string; label: string }[] }
+  | { type: "image"; name: string; label: string; required?: boolean; accept?: string[] };
 
 /* ---------------------------------- 步骤 ---------------------------------- */
 
@@ -57,48 +57,35 @@ export type InputDef =
  * 步骤间数据通过 outputs 引用传递：{ { step: 'gen-cover'; port: 'image' } }
  */
 export type Step =
-  | { type: 'llm'; id: string; prompt: string; system?: string; model?: ModelRef }
-  | { type: 'image-gen'; id: string; model?: ModelRef; params?: Record<string, unknown> }
-  | { type: 'video-gen'; id: string; model?: ModelRef; params?: Record<string, unknown> }
-  | { type: 'tts'; id: string; voice?: string; model?: ModelRef }
-  | { type: 'ffmpeg'; id: string; op: 'concat' | 'overlay' | 'resize' | 'watermark' }
-  | { type: 'http'; id: string; url: string; method?: 'GET' | 'POST' }
+  | { type: "llm"; id: string; prompt: string; system?: string; model?: ModelRef }
+  | { type: "image-gen"; id: string; model?: ModelRef; params?: Record<string, unknown> }
+  | { type: "video-gen"; id: string; model?: ModelRef; params?: Record<string, unknown> }
+  | { type: "tts"; id: string; voice?: string; model?: ModelRef }
+  | { type: "ffmpeg"; id: string; op: "concat" | "overlay" | "resize" | "watermark" }
+  | { type: "http"; id: string; url: string; method?: "GET" | "POST" }
   /** 预留 Phloem 生态对接 */
-  | { type: 'mcp'; id: string; server: string; tool: string };
+  | { type: "mcp"; id: string; server: string; tool: string };
 
 /* --------------------------------- 模型引用 -------------------------------- */
 
 /** provider 直连（左）或按能力别名解析（右）—— 多模型可切换的核心 */
-export type ModelRef =
-  | { provider: ModelProvider; model: string }
-  | { alias: ModelAlias };
+export type ModelRef = { provider: ModelProvider; model: string } | { alias: ModelAlias };
 
-export type ModelProvider =
-  | 'kling'
-  | 'jimeng'
-  | 'hunyuan'
-  | 'openai'
-  | 'minimax'
-  | (string & {});
+export type ModelProvider = "kling" | "jimeng" | "hunyuan" | "openai" | "minimax" | (string & {});
 
 /** 能力别名：运行时按当前配置解析到具体 provider/model */
-export type ModelAlias =
-  | 'llm'
-  | 'image-gen'
-  | 'video-gen'
-  | 'tts'
-  | (string & {});
+export type ModelAlias = "llm" | "image-gen" | "video-gen" | "tts" | (string & {});
 
 /* ---------------------------------- 运行 ---------------------------------- */
 
 export type RunStatus =
-  | 'pending'
-  | 'running'
+  | "pending"
+  | "running"
   /** 前进到确认门，等待用户选择候选或要求重生成 */
-  | 'awaiting_confirmation'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled';
+  | "awaiting_confirmation"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
 
 /* -------------------------------- 确认门 v2 -------------------------------- */
 
@@ -124,7 +111,7 @@ export interface CandidateArtifact {
   id: string;
   stepId: string;
   /** 文本类候选的内容；图片类为占位描述 */
-  kind: 'text' | 'image' | 'structured';
+  kind: "text" | "image" | "structured";
   content: string;
   /** 差异点标注，如 '测评型' */
   variantLabel?: string;
@@ -135,7 +122,7 @@ export interface CandidateArtifact {
 export interface ConfirmationDecision {
   gate: string;
   /** 采纳的候选 id；regenerate 时为空 */
-  action: 'confirm' | 'edit-confirm' | 'regenerate';
+  action: "confirm" | "edit-confirm" | "regenerate";
   candidateId?: string;
   /** edit-confirm 时的修改稿 / regenerate 时的反馈意见 */
   note?: string;
@@ -147,7 +134,7 @@ export interface ConfirmationDecision {
 /** 输出规范：从步骤产物映射为渠道内容包字段 */
 export interface OutputSpec {
   channel: string;
-  fields: { key: string; label: string; kind: PackageField['kind']; fromStep: string }[];
+  fields: { key: string; label: string; kind: PackageField["kind"]; fromStep: string }[];
 }
 
 /** 内容包 = 面向渠道的最终交付物（版本化） */
@@ -160,7 +147,7 @@ export interface ContentPackage {
   version: number;
   fields: PackageField[];
   /** 导出物清单（文件名 → 内容或 URL） */
-  files: { name: string; kind: 'text' | 'image' | 'pdf'; content: string }[];
+  files: { name: string; kind: "text" | "image" | "pdf"; content: string }[];
   createdAt: string;
 }
 
@@ -168,7 +155,7 @@ export interface ContentPackage {
 export interface PackageField {
   key: string;
   label: string;
-  kind: 'title' | 'body' | 'cover' | 'image' | 'topic' | 'script' | 'advice';
+  kind: "title" | "body" | "cover" | "image" | "topic" | "script" | "advice";
   value: string;
 }
 
@@ -201,7 +188,7 @@ export interface RunView {
 
 /** 从 manifest.id 解析垂直：'ecom.product-image' → 'ecom' */
 export function verticalOf(manifestId: string): VerticalId {
-  const idx = manifestId.indexOf('.');
+  const idx = manifestId.indexOf(".");
   return idx === -1 ? manifestId : manifestId.slice(0, idx);
 }
 

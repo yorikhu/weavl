@@ -36,11 +36,7 @@ export default function ProjectsPage() {
 
         <div className={styles.grid}>
           {PROJECTS.map((p) => (
-            <div
-              key={p.name}
-              className={styles.card}
-              onClick={() => router.push("/canvas")}
-            >
+            <div key={p.name} className={styles.card} onClick={() => router.push("/canvas")}>
               <div className={styles.cardCover}>
                 <Sparkles size={20} />
               </div>

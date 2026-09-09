@@ -15,11 +15,7 @@ type KeepOpenItem = RefObject<HTMLElement | null> | string;
  * 用 capture 阶段抢在画布平移/节点选择之前判断。
  * keepOpen 数组在内部用 ref 缓存以避免 deps 触发 effect 重建。
  */
-export function useClickOutside(
-  active: boolean,
-  keepOpen: KeepOpenItem[],
-  onOutside: () => void,
-) {
+export function useClickOutside(active: boolean, keepOpen: KeepOpenItem[], onOutside: () => void) {
   const keepOpenRef = useRef(keepOpen);
   keepOpenRef.current = keepOpen;
   const onOutsideRef = useRef(onOutside);

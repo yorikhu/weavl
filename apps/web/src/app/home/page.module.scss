@@ -16,9 +16,7 @@
   gap: 12px;
   padding: 36px 20px 24px;
   border-radius: 20px;
-  background:
-    radial-gradient(ellipse 55% 75% at 50% 0%, rgba(83, 74, 183, 0.14), transparent),
-    var(--surface);
+  background: radial-gradient(ellipse 55% 75% at 50% 0%, rgba(83, 74, 183, 0.14), transparent), var(--surface);
   border: 1px solid var(--surface-border);
   text-align: center;
 }
@@ -92,7 +90,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 
   &:hover {
     color: var(--foreground);
@@ -160,7 +160,9 @@
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  transition: border-color 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
 
   &:hover {
     border-color: var(--surface-hover-border);
@@ -170,9 +172,7 @@
 
 .entryCardPrimary {
   flex: 1.9;
-  background:
-    linear-gradient(135deg, rgba(83, 74, 183, 0.22), rgba(83, 74, 183, 0.05)),
-    var(--surface);
+  background: linear-gradient(135deg, rgba(83, 74, 183, 0.22), rgba(83, 74, 183, 0.05)), var(--surface);
   border-color: rgba(127, 119, 221, 0.38);
 
   &:hover {
@@ -296,7 +296,9 @@
   font-family: inherit;
   text-align: left;
   padding: 0;
-  transition: border-color 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
 
   &:hover {
     border-color: var(--surface-hover-border);
@@ -474,7 +476,9 @@
   color: var(--muted-foreground);
   font-size: 10.5px;
   flex-shrink: 0;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 
   .recentRow:hover & {
     color: var(--foreground);
@@ -500,7 +504,9 @@
   gap: 6px;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
 
   &:hover {
     border-color: var(--surface-hover-border);

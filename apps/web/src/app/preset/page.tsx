@@ -2,22 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Bot,
-  Loader2,
-  Plus,
-  Send,
-  Sparkles,
-  Wand2,
-} from "lucide-react";
+import { Bot, Loader2, Plus, Send, Sparkles, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { API } from "@/lib/env";
-import {
-  CATEGORY_TABS,
-  DEFAULT_DISPLAY,
-  TEMPLATE_DISPLAY,
-  type TemplateSummary,
-} from "@/features/preset/display";
+import { CATEGORY_TABS, DEFAULT_DISPLAY, TEMPLATE_DISPLAY, type TemplateSummary } from "@/features/preset/display";
 import styles from "./page.module.scss";
 
 /* ========================================================================
@@ -43,9 +31,9 @@ const QUICK_TOPICS = [
 
 /** 关键词 → 推荐模板 id 映射（mock，未来对接 LLM） */
 const KEYWORD_TO_TEMPLATE: Record<string, string> = {
-  "小红书": "ecom.xhs-note",
-  "种草": "ecom.xhs-note",
-  "图文": "ecom.xhs-note",
+  小红书: "ecom.xhs-note",
+  种草: "ecom.xhs-note",
+  图文: "ecom.xhs-note",
 };
 
 /** Agent 对话消息 */
@@ -212,9 +200,7 @@ export default function PresetMarketPage() {
           </div>
 
           {error && <p className={styles.empty}>模板加载失败，请确认 API 服务已启动</p>}
-          {!error && filtered.length === 0 && (
-            <p className={styles.empty}>该分类暂无预设</p>
-          )}
+          {!error && filtered.length === 0 && <p className={styles.empty}>该分类暂无预设</p>}
 
           <div className={styles.grid}>
             {filtered.map((t) => {
@@ -276,11 +262,7 @@ export default function PresetMarketPage() {
               <p className={styles.topicsTitle}>试试这些：</p>
               <div className={styles.topicsGrid}>
                 {QUICK_TOPICS.map((t) => (
-                  <button
-                    key={t.label}
-                    className={styles.topicChip}
-                    onClick={() => pickTopic(t)}
-                  >
+                  <button key={t.label} className={styles.topicChip} onClick={() => pickTopic(t)}>
                     <span className={styles.topicIcon}>{t.icon}</span>
                     <span>{t.label}</span>
                   </button>
@@ -292,19 +274,14 @@ export default function PresetMarketPage() {
           {/* 对话气泡流 */}
           <div className={styles.chatBody}>
             {chat.map((m) => (
-              <div
-                key={m.id}
-                className={`${styles.bubbleRow} ${m.role === "user" ? styles.bubbleRowUser : ""}`}
-              >
+              <div key={m.id} className={`${styles.bubbleRow} ${m.role === "user" ? styles.bubbleRowUser : ""}`}>
                 {m.role === "agent" && (
                   <span className={styles.bubbleAvatar}>
                     <Wand2 size={11} />
                   </span>
                 )}
                 <div className={styles.bubbleStack}>
-                  <div
-                    className={`${styles.bubble} ${m.role === "user" ? styles.bubbleUser : styles.bubbleAgent}`}
-                  >
+                  <div className={`${styles.bubble} ${m.role === "user" ? styles.bubbleUser : styles.bubbleAgent}`}>
                     {m.text.split("\n").map((line, i) => (
                       <p key={i} className={styles.bubbleLine}>
                         {line}
@@ -313,10 +290,7 @@ export default function PresetMarketPage() {
                   </div>
                   {/* Agent 推荐卡片按钮 */}
                   {m.recommend && (
-                    <button
-                      className={styles.recommendCard}
-                      onClick={() => goTemplate(m.recommend!)}
-                    >
+                    <button className={styles.recommendCard} onClick={() => goTemplate(m.recommend!)}>
                       <Sparkles size={12} />
                       <span>查看「{templates.find((t) => t.id === m.recommend)?.name}」</span>
                     </button>
