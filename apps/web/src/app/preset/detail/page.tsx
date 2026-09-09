@@ -115,7 +115,10 @@ export default function PresetDetailPage() {
       setRunning(true);
       setChat((c) => [
         ...c,
-        { role: "agent", text: `工作流已启动（运行 ${data.id ?? ""}）。状态：${data.status ?? "running"}，我会在这里同步进度。` },
+        {
+          role: "agent",
+          text: `工作流已启动（运行 ${data.id ?? ""}）。状态：${data.status ?? "running"}，我会在这里同步进度。`,
+        },
       ]);
       toast("工作流已启动", "success");
     } catch (e) {
@@ -133,7 +136,6 @@ export default function PresetDetailPage() {
     );
   }
 
-  const display = TEMPLATE_DISPLAY[template.id] ?? DEFAULT_DISPLAY;
   const gateByStep = new Map(template.gates.map((g) => [g.afterStep, g]));
 
   /* 真实 steps 与确认门合并：门跟在对应步骤后，未匹配步骤的门追加末尾 */
@@ -187,7 +189,9 @@ export default function PresetDetailPage() {
           {/* 左栏：工作流 */}
           <section className={styles.flowCard}>
             <div className={styles.flowHead}>
-              <span className={styles.flowIcon}><Sparkles size={12} /></span>
+              <span className={styles.flowIcon}>
+                <Sparkles size={12} />
+              </span>
               <h2 className={styles.flowTitle}>Agent 工作流</h2>
               <span className={styles.flowStat}>
                 {template.totalSteps} 步 · {template.gates.length} 个确认门
@@ -214,9 +218,14 @@ export default function PresetDetailPage() {
                   return (
                     <div key={i} className={styles.gateRow}>
                       <span className={styles.stepBar} style={{ background: "transparent" }} />
-                      <span className={styles.gateMark} style={{ color: row.kindColor }}>◆</span>
+                      <span className={styles.gateMark} style={{ color: row.kindColor }}>
+                        ◆
+                      </span>
                       <span className={styles.gateName}>{row.title}</span>
-                      <span className={styles.gateTag} style={{ borderColor: hexAlpha(row.kindColor, 0.4), color: row.kindColor }}>
+                      <span
+                        className={styles.gateTag}
+                        style={{ borderColor: hexAlpha(row.kindColor, 0.4), color: row.kindColor }}
+                      >
                         人工确认
                       </span>
                     </div>
@@ -236,9 +245,7 @@ export default function PresetDetailPage() {
             <div className={styles.chatBody}>
               {chat.map((m, i) => (
                 <div key={i} className={`${styles.msgRow} ${m.role === "user" ? styles.msgRowUser : ""}`}>
-                  <div className={`${styles.bubble} ${m.role === "user" ? styles.bubbleUser : ""}`}>
-                    {m.text}
-                  </div>
+                  <div className={`${styles.bubble} ${m.role === "user" ? styles.bubbleUser : ""}`}>{m.text}</div>
                 </div>
               ))}
               <div ref={chatEndRef} />
@@ -265,7 +272,10 @@ export default function PresetDetailPage() {
 
         {/* 底部动作条 */}
         <div className={styles.actions}>
-          <button className={styles.previewBtn} onClick={() => router.push(`/workflow?id=${encodeURIComponent(template.id)}`)}>
+          <button
+            className={styles.previewBtn}
+            onClick={() => router.push(`/workflow?id=${encodeURIComponent(template.id)}`)}
+          >
             进入工作流
           </button>
           <button className={styles.startBtn} onClick={startRun} disabled={busy || running}>

@@ -42,25 +42,13 @@ export default function EndInspector({ data, onChange }: Props) {
   const [outputsOpen, setOutputsOpen] = useState(true);
   const [textOpen, setTextOpen] = useState(true);
 
-  const setMode = useCallback(
-    (mode: EndMode) => onChange({ ...data, mode }),
-    [data, onChange],
-  );
-  const setStreaming = useCallback(
-    (streaming: boolean) => onChange({ ...data, streaming }),
-    [data, onChange],
-  );
-  const setText = useCallback(
-    (text: string) => onChange({ ...data, text }),
-    [data, onChange],
-  );
+  const setMode = useCallback((mode: EndMode) => onChange({ ...data, mode }), [data, onChange]);
+  const setStreaming = useCallback((streaming: boolean) => onChange({ ...data, streaming }), [data, onChange]);
+  const setText = useCallback((text: string) => onChange({ ...data, text }), [data, onChange]);
 
   /* 输出变量 CRUD */
   const addOutput = useCallback(() => {
-    const next: EndOutputVar[] = [
-      ...data.outputs,
-      { name: `output${data.outputs.length + 1}`, ref: "" },
-    ];
+    const next: EndOutputVar[] = [...data.outputs, { name: `output${data.outputs.length + 1}`, ref: "" }];
     onChange({ ...data, outputs: next });
   }, [data, onChange]);
   const removeOutput = useCallback(
@@ -96,11 +84,7 @@ export default function EndInspector({ data, onChange }: Props) {
           className={`${styles.modeBtn} ${data.mode === "text" ? styles.modeBtnActive : ""}`}
           onClick={() => setMode("text")}
         >
-          {data.mode === "text" ? (
-            <span className={styles.modeRadio} />
-          ) : (
-            <span className={styles.modeDot} />
-          )}
+          {data.mode === "text" ? <span className={styles.modeRadio} /> : <span className={styles.modeDot} />}
           <span>返回文本</span>
         </button>
       </div>
@@ -108,14 +92,8 @@ export default function EndInspector({ data, onChange }: Props) {
       {/* ============================ 输出变量（variables 模式） ============================ */}
       {data.mode === "variables" && (
         <div className={styles.card}>
-          <header
-            className={styles.cardHead}
-            onClick={() => setOutputsOpen((v) => !v)}
-          >
-            <ChevronDown
-              size={12}
-              className={`${styles.chev} ${outputsOpen ? "" : styles.chevClosed}`}
-            />
+          <header className={styles.cardHead} onClick={() => setOutputsOpen((v) => !v)}>
+            <ChevronDown size={12} className={`${styles.chev} ${outputsOpen ? "" : styles.chevClosed}`} />
             <span className={styles.cardLabel}>输出变量</span>
             <button
               className={styles.addBtn}
@@ -148,11 +126,7 @@ export default function EndInspector({ data, onChange }: Props) {
                         onChange={(e) => updateOutput(i, { ref: e.target.value })}
                       />
                     </div>
-                    <button
-                      className={styles.removeBtn}
-                      onClick={() => removeOutput(i)}
-                      aria-label="删除输出变量"
-                    >
+                    <button className={styles.removeBtn} onClick={() => removeOutput(i)} aria-label="删除输出变量">
                       <Trash2 size={10} />
                     </button>
                   </div>
@@ -173,14 +147,8 @@ export default function EndInspector({ data, onChange }: Props) {
         <>
           {/* 默认输出变量（text 模式下固定一个变量名 "output"，用户可改名） */}
           <div className={styles.card}>
-            <header
-              className={styles.cardHead}
-              onClick={() => setOutputsOpen((v) => !v)}
-            >
-              <ChevronDown
-                size={12}
-                className={`${styles.chev} ${outputsOpen ? "" : styles.chevClosed}`}
-              />
+            <header className={styles.cardHead} onClick={() => setOutputsOpen((v) => !v)}>
+              <ChevronDown size={12} className={`${styles.chev} ${outputsOpen ? "" : styles.chevClosed}`} />
               <span className={styles.cardLabel}>输出变量</span>
             </header>
             {outputsOpen && (
@@ -203,11 +171,7 @@ export default function EndInspector({ data, onChange }: Props) {
                           onChange={(e) => updateOutput(i, { ref: e.target.value })}
                         />
                       </div>
-                      <button
-                        className={styles.removeBtn}
-                        onClick={() => removeOutput(i)}
-                        aria-label="删除输出变量"
-                      >
+                      <button className={styles.removeBtn} onClick={() => removeOutput(i)} aria-label="删除输出变量">
                         <Trash2 size={10} />
                       </button>
                     </div>
@@ -219,14 +183,8 @@ export default function EndInspector({ data, onChange }: Props) {
 
           {/* 回答内容卡片（含流式输出开关） */}
           <div className={styles.card}>
-            <header
-              className={styles.cardHead}
-              onClick={() => setTextOpen((v) => !v)}
-            >
-              <ChevronDown
-                size={12}
-                className={`${styles.chev} ${textOpen ? "" : styles.chevClosed}`}
-              />
+            <header className={styles.cardHead} onClick={() => setTextOpen((v) => !v)}>
+              <ChevronDown size={12} className={`${styles.chev} ${textOpen ? "" : styles.chevClosed}`} />
               <span className={styles.cardLabel}>回答内容</span>
               <div className={styles.headRight}>
                 <span className={styles.switchLabel}>流式输出</span>

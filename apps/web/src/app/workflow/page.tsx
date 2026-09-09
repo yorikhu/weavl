@@ -1,6 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent, type MouseEvent as ReactMouseEvent, type ReactNode, Fragment } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  Fragment,
+} from "react";
 import { createPortal } from "react-dom";
 import { LLMInspector, type LLMConfig } from "./inspectors/LLMInspector";
 import { CodeInspector, type CodeConfig } from "./inspectors/CodeInspector";
@@ -8,11 +18,8 @@ import { SelectorInspector, type SelectorConfig } from "./inspectors/SelectorIns
 import EndInspector, { type EndNodeData } from "./inspectors/EndInspector";
 import Link from "next/link";
 import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
   ChevronDown,
   Coins,
-  Copy,
   Image as ImageIcon,
   Laptop,
   LogIn,
@@ -22,32 +29,18 @@ import {
   Mouse,
   Play,
   Plus,
-  Redo2,
   Search as SearchIcon,
   Sparkles,
-  Undo2,
   Wrench,
   Workflow as WorkflowIcon,
   X,
 } from "lucide-react";
 import { API } from "@/lib/env";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import {
-  STEP_KIND_META,
-  stepKindOf,
-  stepNameOf,
-  type TemplateDetail,
-} from "@/features/preset/display";
+import { STEP_KIND_META, stepKindOf, stepNameOf, type TemplateDetail } from "@/features/preset/display";
 import type { ModelRef } from "@weavl/shared";
-import {
-  BASE_NODES,
-  NODE_GROUPS,
-  NODE_META,
-  TOP_GROUPS,
-  TOP_GROUP_NODES,
-  type NodeTypeMeta,
-} from "./nodeTypes";
-import type { NodeGroup, NodeChip, NodeRow } from "./types";
+import { BASE_NODES, NODE_GROUPS, NODE_META, TOP_GROUPS, TOP_GROUP_NODES, type NodeTypeMeta } from "./nodeTypes";
+import type { NodeGroup, NodeRow } from "./types";
 import styles from "./page.module.scss";
 
 /** 节点卡片的展示数据 */
@@ -193,7 +186,7 @@ export default function WorkflowPage() {
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, [mode, zoomAt, template !== null]);
+  }, [mode, zoomAt, template]);
 
   /* 按下开始平移（鼠标左键 / 触控板单指） */
   const onFlowMouseDown = useCallback(
@@ -207,7 +200,8 @@ export default function WorkflowPage() {
         target.closest(`.${styles.zoomPopover}`) ||
         target.closest(`.${styles.pickerPopover}`) ||
         target.closest(`.${styles.inspector}`)
-      ) return;
+      )
+        return;
       panRef.current = {
         active: true,
         startX: e.clientX,
@@ -276,7 +270,9 @@ export default function WorkflowPage() {
   const [jsonOpen, setJsonOpen] = useState(false);
 
   /** 已计算的连线 path 数据（在 useLayoutEffect 里读 DOM 后存进来，保证拖拽/缩放/平移后路径实时跟随卡片） */
-  const [edgePaths, setEdgePaths] = useState<Record<string, { x1: number; y1: number; x2: number; y2: number; d: string }>>({});
+  const [edgePaths, setEdgePaths] = useState<
+    Record<string, { x1: number; y1: number; x2: number; y2: number; d: string }>
+  >({});
 
   /* Portal tooltip 状态：渲染到 body 根部，彻底摆脱任何 stacking context 限制 */
   const [tip, setTip] = useState<{ text: string; x: number; y: number; place: "top" | "bottom" } | null>(null);
@@ -292,7 +288,13 @@ export default function WorkflowPage() {
   const hideTip = useCallback(() => setTip(null), []);
 
   /* 用户动态添加的节点（快速添加 / 节点库非 start 类型） */
-  interface CustomNode { id: string; type: string; title: string; color: string; tag?: string }
+  interface CustomNode {
+    id: string;
+    type: string;
+    title: string;
+    color: string;
+    tag?: string;
+  }
   const [customNodes, setCustomNodes] = useState<CustomNode[]>([]);
 
   /* 结束节点配置（参考扣子 End 节点：返回变量 / 返回文本） */
@@ -304,9 +306,7 @@ export default function WorkflowPage() {
     batchMode: "single",
     systemPrompt: "",
     userPrompt: "",
-    inputs: [
-      { name: "input", type: "str", required: true },
-    ],
+    inputs: [{ name: "input", type: "str", required: true }],
     batchInputLists: [{ name: "item1", items: "" }],
     visionInputs: [],
     outputFormat: "markdown",
@@ -331,9 +331,7 @@ export default function WorkflowPage() {
       {
         id: "b1",
         logic: "and",
-        conditions: [
-          { id: "c1", op: "==", left: "", right: "", leftType: "str" },
-        ],
+        conditions: [{ id: "c1", op: "==", left: "", right: "", leftType: "str" }],
       },
     ],
   });
@@ -356,11 +354,22 @@ export default function WorkflowPage() {
 
   /* ====================== 连线（显式边） ====================== */
   /** 边：source → target。初始 null = 按节点顺序自动连（首次渲染时固化） */
-  interface FlowEdge { id: string; source: string; target: string; /** 选择器分支 key（"if_0"/"if_1"/.../"else"，普通边为空）；用于连线从对应端口精确引出 + 同源同分支去重 */ branch?: string }
+  interface FlowEdge {
+    id: string;
+    source: string;
+    target: string;
+    /** 选择器分支 key（"if_0"/"if_1"/.../"else"，普通边为空）；用于连线从对应端口精确引出 + 同源同分支去重 */ branch?: string;
+  }
   const [edges, setEdges] = useState<FlowEdge[] | null>(null);
 
   /** 待连接状态：从某节点 output 端口拖出时记录（选择器分支端口带 branch），鼠标到目标 input 端口松手时建边 */
-  const [pendingEdge, setPendingEdge] = useState<{ from: string; x: number; y: number; valid: boolean; hoverTarget: string | null } | null>(null);
+  const [pendingEdge, setPendingEdge] = useState<{
+    from: string;
+    x: number;
+    y: number;
+    valid: boolean;
+    hoverTarget: string | null;
+  } | null>(null);
   const pendingRef = useRef<{ from: string; branch?: string } | null>(null);
   /** 成功建边后，目标节点短暂闪光（用 ref 拿 setTimeout，避免闭包过期） */
   const flashTimerRef = useRef<{ id: string; timer: number } | null>(null);
@@ -368,26 +377,38 @@ export default function WorkflowPage() {
 
   /** 建/删边 —— edges 初始为 null（fallback 按 nodes 顺序生成连线），首次增删前先固化
      空白模式 setEdges([]) 后 edges = [] → 直接返回 []，不触发 fallback */
-  const currentEdges = useCallback((nodeList: NodeRow[]): FlowEdge[] => {
-    if (edges !== null) return edges;
-    return nodeList.slice(0, -1).map((n, i) => {
-      const next = nodeList[i + 1];
-      return next ? { id: `${n.id}->${next.id}`, source: n.id, target: next.id } : null;
-    }).filter(Boolean as unknown as (v: unknown) => boolean) as FlowEdge[];
-  }, [edges]);
+  const currentEdges = useCallback(
+    (nodeList: NodeRow[]): FlowEdge[] => {
+      if (edges !== null) return edges;
+      return nodeList
+        .slice(0, -1)
+        .map((n, i) => {
+          const next = nodeList[i + 1];
+          return next ? { id: `${n.id}->${next.id}`, source: n.id, target: next.id } : null;
+        })
+        .filter(Boolean as unknown as (v: unknown) => boolean) as FlowEdge[];
+    },
+    [edges],
+  );
 
-  const connectNodes = useCallback((source: string, target: string, nodeList: NodeRow[], branch?: string) => {
-    if (source === target) return;
-    setEdges(() => {
-      const list = currentEdges(nodeList);
-      if (list.some((e) => e.source === source && e.target === target && e.branch === branch)) return list; // 去重（同源同分支同目标）
-      return [...list, { id: `${source}${branch ? ":" + branch : ""}->${target}`, source, target, branch }];
-    });
-  }, [currentEdges]);
+  const connectNodes = useCallback(
+    (source: string, target: string, nodeList: NodeRow[], branch?: string) => {
+      if (source === target) return;
+      setEdges(() => {
+        const list = currentEdges(nodeList);
+        if (list.some((e) => e.source === source && e.target === target && e.branch === branch)) return list; // 去重（同源同分支同目标）
+        return [...list, { id: `${source}${branch ? ":" + branch : ""}->${target}`, source, target, branch }];
+      });
+    },
+    [currentEdges],
+  );
 
-  const removeEdge = useCallback((edgeId: string, nodeList: NodeRow[]) => {
-    setEdges(() => currentEdges(nodeList).filter((e) => e.id !== edgeId));
-  }, [currentEdges]);
+  const removeEdge = useCallback(
+    (edgeId: string, nodeList: NodeRow[]) => {
+      setEdges(() => currentEdges(nodeList).filter((e) => e.id !== edgeId));
+    },
+    [currentEdges],
+  );
 
   /** output 端口 mousedown：开始拉线（坐标用事件实际位置初始化，避免闪向左上角的虚线）；选择器双端口带 branch */
   const onPortOutDown = useCallback((e: ReactMouseEvent<HTMLSpanElement>, nodeId: string, branch?: string) => {
@@ -409,28 +430,46 @@ export default function WorkflowPage() {
   }, []);
 
   /* 快速添加：拉线松手在空白处 → 弹出节点选择，选中后新建节点于松手点并自动连线 */
-  const [quickAdd, setQuickAdd] = useState<{ clientX: number; clientY: number; canvasX: number; canvasY: number; from: string; branch?: string } | null>(null);
+  const [quickAdd, setQuickAdd] = useState<{
+    clientX: number;
+    clientY: number;
+    canvasX: number;
+    canvasY: number;
+    from: string;
+    branch?: string;
+  } | null>(null);
   const quickAddRef = useRef<HTMLDivElement | null>(null);
   useClickOutside(!!quickAdd, [quickAddRef], () => setQuickAdd(null));
 
   /** 快速添加里选中某类型 → 新建节点于松手点 + 自动连线 */
-  const onQuickAddPick = useCallback((type: string) => {
-    const qa = quickAdd;
-    if (!qa) return;
-    const meta = NODE_META[type];
-    if (!meta) return;
-    const newId = `${type}-${Date.now().toString(36)}`;
-    setCustomNodes((cs) => [...cs, { id: newId, type, title: meta.name, color: meta.color }]);
-    /* 位置：松手点，往左偏半个卡片宽让视觉居中 */
-    setPositions((p) => ({ ...p, [newId]: { x: Math.max(0, qa.canvasX - 80), y: Math.max(0, qa.canvasY - 40) } }));
-    /* 自动连线 + 触发目标节点闪光动画 */
-    setEdges(() => {
-      const list = currentEdges(nodesRef.current);
-      return [...list, { id: `${qa.from}${qa.branch ? ":" + qa.branch : ""}->${newId}`, source: qa.from, target: newId, branch: qa.branch }];
-    });
-    flashNode(newId);
-    setQuickAdd(null);
-  }, [quickAdd, currentEdges, flashNode]);
+  const onQuickAddPick = useCallback(
+    (type: string) => {
+      const qa = quickAdd;
+      if (!qa) return;
+      const meta = NODE_META[type];
+      if (!meta) return;
+      const newId = `${type}-${Date.now().toString(36)}`;
+      setCustomNodes((cs) => [...cs, { id: newId, type, title: meta.name, color: meta.color }]);
+      /* 位置：松手点，往左偏半个卡片宽让视觉居中 */
+      setPositions((p) => ({ ...p, [newId]: { x: Math.max(0, qa.canvasX - 80), y: Math.max(0, qa.canvasY - 40) } }));
+      /* 自动连线 + 触发目标节点闪光动画 */
+      setEdges(() => {
+        const list = currentEdges(nodesRef.current);
+        return [
+          ...list,
+          {
+            id: `${qa.from}${qa.branch ? ":" + qa.branch : ""}->${newId}`,
+            source: qa.from,
+            target: newId,
+            branch: qa.branch,
+          },
+        ];
+      });
+      flashNode(newId);
+      setQuickAdd(null);
+    },
+    [quickAdd, currentEdges, flashNode],
+  );
 
   /** 拉线中：mousemove 更新临时虚线 + 实时计算 valid/hoverTarget，mouseup 命中节点建边 + 目标节点闪光；空白处弹快速添加 */
   useEffect(() => {
@@ -443,7 +482,9 @@ export default function WorkflowPage() {
       const target = port?.dataset.nodeId ?? card?.dataset.nodeId ?? null;
       if (!target || target === from) return { target: null, valid: false };
       const existing = currentEdges(nodesRef.current);
-      const dup = existing.some((e2) => e2.source === from && e2.target === target && e2.branch === pendingRef.current?.branch);
+      const dup = existing.some(
+        (e2) => e2.source === from && e2.target === target && e2.branch === pendingRef.current?.branch,
+      );
       return { target, valid: !dup };
     };
     const onMove = (e: MouseEvent) => {
@@ -484,24 +525,27 @@ export default function WorkflowPage() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [pendingEdge !== null, connectNodes, currentEdges, pendingEdge, flashNode]);
+  }, [connectNodes, currentEdges, pendingEdge, flashNode]);
 
   /* 删除节点（键盘 Delete + 双击 ⋯ 共用） */
-  const deleteNode = useCallback((id: string) => {
-    if (id === "start") {
-      setStartNode(null);
-    } else if (customNodes.some((c) => c.id === id)) {
-      setCustomNodes((cs) => cs.filter((c) => c.id !== id));
-    } else {
-      setDeletedStepIds((s) => new Set(s).add(id));
-    }
-    setEdges((es) => (es ?? []).filter((e2) => e2.source !== id && e2.target !== id));
-    setPositions((p) => {
-      const next = { ...p };
-      delete next[id];
-      return next;
-    });
-  }, [customNodes]);
+  const deleteNode = useCallback(
+    (id: string) => {
+      if (id === "start") {
+        setStartNode(null);
+      } else if (customNodes.some((c) => c.id === id)) {
+        setCustomNodes((cs) => cs.filter((c) => c.id !== id));
+      } else {
+        setDeletedStepIds((s) => new Set(s).add(id));
+      }
+      setEdges((es) => (es ?? []).filter((e2) => e2.source !== id && e2.target !== id));
+      setPositions((p) => {
+        const next = { ...p };
+        delete next[id];
+        return next;
+      });
+    },
+    [customNodes],
+  );
 
   /* 选中边：点边选中（高亮），按 Delete/Backspace 才删除 */
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -529,15 +573,18 @@ export default function WorkflowPage() {
   /** 节点 mousedown：开始拖拽（不触发画布平移 —— onFlowMouseDown 已排除 nodeCard）
       base 取 positions[id] ?? initialPos(id, index)：初始节点没进 positions state，
       若 fallback 到 (0,0) 会在点下的瞬间跳到画布左上角 */
-  const onNodeDragStart = useCallback((e: ReactMouseEvent<HTMLDivElement>, id: string, index: number) => {
-    /* 左键才拖 */
-    if (e.button !== 0) return;
-    const pos = positions[id] ?? initialPos(id, index);
-    dragRef.current = { id, startX: e.clientX, startY: e.clientY, baseX: pos.x, baseY: pos.y };
-    draggedRef.current = false;
-    setDraggingId(id);
-    e.stopPropagation();
-  }, [positions, initialPos]);
+  const onNodeDragStart = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>, id: string, index: number) => {
+      /* 左键才拖 */
+      if (e.button !== 0) return;
+      const pos = positions[id] ?? initialPos(id, index);
+      dragRef.current = { id, startX: e.clientX, startY: e.clientY, baseX: pos.x, baseY: pos.y };
+      draggedRef.current = false;
+      setDraggingId(id);
+      e.stopPropagation();
+    },
+    [positions, initialPos],
+  );
 
   /* 全局 mousemove / mouseup：处理节点拖拽（与画布平移同一组监听） */
   useEffect(() => {
@@ -576,7 +623,8 @@ export default function WorkflowPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      const inEditable = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      const inEditable =
+        !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
       if (e.key === "Escape") {
         setSelectedNodeId(null);
         setSelectedEdgeId(null);
@@ -599,36 +647,36 @@ export default function WorkflowPage() {
 
   /* 选中节点：点击"开始"以外的节点用 step:${s.id}
      开始：只添加卡片不自动打开抽屉 —— 抽屉在用户点击卡片时才打开 */
-  const onPickNode = useCallback((id: string) => {
-    if (id === "start") {
-      if (!startNode) {
-        setStartNode({
-          id: "start",
-          vars: [
-            { name: "query", type: "str", required: true },
-            { name: "user_id", type: "str", required: false },
-          ],
-        });
+  const onPickNode = useCallback(
+    (id: string) => {
+      if (id === "start") {
+        if (!startNode) {
+          setStartNode({
+            id: "start",
+            vars: [
+              { name: "query", type: "str", required: true },
+              { name: "user_id", type: "str", required: false },
+            ],
+          });
+        }
+      } else {
+        /* 其它"已实现"节点（大模型等）作为 customNode 追加到画布末尾 */
+        const meta = NODE_META[id];
+        if (meta) {
+          const newId = `${id}-${Date.now().toString(36)}`;
+          setCustomNodes((cs) => [...cs, { id: newId, type: meta.id, title: meta.name, color: meta.color }]);
+          /* 位置：最后一个节点右下方（避免重叠） */
+          setPositions((p) => {
+            const baseX = 120 + Math.max(nodesRef.current.length - 1, 0) * (NODE_W + 64);
+            return { ...p, [newId]: { x: baseX, y: 160 } };
+          });
+        }
       }
-    } else {
-      /* 其它"已实现"节点（大模型等）作为 customNode 追加到画布末尾 */
-      const meta = NODE_META[id];
-      if (meta) {
-        const newId = `${id}-${Date.now().toString(36)}`;
-        setCustomNodes((cs) => [
-          ...cs,
-          { id: newId, type: meta.id, title: meta.name, color: meta.color },
-        ]);
-        /* 位置：最后一个节点右下方（避免重叠） */
-        setPositions((p) => {
-          const baseX = 120 + Math.max(nodesRef.current.length - 1, 0) * (NODE_W + 64);
-          return { ...p, [newId]: { x: baseX, y: 160 } };
-        });
-      }
-    }
-    setPickerOpen(false);
-    setPickerSearch("");
-  }, [startNode]);
+      setPickerOpen(false);
+      setPickerSearch("");
+    },
+    [startNode],
+  );
 
   /* 点击画布空白处取消选中 */
   const onFlowBgClick = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
@@ -642,7 +690,8 @@ export default function WorkflowPage() {
       target.closest(`.${styles.pickerPopover}`) ||
       target.closest(`.${styles.inspector}`) ||
       target.closest(`.${styles.toolbarBar}`)
-    ) return;
+    )
+      return;
     if (panRef.current.active) return; /* 拖动中不取消 */
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
@@ -660,7 +709,17 @@ export default function WorkflowPage() {
         kindColor: "#534ab7",
         step: 0,
         rows: [
-          { key: "输入", value: startNode.vars.map((v) => `${v.type === "int" ? "int" : v.type === "float" ? "num" : v.type === "bool" ? "bool" : "str"}. ${v.name}`).join(" ") || "—", type: "plain" },
+          {
+            key: "输入",
+            value:
+              startNode.vars
+                .map(
+                  (v) =>
+                    `${v.type === "int" ? "int" : v.type === "float" ? "num" : v.type === "bool" ? "bool" : "str"}. ${v.name}`,
+                )
+                .join(" ") || "—",
+            type: "plain",
+          },
         ],
       });
     }
@@ -676,12 +735,9 @@ export default function WorkflowPage() {
           kindLabel: meta.label,
           kindColor: meta.color,
           step: startNode ? i + 1 : i,
-          rows: buildNodeRows(s, i, template.steps.length),
+          rows: buildNodeRows(s, i),
           // LLM 节点走分组 chips 渲染（参考扣子节点卡：输入/输出/模型/技能 分段）
-          groups:
-            s.type === "llm"
-              ? buildLLMGroups(s, i, template.steps.length, startNode)
-              : undefined,
+          groups: s.type === "llm" ? buildLLMGroups(s) : undefined,
         });
       });
     }
@@ -876,13 +932,15 @@ export default function WorkflowPage() {
           ) : (
             <div
               className={styles.flow}
-              style={{
-                transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
-                transformOrigin: "0 0",
-                width: CANVAS_W,
-                height: CANVAS_H,
-                position: "relative",
-              } as CSSProperties}
+              style={
+                {
+                  transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+                  transformOrigin: "0 0",
+                  width: CANVAS_W,
+                  height: CANVAS_H,
+                  position: "relative",
+                } as CSSProperties
+              }
             >
               {/* 连线层：SVG 是 .flow 的子元素，会自动跟随 .flow 的 transform
                  （translate(view.x, view.y) scale(view.scale)），所以这里不再额外设置 transform。
@@ -897,7 +955,7 @@ export default function WorkflowPage() {
                 {currentEdges(nodes).map((e) => {
                   const p = edgePaths[e.id];
                   if (!p) return null;
-                  const { x1, y1, x2, y2, d } = p;
+                  const { x2, y2, d } = p;
                   return (
                     <g
                       key={e.id}
@@ -918,44 +976,41 @@ export default function WorkflowPage() {
                   );
                 })}
                 {/* 拉线中的临时虚线：从 source 输出端口到鼠标位置，按 valid 切绿/红色 */}
-                {pendingEdge && (() => {
-                  const sIdx = nodes.findIndex((n) => n.id === pendingEdge.from);
-                  if (sIdx < 0) return null;
-                  const from = positions[pendingEdge.from] ?? initialPos(pendingEdge.from, sIdx);
-                  const wrapRect = flowRef.current?.getBoundingClientRect();
-                  const mx = wrapRect
-                    ? (pendingEdge.x - wrapRect.left - view.x) / view.scale
-                    : from.x + NODE_W;
-                  const my = wrapRect
-                    ? (pendingEdge.y - wrapRect.top - view.y) / view.scale
-                    : from.y + NODE_H / 2;
-                  const branch = pendingRef.current?.branch;
-                  let x1 = from.x + NODE_W;
-                  let y1 = from.y + NODE_H / 2;
-                  if (branch && flowRef.current) {
-                    const portEl = flowRef.current.querySelector(
-                      `[data-port-out][data-branch="${CSS.escape(branch)}"][data-node-id="${pendingEdge.from}"]`,
-                    ) as HTMLElement | null;
-                    if (portEl) {
-                      const pr = portEl.getBoundingClientRect();
-                      const fr = flowRef.current.getBoundingClientRect();
-                      x1 = (pr.left + pr.width / 2 - fr.left) / view.scale;
-                      y1 = (pr.top + pr.height / 2 - fr.top) / view.scale;
-                    } else {
-                      const sc = selectorConfigs[pendingEdge.from];
-                      const totalIf = sc ? sc.branches.length : 1;
-                      const bi = branch === "else" ? totalIf : parseInt(branch.replace(/^if_/, "") || "0", 10);
-                      x1 = from.x + SELECTOR_W;
-                      y1 = from.y + SELECTOR_HEAD_H + 14 + bi * SELECTOR_ROW_H;
+                {pendingEdge &&
+                  (() => {
+                    const sIdx = nodes.findIndex((n) => n.id === pendingEdge.from);
+                    if (sIdx < 0) return null;
+                    const from = positions[pendingEdge.from] ?? initialPos(pendingEdge.from, sIdx);
+                    const wrapRect = flowRef.current?.getBoundingClientRect();
+                    const mx = wrapRect ? (pendingEdge.x - wrapRect.left - view.x) / view.scale : from.x + NODE_W;
+                    const my = wrapRect ? (pendingEdge.y - wrapRect.top - view.y) / view.scale : from.y + NODE_H / 2;
+                    const branch = pendingRef.current?.branch;
+                    let x1 = from.x + NODE_W;
+                    let y1 = from.y + NODE_H / 2;
+                    if (branch && flowRef.current) {
+                      const portEl = flowRef.current.querySelector(
+                        `[data-port-out][data-branch="${CSS.escape(branch)}"][data-node-id="${pendingEdge.from}"]`,
+                      ) as HTMLElement | null;
+                      if (portEl) {
+                        const pr = portEl.getBoundingClientRect();
+                        const fr = flowRef.current.getBoundingClientRect();
+                        x1 = (pr.left + pr.width / 2 - fr.left) / view.scale;
+                        y1 = (pr.top + pr.height / 2 - fr.top) / view.scale;
+                      } else {
+                        const sc = selectorConfigs[pendingEdge.from];
+                        const totalIf = sc ? sc.branches.length : 1;
+                        const bi = branch === "else" ? totalIf : parseInt(branch.replace(/^if_/, "") || "0", 10);
+                        x1 = from.x + SELECTOR_W;
+                        y1 = from.y + SELECTOR_HEAD_H + 14 + bi * SELECTOR_ROW_H;
+                      }
                     }
-                  }
-                  return (
-                    <path
-                      className={`${styles.edgePending} ${pendingEdge.valid ? styles.edgePendingValid : styles.edgePendingInvalid}`}
-                      d={smoothstepPath(x1, y1, mx, my)}
-                    />
-                  );
-                })()}
+                    return (
+                      <path
+                        className={`${styles.edgePending} ${pendingEdge.valid ? styles.edgePendingValid : styles.edgePendingInvalid}`}
+                        d={smoothstepPath(x1, y1, mx, my)}
+                      />
+                    );
+                  })()}
               </svg>
 
               {/* 节点层：绝对定位，可自由拖拽 */}
@@ -1057,17 +1112,27 @@ export default function WorkflowPage() {
                           const sc = selectorConfigs[n.id] ?? defaultSelectorConfig();
                           const branches = sc.branches;
                           const compactOp = (op?: string) =>
-                            op === "==" ? "="
-                            : op === "!=" ? "≠"
-                            : op === ">" ? ">"
-                            : op === ">=" ? "≥"
-                            : op === "<" ? "<"
-                            : op === "<=" ? "≤"
-                            : op === "contains" ? "包含"
-                            : op === "not-contains" ? "不包含"
-                            : op === "is-empty" ? "为空"
-                            : op === "is-not-empty" ? "不为空"
-                            : "=";
+                            op === "=="
+                              ? "="
+                              : op === "!="
+                                ? "≠"
+                                : op === ">"
+                                  ? ">"
+                                  : op === ">="
+                                    ? "≥"
+                                    : op === "<"
+                                      ? "<"
+                                      : op === "<="
+                                        ? "≤"
+                                        : op === "contains"
+                                          ? "包含"
+                                          : op === "not-contains"
+                                            ? "不包含"
+                                            : op === "is-empty"
+                                              ? "为空"
+                                              : op === "is-not-empty"
+                                                ? "不为空"
+                                                : "=";
                           const condText = (c: { left: string; op: string; right: string }) =>
                             c.left || c.right ? `${c.left || "…"} ${compactOp(c.op)} ${c.right || "…"}` : "";
                           const condBoxText = (c: { left: string; op: string; right: string }) =>
@@ -1089,11 +1154,13 @@ export default function WorkflowPage() {
                                         const isFirst = ci === 0;
                                         return (
                                           <div key={c.id} className={styles.nodeSelectorCondRow}>
-                                            {!isFirst && (
-                                              <span className={styles.nodeSelectorLogic}>{logicLabel}</span>
-                                            )}
+                                            {!isFirst && <span className={styles.nodeSelectorLogic}>{logicLabel}</span>}
                                             <div className={styles.nodeSelectorCond}>
-                                              <span className={text ? styles.nodeSelectorCondText : styles.nodeSelectorCondTextDim}>
+                                              <span
+                                                className={
+                                                  text ? styles.nodeSelectorCondText : styles.nodeSelectorCondTextDim
+                                                }
+                                              >
                                                 {text || "设置条件…"}
                                               </span>
                                             </div>
@@ -1136,59 +1203,67 @@ export default function WorkflowPage() {
                         })()}
                       </div>
                     ) : (
-                    <div className={styles.nodeBody}>
-                      {n.groups && n.groups.length > 0 ? (
-                        n.groups.map((g, gi) => (
-                          <div key={gi} className={styles.nodeGroup}>
-                            <div className={styles.nodeGroupLabel}>{g.label}</div>
-                            <div className={styles.nodeGroupChips}>
-                              {g.chips.map((c, ci) => (
-                                <span
-                                  key={ci}
-                                  className={`${styles.nodeGroupChip} ${c.variant === "model" ? styles.nodeGroupChipModel : ""} ${c.variant === "skill" ? styles.nodeGroupChipSkill : ""}`}
-                                >
-                                  {c.variant === "model" && (
-                                    <span className={styles.nodeGroupIcon}>{c.icon ?? "✦"}</span>
+                      <div className={styles.nodeBody}>
+                        {n.groups && n.groups.length > 0
+                          ? n.groups.map((g, gi) => (
+                              <div key={gi} className={styles.nodeGroup}>
+                                <div className={styles.nodeGroupLabel}>{g.label}</div>
+                                <div className={styles.nodeGroupChips}>
+                                  {g.chips.map((c, ci) => (
+                                    <span
+                                      key={ci}
+                                      className={`${styles.nodeGroupChip} ${c.variant === "model" ? styles.nodeGroupChipModel : ""} ${c.variant === "skill" ? styles.nodeGroupChipSkill : ""}`}
+                                    >
+                                      {c.variant === "model" && (
+                                        <span className={styles.nodeGroupIcon}>{c.icon ?? "✦"}</span>
+                                      )}
+                                      {c.variant === "skill" && (
+                                        <span className={styles.nodeGroupIcon}>{c.icon ?? "⚡"}</span>
+                                      )}
+                                      {c.type && c.variant === "default" && (
+                                        <span className={styles.nodeGroupType}>{c.type}</span>
+                                      )}
+                                      <span className={styles.nodeGroupLabelText}>{c.label}</span>
+                                      {c.warning && (
+                                        <span className={styles.nodeGroupWarning} aria-label="警告">
+                                          !
+                                        </span>
+                                      )}
+                                    </span>
+                                  ))}
+                                  {g.trailing === "more" && (
+                                    <button className={styles.nodeGroupTrailing} aria-label="更多">
+                                      ⋯
+                                    </button>
                                   )}
-                                  {c.variant === "skill" && (
-                                    <span className={styles.nodeGroupIcon}>{c.icon ?? "⚡"}</span>
+                                  {g.trailing === "add" && (
+                                    <button className={styles.nodeGroupAdd} aria-label="添加">
+                                      +
+                                    </button>
                                   )}
-                                  {c.type && c.variant === "default" && (
-                                    <span className={styles.nodeGroupType}>{c.type}</span>
+                                </div>
+                              </div>
+                            ))
+                          : n.rows.map((r, k) => (
+                              <div key={k} className={styles.nodeRow}>
+                                <span className={styles.nodeKey}>{r.key}</span>
+                                <span className={styles.nodeVal}>
+                                  {r.type === "chipAccent" && (
+                                    <span className={`${styles.nodeChip} ${styles.nodeChipAccent}`}>{r.value}</span>
                                   )}
-                                  <span className={styles.nodeGroupLabelText}>{c.label}</span>
-                                  {c.warning && <span className={styles.nodeGroupWarning} aria-label="警告">!</span>}
+                                  {r.type === "chipMuted" && <span className={styles.nodeChip}>{r.value}</span>}
+                                  {r.type === "plain" && r.value}
                                 </span>
-                              ))}
-                              {g.trailing === "more" && (
-                                <button className={styles.nodeGroupTrailing} aria-label="更多">⋯</button>
-                              )}
-                              {g.trailing === "add" && (
-                                <button className={styles.nodeGroupAdd} aria-label="添加">+</button>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        n.rows.map((r, k) => (
-                          <div key={k} className={styles.nodeRow}>
-                            <span className={styles.nodeKey}>{r.key}</span>
-                            <span className={styles.nodeVal}>
-                              {r.type === "chipAccent" && <span className={`${styles.nodeChip} ${styles.nodeChipAccent}`}>{r.value}</span>}
-                              {r.type === "chipMuted" && <span className={styles.nodeChip}>{r.value}</span>}
-                              {r.type === "plain" && r.value}
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                              </div>
+                            ))}
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
           )}
-            </div>
+        </div>
       </main>
 
       {/* 快速添加菜单：拉线松手在空白处弹出（fixed 定位于松手点） */}
@@ -1200,18 +1275,22 @@ export default function WorkflowPage() {
         >
           <div className={styles.quickAddTitle}>添加节点并连接</div>
           <div className={styles.quickAddGrid}>
-            {[NODE_META.start, TOP_GROUP_NODES.llm, ...BASE_NODES.filter((b) => b.id !== "start"), ...NODE_GROUPS.flatMap((g) => g.items.slice(0, 3))].filter((m): m is NodeTypeMeta => !!m).slice(0, 10).map((meta) => (
-              <button
-                key={meta.id}
-                className={styles.quickAddItem}
-                onClick={() => onQuickAddPick(meta.id)}
-              >
-                <span className={styles.quickAddIcon} style={{ background: meta.color }}>
-                  <meta.icon size={14} />
-                </span>
-                <span className={styles.quickAddName}>{meta.name}</span>
-              </button>
-            ))}
+            {[
+              NODE_META.start,
+              TOP_GROUP_NODES.llm,
+              ...BASE_NODES.filter((b) => b.id !== "start"),
+              ...NODE_GROUPS.flatMap((g) => g.items.slice(0, 3)),
+            ]
+              .filter((m): m is NodeTypeMeta => !!m)
+              .slice(0, 10)
+              .map((meta) => (
+                <button key={meta.id} className={styles.quickAddItem} onClick={() => onQuickAddPick(meta.id)}>
+                  <span className={styles.quickAddIcon} style={{ background: meta.color }}>
+                    <meta.icon size={14} />
+                  </span>
+                  <span className={styles.quickAddName}>{meta.name}</span>
+                </button>
+              ))}
           </div>
           <button className={styles.quickAddCancel} onClick={() => setQuickAdd(null)}>
             取消
@@ -1230,26 +1309,24 @@ export default function WorkflowPage() {
               className={styles.inspectorIcon}
               style={{ background: selectedNode.kind === "start" ? "#534ab7" : selectedNode.kindColor }}
             >
-              {selectedNode.kind === "start" ? "▶" : selectedNode.kind === "end" ? "↪" : (KIND_ACCENT[selectedNode.kind]?.icon ?? "✦")}
+              {selectedNode.kind === "start"
+                ? "▶"
+                : selectedNode.kind === "end"
+                  ? "↪"
+                  : (KIND_ACCENT[selectedNode.kind]?.icon ?? "✦")}
             </span>
             <div className={styles.inspectorTitleWrap}>
               <span className={styles.inspectorTitle}>{selectedNode.title}</span>
               {selectedNode.kind === "start" && <span className={styles.inspectorTag}>触发器</span>}
               {selectedNode.kind === "end" && endNode && (
-                <span className={styles.inspectorTag}>
-                  {endNode.mode === "variables" ? "返回变量" : "返回文本"}
-                </span>
+                <span className={styles.inspectorTag}>{endNode.mode === "variables" ? "返回变量" : "返回文本"}</span>
               )}
               {selectedNode.kind === "llm" && <span className={styles.inspectorTag}>大模型</span>}
               {selectedNode.kind === "code" && <span className={styles.inspectorTag}>代码</span>}
               {selectedNode.kind === "selector" && <span className={styles.inspectorTag}>选择器</span>}
             </div>
             <div className={styles.inspectorHeadRight}>
-              <button
-                className={styles.inspectorIconBtn}
-                aria-label="关闭"
-                onClick={() => setSelectedNodeId(null)}
-              >
+              <button className={styles.inspectorIconBtn} aria-label="关闭" onClick={() => setSelectedNodeId(null)}>
                 <X size={14} />
               </button>
             </div>
@@ -1265,9 +1342,7 @@ export default function WorkflowPage() {
                 onChange={(e) => setStartNode({ ...startNode, description: e.target.value })}
                 rows={2}
               />
-              <span className={styles.inspectorDescCount}>
-                {(startNode.description ?? "").length}/100
-              </span>
+              <span className={styles.inspectorDescCount}>{(startNode.description ?? "").length}/100</span>
             </div>
           ) : selectedNode.kind === "end" && endNode ? (
             <div className={styles.inspectorDescEditable}>
@@ -1393,213 +1468,194 @@ export default function WorkflowPage() {
 
       {/* 底部工具条 —— 与顶栏并列、flex-shrink:0；画布缩放完全不影响其位置 */}
       <div className={styles.toolbar}>
-          <div className={styles.toolbarBar}>
-            {/* 交互模式切换（鼠标 / 触控板） */}
-            <button
-              ref={modeBtnRef}
-              className={`${styles.toolbarIconBtn} ${styles.touchpadBtn} ${modeOpen ? styles.touchpadBtnActive : ""}`}
-              aria-label="交互模式"
-              onClick={() => setModeOpen((v) => !v)}
-            >
-              {mode === "trackpad" ? <Laptop size={14} /> : <Mouse size={14} />}
-              <ChevronDown size={9} />
+        <div className={styles.toolbarBar}>
+          {/* 交互模式切换（鼠标 / 触控板） */}
+          <button
+            ref={modeBtnRef}
+            className={`${styles.toolbarIconBtn} ${styles.touchpadBtn} ${modeOpen ? styles.touchpadBtnActive : ""}`}
+            aria-label="交互模式"
+            onClick={() => setModeOpen((v) => !v)}
+          >
+            {mode === "trackpad" ? <Laptop size={14} /> : <Mouse size={14} />}
+            <ChevronDown size={9} />
 
-              {/* 弹层：两种交互模式选择 */}
-              {modeOpen && (
-                <div ref={modeRef} className={styles.modePopover}>
-                  <h3 className={styles.modeTitle}>交互模式</h3>
-                  <div className={styles.modeOptions}>
-                    <button
-                      className={`${styles.modeOption} ${mode === "mouse" ? styles.modeOptionActive : ""}`}
-                      onClick={() => {
-                        setMode("mouse");
-                        setModeOpen(false);
-                      }}
-                    >
-                      <Mouse size={32} strokeWidth={1.4} />
-                      <span className={styles.modeOptionName}>鼠标友好模式</span>
-                      <span className={styles.modeOptionDesc}>鼠标左键拖动画布，滚轮缩放</span>
-                    </button>
-                    <button
-                      className={`${styles.modeOption} ${mode === "trackpad" ? styles.modeOptionActive : ""}`}
-                      onClick={() => {
-                        setMode("trackpad");
-                        setModeOpen(false);
-                      }}
-                    >
-                      <Laptop size={32} strokeWidth={1.4} />
-                      <span className={styles.modeOptionName}>触控板友好模式</span>
-                      <span className={styles.modeOptionDesc}>
-                        双指同向移动拖动，双指张开捏合缩放
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </button>
-
-            {/* 缩放比例 —— 实时跟随 view.scale，点击弹层选择档位 */}
-            <div className={styles.zoomWrap} ref={zoomRef}>
-              <button
-                ref={zoomBtnRef}
-                className={`${styles.toolbarSelect} ${styles.zoomBtn}`}
-                onClick={() => setZoomOpen((v) => !v)}
-                aria-label="缩放比例"
-              >
-                {zoomPercent}%
-                <ChevronDown size={10} />
-              </button>
-              {zoomOpen && (
-                <div className={styles.zoomPopover}>
-                  {ZOOM_STEPS.map((p) => (
-                    <button
-                      key={p}
-                      className={`${styles.zoomOption} ${p === zoomPercent ? styles.zoomOptionActive : ""}`}
-                      onClick={() => {
-                        setScale(p);
-                        setZoomOpen(false);
-                      }}
-                    >
-                      {p}%
-                      {p === 100 && <span className={styles.zoomHint}>重置</span>}
-                    </button>
-                  ))}
-                  <div className={styles.zoomDivider} />
+            {/* 弹层：两种交互模式选择 */}
+            {modeOpen && (
+              <div ref={modeRef} className={styles.modePopover}>
+                <h3 className={styles.modeTitle}>交互模式</h3>
+                <div className={styles.modeOptions}>
                   <button
-                    className={styles.zoomOption}
+                    className={`${styles.modeOption} ${mode === "mouse" ? styles.modeOptionActive : ""}`}
                     onClick={() => {
-                      setView({ scale: 1, x: 0, y: 0 });
+                      setMode("mouse");
+                      setModeOpen(false);
+                    }}
+                  >
+                    <Mouse size={32} strokeWidth={1.4} />
+                    <span className={styles.modeOptionName}>鼠标友好模式</span>
+                    <span className={styles.modeOptionDesc}>鼠标左键拖动画布，滚轮缩放</span>
+                  </button>
+                  <button
+                    className={`${styles.modeOption} ${mode === "trackpad" ? styles.modeOptionActive : ""}`}
+                    onClick={() => {
+                      setMode("trackpad");
+                      setModeOpen(false);
+                    }}
+                  >
+                    <Laptop size={32} strokeWidth={1.4} />
+                    <span className={styles.modeOptionName}>触控板友好模式</span>
+                    <span className={styles.modeOptionDesc}>双指同向移动拖动，双指张开捏合缩放</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </button>
+
+          {/* 缩放比例 —— 实时跟随 view.scale，点击弹层选择档位 */}
+          <div className={styles.zoomWrap} ref={zoomRef}>
+            <button
+              ref={zoomBtnRef}
+              className={`${styles.toolbarSelect} ${styles.zoomBtn}`}
+              onClick={() => setZoomOpen((v) => !v)}
+              aria-label="缩放比例"
+            >
+              {zoomPercent}%
+              <ChevronDown size={10} />
+            </button>
+            {zoomOpen && (
+              <div className={styles.zoomPopover}>
+                {ZOOM_STEPS.map((p) => (
+                  <button
+                    key={p}
+                    className={`${styles.zoomOption} ${p === zoomPercent ? styles.zoomOptionActive : ""}`}
+                    onClick={() => {
+                      setScale(p);
                       setZoomOpen(false);
                     }}
                   >
-                    适应画布
+                    {p}%{p === 100 && <span className={styles.zoomHint}>重置</span>}
                   </button>
+                ))}
+                <div className={styles.zoomDivider} />
+                <button
+                  className={styles.zoomOption}
+                  onClick={() => {
+                    setView({ scale: 1, x: 0, y: 0 });
+                    setZoomOpen(false);
+                  }}
+                >
+                  适应画布
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 注释 · 优化布局 · 导出为图片 · 缩略图 */}
+          <button className={styles.toolbarIconBtn} aria-label="注释">
+            <MessageSquareText size={14} />
+          </button>
+          <button className={styles.toolbarIconBtn} aria-label="优化布局">
+            <Wrench size={14} />
+          </button>
+          <button className={styles.toolbarIconBtn} aria-label="导出为图片">
+            <ImageIcon size={14} />
+          </button>
+          <button className={styles.toolbarIconBtn} aria-label="缩略图">
+            <Maximize2 size={14} />
+          </button>
+
+          <span className={styles.toolbarDivider} />
+
+          {/* 添加节点（弹出节点库） */}
+          <div className={styles.pickerWrap}>
+            <button ref={pickerBtnRef} className={styles.addNodeBtn} onClick={() => setPickerOpen((v) => !v)}>
+              <Plus size={12} /> 添加节点
+            </button>
+            {pickerOpen && (
+              <div ref={pickerRef} className={styles.pickerPopover}>
+                <div className={styles.pickerSearch}>
+                  <SearchIcon size={14} className={styles.pickerSearchIcon} />
+                  <input
+                    className={styles.pickerSearchInput}
+                    placeholder="搜索节点、插件、工作流"
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    autoFocus
+                  />
                 </div>
-              )}
-            </div>
 
-            {/* 注释 · 优化布局 · 导出为图片 · 缩略图 */}
-            <button className={styles.toolbarIconBtn} aria-label="注释">
-              <MessageSquareText size={14} />
-            </button>
-            <button className={styles.toolbarIconBtn} aria-label="优化布局">
-              <Wrench size={14} />
-            </button>
-            <button className={styles.toolbarIconBtn} aria-label="导出为图片">
-              <ImageIcon size={14} />
-            </button>
-            <button className={styles.toolbarIconBtn} aria-label="缩略图">
-              <Maximize2 size={14} />
-            </button>
+                <div className={styles.pickerScroll}>
+                  {filteredBases.length > 0 && (
+                    <div className={styles.pickerGroup}>
+                      {filteredBases.map((n) => (
+                        <PickerItem key={n.id} meta={n} onClick={() => onPickNode(n.id)} />
+                      ))}
+                    </div>
+                  )}
 
-            <span className={styles.toolbarDivider} />
+                  {filteredTops.length > 0 && (
+                    <div className={styles.pickerTopRow}>
+                      {filteredTops.map((g) => {
+                        const meta = TOP_GROUP_NODES[g.id as keyof typeof TOP_GROUP_NODES];
+                        return <PickerItem key={g.id} meta={meta} onClick={() => onPickNode(g.id)} />;
+                      })}
+                    </div>
+                  )}
 
-            {/* 添加节点（弹出节点库） */}
-            <div className={styles.pickerWrap}>
-              <button
-                ref={pickerBtnRef}
-                className={styles.addNodeBtn}
-                onClick={() => setPickerOpen((v) => !v)}
-              >
-                <Plus size={12} /> 添加节点
-              </button>
-              {pickerOpen && (
-                <div ref={pickerRef} className={styles.pickerPopover}>
-                  <div className={styles.pickerSearch}>
-                    <SearchIcon size={14} className={styles.pickerSearchIcon} />
-                    <input
-                      className={styles.pickerSearchInput}
-                      placeholder="搜索节点、插件、工作流"
-                      value={pickerSearch}
-                      onChange={(e) => setPickerSearch(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className={styles.pickerScroll}>
-                    {filteredBases.length > 0 && (
-                      <div className={styles.pickerGroup}>
-                        {filteredBases.map((n) => (
-                          <PickerItem
-                            key={n.id}
-                            meta={n}
-                            onClick={() => onPickNode(n.id)}
-                          />
+                  {filteredGroups.map((g) => (
+                    <div key={g.category} className={styles.pickerSection}>
+                      <h4 className={styles.pickerSectionTitle}>{g.category}</h4>
+                      <div className={styles.pickerGrid}>
+                        {g.items.map((n) => (
+                          <PickerItem key={n.id} meta={n} onClick={() => onPickNode(n.id)} />
                         ))}
                       </div>
-                    )}
+                    </div>
+                  ))}
 
-                    {filteredTops.length > 0 && (
-                      <div className={styles.pickerTopRow}>
-                        {filteredTops.map((g) => {
-                          const meta = TOP_GROUP_NODES[g.id as keyof typeof TOP_GROUP_NODES];
-                          return (
-                            <PickerItem
-                              key={g.id}
-                              meta={meta}
-                              onClick={() => onPickNode(g.id)}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {filteredGroups.map((g) => (
-                      <div key={g.category} className={styles.pickerSection}>
-                        <h4 className={styles.pickerSectionTitle}>{g.category}</h4>
-                        <div className={styles.pickerGrid}>
-                          {g.items.map((n) => (
-                            <PickerItem
-                              key={n.id}
-                              meta={n}
-                              onClick={() => onPickNode(n.id)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-
-                    {filteredBases.length === 0 && filteredTops.length === 0 && filteredGroups.length === 0 && (
-                      <div className={styles.pickerEmpty}>没有匹配的节点</div>
-                    )}
-                  </div>
+                  {filteredBases.length === 0 && filteredTops.length === 0 && filteredGroups.length === 0 && (
+                    <div className={styles.pickerEmpty}>没有匹配的节点</div>
+                  )}
                 </div>
-              )}
-            </div>
-            <button className={styles.debugBtn} aria-label="调试">
-              <Wrench size={13} />
-            </button>
-            <button className={styles.runBtn}>
-              <Play size={12} /> 试运行
-            </button>
+              </div>
+            )}
           </div>
+          <button className={styles.debugBtn} aria-label="调试">
+            <Wrench size={13} />
+          </button>
+          <button className={styles.runBtn}>
+            <Play size={12} /> 试运行
+          </button>
+        </div>
       </div>
 
       {/* Portal tooltip —— 渲染到 body 根部，z-index 最高，彻底避免被任何 stacking context 遮住 */}
-      {tip && typeof document !== "undefined" && createPortal(
-        <div
-          style={{
-            position: "fixed",
-            left: tip.x,
-            top: tip.y,
-            transform: tip.place === "top" ? "translate(-50%, -100%)" : "translate(-50%, 0)",
-            zIndex: 9999,
-            padding: "4px 10px",
-            background: "var(--surface)",
-            color: "var(--foreground)",
-            fontSize: 11.5,
-            fontWeight: 500,
-            border: "1px solid var(--surface-border)",
-            borderRadius: 6,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.22)",
-          }}
-        >
-          {tip.text}
-        </div>,
-        document.body,
-      )}
+      {tip &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: tip.x,
+              top: tip.y,
+              transform: tip.place === "top" ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+              zIndex: 9999,
+              padding: "4px 10px",
+              background: "var(--surface)",
+              color: "var(--foreground)",
+              fontSize: 11.5,
+              fontWeight: 500,
+              border: "1px solid var(--surface-border)",
+              borderRadius: 6,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.22)",
+            }}
+          >
+            {tip.text}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -1607,13 +1663,7 @@ export default function WorkflowPage() {
 /* ============================== 子组件 ============================== */
 
 /** 节点库里的一个条目（图标 + 名称 + 描述） */
-function PickerItem({
-  meta,
-  onClick,
-}: {
-  meta: NodeTypeMeta;
-  onClick: () => void;
-}) {
+function PickerItem({ meta, onClick }: { meta: NodeTypeMeta; onClick: () => void }) {
   const Icon = meta.icon;
   return (
     <button
@@ -1621,10 +1671,7 @@ function PickerItem({
       onClick={onClick}
       title={meta.implemented ? meta.desc : "（仅展示）"}
     >
-      <span
-        className={styles.pickerItemIcon}
-        style={{ background: meta.color }}
-      >
+      <span className={styles.pickerItemIcon} style={{ background: meta.color }}>
         <Icon size={18} strokeWidth={1.8} />
       </span>
       <span className={styles.pickerItemText}>
@@ -1691,13 +1738,21 @@ function StartInspector({
 
   /** 打开时预填当前 vars（作为示例/编辑起点） */
   const openJson = useCallback(() => {
-    setJsonText(JSON.stringify({ inputs: vars.map((v) => ({
-      name: v.name,
-      type: v.type,
-      required: v.required,
-      ...(v.default ? { default: v.default } : {}),
-      ...(v.description ? { description: v.description } : {}),
-    })) }, null, 2));
+    setJsonText(
+      JSON.stringify(
+        {
+          inputs: vars.map((v) => ({
+            name: v.name,
+            type: v.type,
+            required: v.required,
+            ...(v.default ? { default: v.default } : {}),
+            ...(v.description ? { description: v.description } : {}),
+          })),
+        },
+        null,
+        2,
+      ),
+    );
     setJsonError(null);
     setJsonOpen(true);
   }, [vars, setJsonOpen]);
@@ -1713,17 +1768,19 @@ function StartInspector({
         setJsonError("格式应为对象 { inputs: [...] } 或数组");
         return;
       }
-      const next = list.map((it: { name?: unknown; type?: unknown; required?: unknown; default?: unknown; description?: unknown }) => {
-        const t = String(it.type ?? "str");
-        const type: "int" | "str" | "bool" | "float" = t === "int" || t === "bool" || t === "float" ? t : "str";
-        return {
-          name: typeof it.name === "string" && it.name.trim() ? it.name : "var",
-          type,
-          required: !!it.required,
-          default: it.default != null ? String(it.default) : undefined,
-          description: typeof it.description === "string" ? it.description : undefined,
-        };
-      });
+      const next = list.map(
+        (it: { name?: unknown; type?: unknown; required?: unknown; default?: unknown; description?: unknown }) => {
+          const t = String(it.type ?? "str");
+          const type: "int" | "str" | "bool" | "float" = t === "int" || t === "bool" || t === "float" ? t : "str";
+          return {
+            name: typeof it.name === "string" && it.name.trim() ? it.name : "var",
+            type,
+            required: !!it.required,
+            default: it.default != null ? String(it.default) : undefined,
+            description: typeof it.description === "string" ? it.description : undefined,
+          };
+        },
+      );
       onChange(next);
       closeJson();
     } catch (e) {
@@ -1768,9 +1825,7 @@ function StartInspector({
                   <button
                     className={styles.inspectorGroupBtn}
                     aria-label="添加变量"
-                    onClick={() =>
-                      onChange([...vars, { name: `var${vars.length + 1}`, type: "str", required: true }])
-                    }
+                    onClick={() => onChange([...vars, { name: `var${vars.length + 1}`, type: "str", required: true }])}
                   >
                     <Plus size={12} />
                   </button>
@@ -1785,91 +1840,93 @@ function StartInspector({
                 </div>
                 {vars.map((v, i) => (
                   <Fragment key={i}>
-                  <div className={styles.inspectorVarRow}>
-                    <input
-                      className={styles.inspectorVarInput}
-                      value={v.name}
-                      onChange={(e) => {
-                        const next = [...vars];
-                        next[i] = { ...v, name: e.target.value };
-                        onChange(next);
-                      }}
-                    />
-                    <select
-                      className={styles.inspectorVarSelect}
-                      value={v.type}
-                      onChange={(e) => {
-                        const next = [...vars];
-                        next[i] = { ...v, type: e.target.value as typeof v.type };
-                        onChange(next);
-                      }}
-                    >
-                      <option value="int">int. Integer</option>
-                      <option value="str">str. String</option>
-                      <option value="float">num. Number</option>
-                      <option value="bool">bool. Boolean</option>
-                    </select>
-                    <button
-                      className={`${styles.inspectorCheck} ${v.required ? styles.inspectorCheckOn : ""}`}
-                      onClick={() => {
-                        const next = [...vars];
-                        next[i] = { ...v, required: !v.required };
-                        onChange(next);
-                      }}
-                      aria-label="必填"
-                    >
-                      {v.required ? "✓" : ""}
-                    </button>
-                    <div className={styles.inspectorVarActions}>
-                      <button
-                        className={`${styles.inspectorIconBtnSm} ${expandedVars.has(i) ? styles.inspectorIconBtnSmActive : ""}`}
-                        aria-label={expandedVars.has(i) ? "收起" : "展开参数"}
-                        onClick={() => toggleExpandVar(i)}
-                        onMouseEnter={(e) => showTip(e.currentTarget, expandedVars.has(i) ? "收起" : "展开参数", "top")}
-                        onMouseLeave={hideTip}
+                    <div className={styles.inspectorVarRow}>
+                      <input
+                        className={styles.inspectorVarInput}
+                        value={v.name}
+                        onChange={(e) => {
+                          const next = [...vars];
+                          next[i] = { ...v, name: e.target.value };
+                          onChange(next);
+                        }}
+                      />
+                      <select
+                        className={styles.inspectorVarSelect}
+                        value={v.type}
+                        onChange={(e) => {
+                          const next = [...vars];
+                          next[i] = { ...v, type: e.target.value as typeof v.type };
+                          onChange(next);
+                        }}
                       >
-                        {expandedVars.has(i) ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
-                      </button>
+                        <option value="int">int. Integer</option>
+                        <option value="str">str. String</option>
+                        <option value="float">num. Number</option>
+                        <option value="bool">bool. Boolean</option>
+                      </select>
                       <button
-                        className={styles.inspectorIconBtnSm}
-                        aria-label="删除"
-                        onClick={() => onChange(vars.filter((_, k) => k !== i))}
+                        className={`${styles.inspectorCheck} ${v.required ? styles.inspectorCheckOn : ""}`}
+                        onClick={() => {
+                          const next = [...vars];
+                          next[i] = { ...v, required: !v.required };
+                          onChange(next);
+                        }}
+                        aria-label="必填"
                       >
-                        <X size={11} />
+                        {v.required ? "✓" : ""}
                       </button>
-                    </div>
-                  </div>
-                  {/* 展开：默认值 + 描述 */}
-                  {expandedVars.has(i) && (
-                    <div className={styles.inspectorVarExpand}>
-                      <div className={styles.inspectorVarField}>
-                        <label className={styles.inspectorVarFieldLabel}>默认值</label>
-                        <input
-                          className={styles.inspectorVarFieldInput}
-                          placeholder="参数默认值，在没有传入该参数时，将使用默认值"
-                          value={v.default ?? ""}
-                          onChange={(e) => {
-                            const next = [...vars];
-                            next[i] = { ...v, default: e.target.value };
-                            onChange(next);
-                          }}
-                        />
-                      </div>
-                      <div className={styles.inspectorVarField}>
-                        <label className={styles.inspectorVarFieldLabel}>描述</label>
-                        <input
-                          className={styles.inspectorVarFieldInput}
-                          placeholder="帮助大模型准确了解参数的作用"
-                          value={v.description ?? ""}
-                          onChange={(e) => {
-                            const next = [...vars];
-                            next[i] = { ...v, description: e.target.value };
-                            onChange(next);
-                          }}
-                        />
+                      <div className={styles.inspectorVarActions}>
+                        <button
+                          className={`${styles.inspectorIconBtnSm} ${expandedVars.has(i) ? styles.inspectorIconBtnSmActive : ""}`}
+                          aria-label={expandedVars.has(i) ? "收起" : "展开参数"}
+                          onClick={() => toggleExpandVar(i)}
+                          onMouseEnter={(e) =>
+                            showTip(e.currentTarget, expandedVars.has(i) ? "收起" : "展开参数", "top")
+                          }
+                          onMouseLeave={hideTip}
+                        >
+                          {expandedVars.has(i) ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+                        </button>
+                        <button
+                          className={styles.inspectorIconBtnSm}
+                          aria-label="删除"
+                          onClick={() => onChange(vars.filter((_, k) => k !== i))}
+                        >
+                          <X size={11} />
+                        </button>
                       </div>
                     </div>
-                  )}
+                    {/* 展开：默认值 + 描述 */}
+                    {expandedVars.has(i) && (
+                      <div className={styles.inspectorVarExpand}>
+                        <div className={styles.inspectorVarField}>
+                          <label className={styles.inspectorVarFieldLabel}>默认值</label>
+                          <input
+                            className={styles.inspectorVarFieldInput}
+                            placeholder="参数默认值，在没有传入该参数时，将使用默认值"
+                            value={v.default ?? ""}
+                            onChange={(e) => {
+                              const next = [...vars];
+                              next[i] = { ...v, default: e.target.value };
+                              onChange(next);
+                            }}
+                          />
+                        </div>
+                        <div className={styles.inspectorVarField}>
+                          <label className={styles.inspectorVarFieldLabel}>描述</label>
+                          <input
+                            className={styles.inspectorVarFieldInput}
+                            placeholder="帮助大模型准确了解参数的作用"
+                            value={v.description ?? ""}
+                            onChange={(e) => {
+                              const next = [...vars];
+                              next[i] = { ...v, description: e.target.value };
+                              onChange(next);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </Fragment>
                 ))}
               </div>
@@ -1877,9 +1934,7 @@ function StartInspector({
           </>
         ) : (
           <>
-            <div className={styles.inspectorHint}>
-              完成设置后需进行发布操作，定时任务才能生效。
-            </div>
+            <div className={styles.inspectorHint}>完成设置后需进行发布操作，定时任务才能生效。</div>
             <details open={triggerOpen} className={styles.inspectorGroup}>
               <summary
                 className={styles.inspectorGroupHead}
@@ -1893,7 +1948,9 @@ function StartInspector({
                   <button
                     className={styles.inspectorGroupBtn}
                     aria-label="单步试运行"
-                    onClick={(e) => { e.stopPropagation(); /* TODO 单步试运行 */ }}
+                    onClick={(e) => {
+                      e.stopPropagation(); /* TODO 单步试运行 */
+                    }}
                   >
                     <Play size={11} />
                   </button>
@@ -1901,7 +1958,10 @@ function StartInspector({
                     className={`${styles.inspectorSwitch} ${triggerEnabled ? styles.inspectorSwitchOn : ""}`}
                     aria-label="启用"
                     aria-pressed={triggerEnabled}
-                    onClick={(e) => { e.stopPropagation(); toggleTrigger(!triggerEnabled); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTrigger(!triggerEnabled);
+                    }}
                   >
                     <span />
                   </button>
@@ -1912,12 +1972,7 @@ function StartInspector({
                   时区<span className={styles.inspectorReq}>*</span>
                 </label>
                 <div className={styles.tzWrap}>
-                  <button
-                    ref={tzBtnRef}
-                    className={styles.tzBtn}
-                    onClick={() => setTzOpen((v) => !v)}
-                    type="button"
-                  >
+                  <button ref={tzBtnRef} className={styles.tzBtn} onClick={() => setTzOpen((v) => !v)} type="button">
                     <span className={styles.tzBtnText}>{tzLabel(tz)}</span>
                     <ChevronDown size={11} />
                   </button>
@@ -1959,7 +2014,9 @@ function StartInspector({
                               }}
                             >
                               {z.iana === tz && <span className={styles.tzCheck}>✓</span>}
-                              <span>{z.cn} - {z.iana}</span>
+                              <span>
+                                {z.cn} - {z.iana}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -1994,7 +2051,15 @@ function StartInspector({
                       <div className={styles.inspectorParamKey}>
                         {v.name}
                         <span className={styles.inspectorReq}>*</span>
-                        <span className={styles.inspectorParamType}>{v.type === "int" ? "Integer" : v.type === "float" ? "Number" : v.type === "bool" ? "Boolean" : "String"}</span>
+                        <span className={styles.inspectorParamType}>
+                          {v.type === "int"
+                            ? "Integer"
+                            : v.type === "float"
+                              ? "Number"
+                              : v.type === "bool"
+                                ? "Boolean"
+                                : "String"}
+                        </span>
                       </div>
                       <input
                         className={styles.inspectorParamInput}
@@ -2021,13 +2086,17 @@ function StartInspector({
             </header>
             <div className={styles.jsonModalBody}>
               <p className={styles.jsonModalHint}>
-                粘贴 JSON 数组或 <code>{`{ inputs: [...] }`}</code>，格式：<br />
+                粘贴 JSON 数组或 <code>{`{ inputs: [...] }`}</code>，格式：
+                <br />
                 <code>{`[{"name":"query","type":"str","required":true}, ...]`}</code>
               </p>
               <textarea
                 className={styles.jsonModalTextarea}
                 value={jsonText}
-                onChange={(e) => { setJsonText(e.target.value); setJsonError(null); }}
+                onChange={(e) => {
+                  setJsonText(e.target.value);
+                  setJsonError(null);
+                }}
                 spellCheck={false}
                 autoFocus
               />
@@ -2059,7 +2128,9 @@ function StepInspector({ node }: { node: NodeRow }) {
             <div key={i} className={styles.inspectorMetaRow}>
               <span className={styles.inspectorMetaKey}>{r.key}</span>
               <span className={styles.inspectorMetaVal}>
-                {r.type === "chipAccent" && <span className={`${styles.nodeChip} ${styles.nodeChipAccent}`}>{r.value}</span>}
+                {r.type === "chipAccent" && (
+                  <span className={`${styles.nodeChip} ${styles.nodeChipAccent}`}>{r.value}</span>
+                )}
                 {r.type === "chipMuted" && <span className={styles.nodeChip}>{r.value}</span>}
                 {r.type === "plain" && r.value}
               </span>
@@ -2067,13 +2138,10 @@ function StepInspector({ node }: { node: NodeRow }) {
           ))}
         </div>
       </div>
-      <div className={styles.inspectorHint}>
-        {node.kindLabel} 节点的详细配置即将上线。
-      </div>
+      <div className={styles.inspectorHint}>{node.kindLabel} 节点的详细配置即将上线。</div>
     </div>
   );
 }
-
 
 /** step.model → 展示文本（兼容 ModelRef 的两种形态） */
 function modelLabel(model: ModelRef | undefined): string {
@@ -2099,156 +2167,229 @@ function smoothstepPath(x1: number, y1: number, x2: number, y2: number): string 
 
 /* ============================== 时区数据（完整版） ============================== */
 /* 30+ UTC 偏移、80+ IANA 时区，按偏移升序排列（负 → 正） */
-interface TzEntry { iana: string; cn: string }
+interface TzEntry {
+  iana: string;
+  cn: string;
+}
 const TIMEZONES: Array<{ offset: number; label: string; zones: TzEntry[] }> = [
-  { offset: -660, label: "UTC-11:00", zones: [
-    { iana: "Pacific/Niue", cn: "纽埃时间" },
-    { iana: "Pacific/Midway", cn: "萨摩亚标准时间" },
-    { iana: "Pacific/Pago_Pago", cn: "萨摩亚标准时间" },
-  ]},
-  { offset: -600, label: "UTC-10:00", zones: [
-    { iana: "America/Adak", cn: "阿达克时间" },
-    { iana: "Pacific/Honolulu", cn: "夏威夷标准时间" },
-  ]},
-  { offset: -570, label: "UTC-09:30", zones: [
-    { iana: "Pacific/Marquesas", cn: "马克萨斯时间" },
-  ]},
-  { offset: -540, label: "UTC-09:00", zones: [
-    { iana: "America/Anchorage", cn: "阿拉斯加标准时间" },
-    { iana: "Pacific/Gambier", cn: "甘比尔时间" },
-  ]},
-  { offset: -480, label: "UTC-08:00", zones: [
-    { iana: "America/Los_Angeles", cn: "美国太平洋时间" },
-    { iana: "America/Tijuana", cn: "下加利福尼亚时间" },
-    { iana: "America/Vancouver", cn: "太平洋时间" },
-  ]},
-  { offset: -420, label: "UTC-07:00", zones: [
-    { iana: "America/Denver", cn: "山地标准时间" },
-    { iana: "America/Phoenix", cn: "山地标准时间" },
-    { iana: "America/Edmonton", cn: "山地时间" },
-  ]},
-  { offset: -360, label: "UTC-06:00", zones: [
-    { iana: "America/Chicago", cn: "美国中部时间" },
-    { iana: "America/Mexico_City", cn: "墨西哥时间" },
-  ]},
-  { offset: -300, label: "UTC-05:00", zones: [
-    { iana: "America/New_York", cn: "美国东部时间" },
-    { iana: "America/Toronto", cn: "东部时间" },
-  ]},
-  { offset: -240, label: "UTC-04:00", zones: [
-    { iana: "America/Halifax", cn: "大西洋时间" },
-    { iana: "America/Santiago", cn: "智利时间" },
-  ]},
-  { offset: -180, label: "UTC-03:00", zones: [
-    { iana: "America/Sao_Paulo", cn: "巴西利亚时间" },
-    { iana: "America/Argentina/Buenos_Aires", cn: "阿根廷时间" },
-  ]},
-  { offset: -150, label: "UTC-02:30", zones: [
-    { iana: "America/St_Johns", cn: "纽芬兰时间" },
-  ]},
-  { offset: -120, label: "UTC-02:00", zones: [
-    { iana: "Atlantic/South_Georgia", cn: "南乔治亚时间" },
-  ]},
-  { offset: -60, label: "UTC-01:00", zones: [
-    { iana: "Atlantic/Azores", cn: "亚速尔时间" },
-    { iana: "Atlantic/Cape_Verde", cn: "佛得角时间" },
-  ]},
-  { offset: 0, label: "UTC+00:00", zones: [
-    { iana: "Europe/London", cn: "格林威治标准时间" },
-    { iana: "Atlantic/Reykjavik", cn: "冰岛时间" },
-    { iana: "Africa/Casablanca", cn: "卡萨布兰卡时间" },
-  ]},
-  { offset: 60, label: "UTC+01:00", zones: [
-    { iana: "Europe/Paris", cn: "中欧标准时间" },
-    { iana: "Europe/Berlin", cn: "中欧时间" },
-    { iana: "Africa/Lagos", cn: "西非时间" },
-  ]},
-  { offset: 120, label: "UTC+02:00", zones: [
-    { iana: "Europe/Athens", cn: "东欧时间" },
-    { iana: "Africa/Cairo", cn: "东欧时间" },
-    { iana: "Europe/Helsinki", cn: "东欧时间" },
-    { iana: "Asia/Jerusalem", cn: "以色列标准时间" },
-  ]},
-  { offset: 180, label: "UTC+03:00", zones: [
-    { iana: "Europe/Moscow", cn: "莫斯科标准时间" },
-    { iana: "Asia/Riyadh", cn: "阿拉伯标准时间" },
-    { iana: "Africa/Nairobi", cn: "东非时间" },
-    { iana: "Europe/Istanbul", cn: "土耳其时间" },
-  ]},
-  { offset: 210, label: "UTC+03:30", zones: [
-    { iana: "Asia/Tehran", cn: "伊朗标准时间" },
-  ]},
-  { offset: 240, label: "UTC+04:00", zones: [
-    { iana: "Asia/Dubai", cn: "海湾标准时间" },
-    { iana: "Asia/Baku", cn: "阿塞拜疆时间" },
-  ]},
-  { offset: 270, label: "UTC+04:30", zones: [
-    { iana: "Asia/Kabul", cn: "阿富汗时间" },
-  ]},
-  { offset: 300, label: "UTC+05:00", zones: [
-    { iana: "Asia/Karachi", cn: "巴基斯坦标准时间" },
-    { iana: "Asia/Tashkent", cn: "乌兹别克斯坦时间" },
-  ]},
-  { offset: 330, label: "UTC+05:30", zones: [
-    { iana: "Asia/Kolkata", cn: "印度标准时间" },
-    { iana: "Asia/Colombo", cn: "斯里兰卡时间" },
-  ]},
-  { offset: 345, label: "UTC+05:45", zones: [
-    { iana: "Asia/Kathmandu", cn: "尼泊尔时间" },
-  ]},
-  { offset: 360, label: "UTC+06:00", zones: [
-    { iana: "Asia/Dhaka", cn: "孟加拉标准时间" },
-    { iana: "Asia/Almaty", cn: "哈萨克斯坦时间" },
-  ]},
-  { offset: 390, label: "UTC+06:30", zones: [
-    { iana: "Asia/Yangon", cn: "缅甸时间" },
-  ]},
-  { offset: 420, label: "UTC+07:00", zones: [
-    { iana: "Asia/Bangkok", cn: "印度支那时间" },
-    { iana: "Asia/Jakarta", cn: "西部印尼时间" },
-    { iana: "Asia/Ho_Chi_Minh", cn: "印度支那时间" },
-  ]},
-  { offset: 480, label: "UTC+08:00", zones: [
-    { iana: "Asia/Shanghai", cn: "中国标准时间" },
-    { iana: "Asia/Hong_Kong", cn: "香港标准时间" },
-    { iana: "Asia/Taipei", cn: "台北标准时间" },
-    { iana: "Asia/Singapore", cn: "新加坡标准时间" },
-    { iana: "Australia/Perth", cn: "澳大利亚西部时间" },
-  ]},
-  { offset: 525, label: "UTC+08:45", zones: [
-    { iana: "Australia/Eucla", cn: "中西部标准时间" },
-  ]},
-  { offset: 540, label: "UTC+09:00", zones: [
-    { iana: "Asia/Tokyo", cn: "日本标准时间" },
-    { iana: "Asia/Seoul", cn: "韩国标准时间" },
-  ]},
-  { offset: 570, label: "UTC+09:30", zones: [
-    { iana: "Australia/Adelaide", cn: "中澳大利亚标准时间" },
-  ]},
-  { offset: 600, label: "UTC+10:00", zones: [
-    { iana: "Australia/Sydney", cn: "澳大利亚东部时间" },
-    { iana: "Pacific/Guam", cn: "关岛标准时间" },
-  ]},
-  { offset: 630, label: "UTC+10:30", zones: [
-    { iana: "Australia/Lord_Howe", cn: "豪勋爵岛标准时间" },
-  ]},
-  { offset: 660, label: "UTC+11:00", zones: [
-    { iana: "Pacific/Port_Moresby", cn: "巴布亚新几内亚时间" },
-    { iana: "Pacific/Noumea", cn: "新喀里多尼亚时间" },
-  ]},
-  { offset: 720, label: "UTC+12:00", zones: [
-    { iana: "Pacific/Auckland", cn: "新西兰标准时间" },
-    { iana: "Pacific/Fiji", cn: "斐济时间" },
-  ]},
-  { offset: 765, label: "UTC+12:45", zones: [
-    { iana: "Pacific/Chatham", cn: "查塔姆标准时间" },
-  ]},
-  { offset: 780, label: "UTC+13:00", zones: [
-    { iana: "Pacific/Tongatapu", cn: "汤加时间" },
-  ]},
-  { offset: 840, label: "UTC+14:00", zones: [
-    { iana: "Pacific/Kiritimati", cn: "莱恩群岛时间" },
-  ]},
+  {
+    offset: -660,
+    label: "UTC-11:00",
+    zones: [
+      { iana: "Pacific/Niue", cn: "纽埃时间" },
+      { iana: "Pacific/Midway", cn: "萨摩亚标准时间" },
+      { iana: "Pacific/Pago_Pago", cn: "萨摩亚标准时间" },
+    ],
+  },
+  {
+    offset: -600,
+    label: "UTC-10:00",
+    zones: [
+      { iana: "America/Adak", cn: "阿达克时间" },
+      { iana: "Pacific/Honolulu", cn: "夏威夷标准时间" },
+    ],
+  },
+  { offset: -570, label: "UTC-09:30", zones: [{ iana: "Pacific/Marquesas", cn: "马克萨斯时间" }] },
+  {
+    offset: -540,
+    label: "UTC-09:00",
+    zones: [
+      { iana: "America/Anchorage", cn: "阿拉斯加标准时间" },
+      { iana: "Pacific/Gambier", cn: "甘比尔时间" },
+    ],
+  },
+  {
+    offset: -480,
+    label: "UTC-08:00",
+    zones: [
+      { iana: "America/Los_Angeles", cn: "美国太平洋时间" },
+      { iana: "America/Tijuana", cn: "下加利福尼亚时间" },
+      { iana: "America/Vancouver", cn: "太平洋时间" },
+    ],
+  },
+  {
+    offset: -420,
+    label: "UTC-07:00",
+    zones: [
+      { iana: "America/Denver", cn: "山地标准时间" },
+      { iana: "America/Phoenix", cn: "山地标准时间" },
+      { iana: "America/Edmonton", cn: "山地时间" },
+    ],
+  },
+  {
+    offset: -360,
+    label: "UTC-06:00",
+    zones: [
+      { iana: "America/Chicago", cn: "美国中部时间" },
+      { iana: "America/Mexico_City", cn: "墨西哥时间" },
+    ],
+  },
+  {
+    offset: -300,
+    label: "UTC-05:00",
+    zones: [
+      { iana: "America/New_York", cn: "美国东部时间" },
+      { iana: "America/Toronto", cn: "东部时间" },
+    ],
+  },
+  {
+    offset: -240,
+    label: "UTC-04:00",
+    zones: [
+      { iana: "America/Halifax", cn: "大西洋时间" },
+      { iana: "America/Santiago", cn: "智利时间" },
+    ],
+  },
+  {
+    offset: -180,
+    label: "UTC-03:00",
+    zones: [
+      { iana: "America/Sao_Paulo", cn: "巴西利亚时间" },
+      { iana: "America/Argentina/Buenos_Aires", cn: "阿根廷时间" },
+    ],
+  },
+  { offset: -150, label: "UTC-02:30", zones: [{ iana: "America/St_Johns", cn: "纽芬兰时间" }] },
+  { offset: -120, label: "UTC-02:00", zones: [{ iana: "Atlantic/South_Georgia", cn: "南乔治亚时间" }] },
+  {
+    offset: -60,
+    label: "UTC-01:00",
+    zones: [
+      { iana: "Atlantic/Azores", cn: "亚速尔时间" },
+      { iana: "Atlantic/Cape_Verde", cn: "佛得角时间" },
+    ],
+  },
+  {
+    offset: 0,
+    label: "UTC+00:00",
+    zones: [
+      { iana: "Europe/London", cn: "格林威治标准时间" },
+      { iana: "Atlantic/Reykjavik", cn: "冰岛时间" },
+      { iana: "Africa/Casablanca", cn: "卡萨布兰卡时间" },
+    ],
+  },
+  {
+    offset: 60,
+    label: "UTC+01:00",
+    zones: [
+      { iana: "Europe/Paris", cn: "中欧标准时间" },
+      { iana: "Europe/Berlin", cn: "中欧时间" },
+      { iana: "Africa/Lagos", cn: "西非时间" },
+    ],
+  },
+  {
+    offset: 120,
+    label: "UTC+02:00",
+    zones: [
+      { iana: "Europe/Athens", cn: "东欧时间" },
+      { iana: "Africa/Cairo", cn: "东欧时间" },
+      { iana: "Europe/Helsinki", cn: "东欧时间" },
+      { iana: "Asia/Jerusalem", cn: "以色列标准时间" },
+    ],
+  },
+  {
+    offset: 180,
+    label: "UTC+03:00",
+    zones: [
+      { iana: "Europe/Moscow", cn: "莫斯科标准时间" },
+      { iana: "Asia/Riyadh", cn: "阿拉伯标准时间" },
+      { iana: "Africa/Nairobi", cn: "东非时间" },
+      { iana: "Europe/Istanbul", cn: "土耳其时间" },
+    ],
+  },
+  { offset: 210, label: "UTC+03:30", zones: [{ iana: "Asia/Tehran", cn: "伊朗标准时间" }] },
+  {
+    offset: 240,
+    label: "UTC+04:00",
+    zones: [
+      { iana: "Asia/Dubai", cn: "海湾标准时间" },
+      { iana: "Asia/Baku", cn: "阿塞拜疆时间" },
+    ],
+  },
+  { offset: 270, label: "UTC+04:30", zones: [{ iana: "Asia/Kabul", cn: "阿富汗时间" }] },
+  {
+    offset: 300,
+    label: "UTC+05:00",
+    zones: [
+      { iana: "Asia/Karachi", cn: "巴基斯坦标准时间" },
+      { iana: "Asia/Tashkent", cn: "乌兹别克斯坦时间" },
+    ],
+  },
+  {
+    offset: 330,
+    label: "UTC+05:30",
+    zones: [
+      { iana: "Asia/Kolkata", cn: "印度标准时间" },
+      { iana: "Asia/Colombo", cn: "斯里兰卡时间" },
+    ],
+  },
+  { offset: 345, label: "UTC+05:45", zones: [{ iana: "Asia/Kathmandu", cn: "尼泊尔时间" }] },
+  {
+    offset: 360,
+    label: "UTC+06:00",
+    zones: [
+      { iana: "Asia/Dhaka", cn: "孟加拉标准时间" },
+      { iana: "Asia/Almaty", cn: "哈萨克斯坦时间" },
+    ],
+  },
+  { offset: 390, label: "UTC+06:30", zones: [{ iana: "Asia/Yangon", cn: "缅甸时间" }] },
+  {
+    offset: 420,
+    label: "UTC+07:00",
+    zones: [
+      { iana: "Asia/Bangkok", cn: "印度支那时间" },
+      { iana: "Asia/Jakarta", cn: "西部印尼时间" },
+      { iana: "Asia/Ho_Chi_Minh", cn: "印度支那时间" },
+    ],
+  },
+  {
+    offset: 480,
+    label: "UTC+08:00",
+    zones: [
+      { iana: "Asia/Shanghai", cn: "中国标准时间" },
+      { iana: "Asia/Hong_Kong", cn: "香港标准时间" },
+      { iana: "Asia/Taipei", cn: "台北标准时间" },
+      { iana: "Asia/Singapore", cn: "新加坡标准时间" },
+      { iana: "Australia/Perth", cn: "澳大利亚西部时间" },
+    ],
+  },
+  { offset: 525, label: "UTC+08:45", zones: [{ iana: "Australia/Eucla", cn: "中西部标准时间" }] },
+  {
+    offset: 540,
+    label: "UTC+09:00",
+    zones: [
+      { iana: "Asia/Tokyo", cn: "日本标准时间" },
+      { iana: "Asia/Seoul", cn: "韩国标准时间" },
+    ],
+  },
+  { offset: 570, label: "UTC+09:30", zones: [{ iana: "Australia/Adelaide", cn: "中澳大利亚标准时间" }] },
+  {
+    offset: 600,
+    label: "UTC+10:00",
+    zones: [
+      { iana: "Australia/Sydney", cn: "澳大利亚东部时间" },
+      { iana: "Pacific/Guam", cn: "关岛标准时间" },
+    ],
+  },
+  { offset: 630, label: "UTC+10:30", zones: [{ iana: "Australia/Lord_Howe", cn: "豪勋爵岛标准时间" }] },
+  {
+    offset: 660,
+    label: "UTC+11:00",
+    zones: [
+      { iana: "Pacific/Port_Moresby", cn: "巴布亚新几内亚时间" },
+      { iana: "Pacific/Noumea", cn: "新喀里多尼亚时间" },
+    ],
+  },
+  {
+    offset: 720,
+    label: "UTC+12:00",
+    zones: [
+      { iana: "Pacific/Auckland", cn: "新西兰标准时间" },
+      { iana: "Pacific/Fiji", cn: "斐济时间" },
+    ],
+  },
+  { offset: 765, label: "UTC+12:45", zones: [{ iana: "Pacific/Chatham", cn: "查塔姆标准时间" }] },
+  { offset: 780, label: "UTC+13:00", zones: [{ iana: "Pacific/Tongatapu", cn: "汤加时间" }] },
+  { offset: 840, label: "UTC+14:00", zones: [{ iana: "Pacific/Kiritimati", cn: "莱恩群岛时间" }] },
 ];
 
 /** 从 IANA 找所在偏移（用于高亮 + 初始化第二列） */
@@ -2270,11 +2411,7 @@ function tzLabel(iana: string): string {
 }
 
 /** step → 节点卡片的元数据行（按节点类型组装） */
-function buildNodeRows(
-  s: TemplateDetail["steps"][number],
-  index: number,
-  total: number,
-): NodeRow["rows"] {
+function buildNodeRows(s: TemplateDetail["steps"][number], index: number): NodeRow["rows"] {
   const isFirst = index === 0;
   const inputName = isFirst ? "sys.query" : `step${index - 1}.output`;
   const outputName = `${s.id}.output`;
@@ -2340,13 +2477,7 @@ function buildNodeRows(
  * 注：当前实现用 mock 数据（从 template.steps 取不到 inputs，UI 演示用占位）。
  *     后续接 LLMConfig 后用 config.skills / config.systemPrompt 替换占位。
  */
-function buildLLMGroups(
-  s: TemplateDetail["steps"][number],
-  index: number,
-  total: number,
-  _startNode: unknown,
-): NodeGroup[] {
-  const inputName = index === 0 ? "sys.query" : `step${index - 1}.output`;
+function buildLLMGroups(s: TemplateDetail["steps"][number]): NodeGroup[] {
   const outputName = `${s.id}.output`;
   /* Step 是 union，窄化到 llm 变体才能访问 model 字段 */
   const modelName = s.type === "llm" ? modelLabel(s.model) : "默认模型";
@@ -2376,11 +2507,6 @@ function buildLLMGroups(
       trailing: "add",
     },
   ];
-}
-
-function firstLine(text: string): string {
-  const t = text.replace(/\s+/g, " ").trim();
-  return t.length > 28 ? `${t.slice(0, 28)}…` : t || "—";
 }
 
 function truncate(text: string, n: number): string {

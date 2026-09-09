@@ -1,17 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Code2,
-  LogIn,
-  Maximize2,
-  Minimize2,
-  Minus,
-  PlayCircle,
-  Plus,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Code2, LogIn, Maximize2, Minimize2, Minus, PlayCircle, Plus, Sparkles, X } from "lucide-react";
 import styles from "./CodeInspector.module.scss";
 
 /* ============================== 数据结构 ============================== */
@@ -100,11 +90,9 @@ export function CodeInspector({ config, onChange }: Props) {
   const [ideOpen, setIdeOpen] = useState(false);
   const eh = config.errorHandling ?? { timeout: 60, retryTimes: 0, onError: "abort" as const };
 
-  const update = <K extends keyof CodeConfig>(k: K, v: CodeConfig[K]) =>
-    onChange({ ...config, [k]: v });
+  const update = <K extends keyof CodeConfig>(k: K, v: CodeConfig[K]) => onChange({ ...config, [k]: v });
 
-  const updateEh = (patch: Partial<CodeErrorHandling>) =>
-    update("errorHandling", { ...eh, ...patch });
+  const updateEh = (patch: Partial<CodeErrorHandling>) => update("errorHandling", { ...eh, ...patch });
 
   return (
     <div className={styles.inspectorBody}>
@@ -119,10 +107,7 @@ export function CodeInspector({ config, onChange }: Props) {
               title="添加输入"
               onClick={(e) => {
                 e.preventDefault();
-                update("inputs", [
-                  ...config.inputs,
-                  { name: `var${config.inputs.length + 1}`, type: "str" },
-                ]);
+                update("inputs", [...config.inputs, { name: `var${config.inputs.length + 1}`, type: "str" }]);
               }}
             >
               <Plus size={12} />
@@ -208,7 +193,12 @@ export function CodeInspector({ config, onChange }: Props) {
               <button
                 className={styles.inspectorGroupBtn}
                 aria-label="删除"
-                onClick={() => update("inputs", config.inputs.filter((_, k) => k !== i))}
+                onClick={() =>
+                  update(
+                    "inputs",
+                    config.inputs.filter((_, k) => k !== i),
+                  )
+                }
               >
                 <Minus size={11} />
               </button>
@@ -274,12 +264,7 @@ export function CodeInspector({ config, onChange }: Props) {
               value={config.code}
               onChange={(e) => update("code", e.target.value)}
             />
-            <button
-              className={styles.ideBtn}
-              type="button"
-              title="在 IDE 中编辑"
-              onClick={() => setIdeOpen(true)}
-            >
+            <button className={styles.ideBtn} type="button" title="在 IDE 中编辑" onClick={() => setIdeOpen(true)}>
               <Maximize2 size={11} /> 在IDE中编辑
             </button>
           </div>
@@ -350,7 +335,12 @@ export function CodeInspector({ config, onChange }: Props) {
                   <button
                     className={styles.inspectorGroupBtn}
                     aria-label="删除"
-                    onClick={() => update("outputs", config.outputs.filter((_, k) => k !== i))}
+                    onClick={() =>
+                      update(
+                        "outputs",
+                        config.outputs.filter((_, k) => k !== i),
+                      )
+                    }
                   >
                     <Minus size={11} />
                   </button>
@@ -419,19 +409,12 @@ export function CodeInspector({ config, onChange }: Props) {
       {/* ============== IDE 全屏编辑窗口（参考扣子 biz-ide） ============== */}
       {ideOpen && (
         <div className={styles.ideOverlay} onClick={() => setIdeOpen(false)}>
-          <div
-            className={styles.idePanel}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-label="代码编辑器"
-          >
+          <div className={styles.idePanel} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="代码编辑器">
             <header className={styles.ideHeader}>
               <span className={styles.ideIcon}>
                 <Code2 size={14} />
               </span>
-              <span className={styles.ideTitle}>
-                {config.title?.trim() || "main"}
-              </span>
+              <span className={styles.ideTitle}>{config.title?.trim() || "main"}</span>
               <select
                 className={styles.ideLang}
                 value={config.language}

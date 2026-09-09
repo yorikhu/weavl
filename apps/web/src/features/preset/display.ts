@@ -58,13 +58,13 @@ export const CATEGORY_TABS = [
 
 /** 后端 step.type → 中文标签与色相（与画布 KIND_META 色一致） */
 export const STEP_KIND_META: Record<string, { label: string; color: string }> = {
-  "llm": { label: "LLM", color: "#d44b7e" },
+  llm: { label: "LLM", color: "#d44b7e" },
   "image-gen": { label: "生图", color: "#d4537e" },
   "video-gen": { label: "生视频", color: "#378add" },
-  "tts": { label: "配音", color: "#378add" },
-  "ffmpeg": { label: "合成", color: "#378add" },
-  "http": { label: "请求", color: "#5e5e66" },
-  "mcp": { label: "MCP", color: "#5e5e66" },
+  tts: { label: "配音", color: "#378add" },
+  ffmpeg: { label: "合成", color: "#378add" },
+  http: { label: "请求", color: "#5e5e66" },
+  mcp: { label: "MCP", color: "#5e5e66" },
 };
 
 /** 从 step.type 归一化到展示 kind（未识别归 LLM） */
@@ -85,4 +85,3 @@ export const STEP_NAME_ZH: Record<string, string> = {
 export function stepNameOf(id: string): string {
   return STEP_NAME_ZH[id] ?? id;
 }
-
