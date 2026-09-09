@@ -12,7 +12,14 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: [".next/**", "out/**"],
+    ignores: [".next/**", "out/**", "next-env.d.ts"],
+  },
+  {
+    files: ["src/app/canvas/page.tsx"],
+    rules: {
+      // Canvas previews use runtime data/blob URLs that should not go through next/image.
+      "@next/next/no-img-element": "off",
+    },
   },
 ];
 

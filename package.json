@@ -12,6 +12,10 @@
     "dev:web": "pnpm -F @weavl/web dev",
     "dev:api": "pnpm -F @weavl/api dev",
     "build": "pnpm -r run build",
+    "lint": "eslint apps/api/src packages/shared/src --max-warnings=0 && pnpm --filter @weavl/web run lint",
+    "lint:fix": "eslint apps/api/src packages/shared/src --fix --max-warnings=0 && pnpm --filter @weavl/web run lint:fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "pnpm -r run typecheck",
     "clean": "pnpm -r exec rm -rf dist .next node_modules",
     "prepare": "husky"
@@ -19,6 +23,10 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
-    "husky": "^9.1.7"
+    "eslint": "9.39.5",
+    "husky": "^9.1.7",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.67.0"
   }
 }
