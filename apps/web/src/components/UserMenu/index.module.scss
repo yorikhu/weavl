@@ -166,6 +166,11 @@
 
   &.danger {
     color: #f87171;
+
+    .itemIcon {
+      color: currentColor;
+    }
+
     &:hover,
     &:focus-visible {
       background: rgba(248, 113, 113, 0.1);
@@ -210,8 +215,8 @@
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-hover);
   position: relative;
   cursor: pointer;
   transition: all 0.2s;
