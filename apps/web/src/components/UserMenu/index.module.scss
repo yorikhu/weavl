@@ -155,17 +155,19 @@
   color: var(--foreground);
   cursor: pointer;
   outline: none;
-  transition: background 0.15s;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
 
   &:hover,
-  &:focus {
-    background: var(--glass);
+  &:focus-visible {
+    background: var(--surface-hover);
   }
 
   &.danger {
     color: #f87171;
     &:hover,
-    &:focus {
+    &:focus-visible {
       background: rgba(248, 113, 113, 0.1);
     }
   }
