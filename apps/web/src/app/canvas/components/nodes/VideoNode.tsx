@@ -30,7 +30,6 @@ function VideoCardStatic({
   editing?: boolean;
 }) {
   const edit = useContext(EnterEditContext);
-  const tint = d.tint ?? "rgba(55, 138, 221, 0.20)";
   /** 视频节点默认尺寸与图片节点保持一致（300×200） */
   const w = d.size?.w ?? 300;
   const h = d.size?.h ?? 200;
@@ -71,43 +70,23 @@ function VideoCardStatic({
       </div>
       <div className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
-        {/* 已有视频则显示视频预览，否则占位渐变 + 播放按钮 */}
+        {/* 已有视频则显示视频预览，否则仅显示中性占位图标。 */}
         {url ? (
           <div className={styles.imagePreview}>
             <video src={url} className={styles.imageReal} muted preload="metadata" />
           </div>
         ) : (
-          <div
-            className={styles.imagePreview}
-            style={{ background: `linear-gradient(135deg, ${tint} 0%, rgba(20, 20, 22, 0.6) 100%)` }}
-          >
-            <div className={styles.imagePlaceholder} style={{ color: "#b5d4f4" }}>
+          <div className={`${styles.imagePreview} ${styles.emptyMediaPreview}`}>
+            <div className={styles.imagePlaceholder}>
               <VideoIcon size={20} />
-            </div>
-            {/* 播放按钮 */}
-            <div className={styles.videoPlay}>
-              <svg width="18" height="18" viewBox="0 0 18 18">
-                <circle cx="9" cy="9" r="8" fill="rgba(13, 13, 15, 0.6)" stroke="#b5d4f4" strokeWidth="1" />
-                <path d="M7 5.5 L12 9 L7 12.5 Z" fill="#b5d4f4" />
-              </svg>
             </div>
           </div>
         )}
-        {/* 左下角 chip ——「尝试：↻」+ 三个常用能力 */}
+        {/* 左下角仅保留首尾帧 / 首帧能力。 */}
         <div
           className={`${styles.imageTryChips} nodrag`}
           style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}
         >
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-            <span className={styles.imageTryRefreshInline}>尝试：</span>
-            <button className={styles.imageTryRefresh} title="换一换" onClick={() => fileRef.current?.click()}>
-              <RefreshCw size={10} />
-            </button>
-          </div>
-          <button className={styles.imageTryChip} title="即将上线：5 分钟超长视频">
-            <span style={{ color: "#a8a8b2", fontSize: 11, display: "inline-flex", alignItems: "center" }}>∞</span>5
-            分钟超长视频
-          </button>
           <button className={styles.imageTryChip} title="即将上线：首尾帧生成视频">
             <Layers size={11} />
             首尾帧生成视频

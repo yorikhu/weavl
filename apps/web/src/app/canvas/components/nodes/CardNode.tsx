@@ -20,14 +20,12 @@ function NodeEditor({
   initialText,
   onSave,
   onCancel,
-  accentColor,
 }: {
   categoryLabel: string;
   initialTitle: string;
   initialText: string;
   onSave: (title: string, text: string) => void;
   onCancel: () => void;
-  accentColor: string;
 }) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [title, setTitle] = useState(initialTitle);
@@ -98,12 +96,10 @@ function NodeEditor({
   );
 
   return (
-    <div className={styles.nodeEditor} style={{ borderColor: accentColor }} onDoubleClick={(e) => e.stopPropagation()}>
+    <div className={styles.nodeEditor} onDoubleClick={(e) => e.stopPropagation()}>
       {/* 头部 */}
       <div className={styles.nodeEditorHead}>
-        <span className={styles.nodeEditorCategory} style={{ color: accentColor }}>
-          {categoryLabel}
-        </span>
+        <span className={styles.nodeEditorCategory}>{categoryLabel}</span>
         <input
           className={styles.nodeEditorTitleInput}
           value={title}
@@ -169,7 +165,7 @@ function NodeEditor({
  *
  * @param props - React Flow 注入的节点属性。
  */
-export function CardNode({ data, selected, id }: NodeProps) {
+export function CardNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
   const d = data as unknown as CardNodeData;
   const meta = KIND_META[d.kind];
@@ -180,7 +176,6 @@ export function CardNode({ data, selected, id }: NodeProps) {
         categoryLabel={d.category || meta.badge}
         initialTitle={d.title}
         initialText={(d.fields ?? []).map((f) => `${f.label}：${f.value}`).join("\n")}
-        accentColor={meta.color.text}
         onSave={(title, text) => edit.saveEdit(id, title, text)}
         onCancel={edit.exitEdit}
       />
@@ -188,20 +183,11 @@ export function CardNode({ data, selected, id }: NodeProps) {
   }
 
   return (
-    <div
-      className={`${styles.card} ${selected ? styles.cardSelected : ""}`}
-      style={{ borderColor: selected ? meta.color.text : "#27272c" }}
-      onDoubleClick={() => edit.enterEdit(id)}
-    >
-      {selected && <div className={styles.cardAccent} style={{ background: meta.color.text }} />}
+    <div className={styles.card} onDoubleClick={() => edit.enterEdit(id)}>
       <Handle type="target" position={Position.Left} className={styles.cardHandle} />
       <div className={styles.cardHead}>
-        <span className={styles.cardCategory} style={{ color: meta.color.text, background: meta.color.bg }}>
-          {d.category || meta.badge}
-        </span>
-        <span className={styles.cardType} style={{ borderColor: meta.color.stroke, color: meta.color.text }}>
-          {d.title}
-        </span>
+        <span className={styles.cardCategory}>{d.category || meta.badge}</span>
+        <span className={styles.cardType}>{d.title}</span>
       </div>
       {d.fields?.[0]?.label !== "_title" && (
         <div className={styles.cardFields}>

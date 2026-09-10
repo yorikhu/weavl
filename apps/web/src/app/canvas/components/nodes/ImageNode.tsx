@@ -32,7 +32,6 @@ function ImageCardStatic({
 }) {
   const edit = useContext(EnterEditContext);
   const meta = KIND_META[d.kind];
-  const tint = d.tint ?? meta.color.bg;
   const w = d.size?.w ?? 300;
   const h = d.size?.h ?? 200;
   const displayTitle = d.title || "图片节点";
@@ -79,13 +78,8 @@ function ImageCardStatic({
             <img src={url} alt={d.title} className={styles.imageReal} />
           </div>
         ) : (
-          <div
-            className={styles.imagePreview}
-            style={{ background: `linear-gradient(135deg, ${tint} 0%, rgba(20, 20, 22, 0.6) 100%)` }}
-          >
-            <div className={styles.imagePlaceholder} style={{ color: meta.color.text }}>
-              {meta.icon}
-            </div>
+          <div className={`${styles.imagePreview} ${styles.emptyMediaPreview}`}>
+            <div className={styles.imagePlaceholder}>{meta.icon}</div>
           </div>
         )}
         {/* 左下角双入口 chip（图生图 / 图片高清） */}

@@ -2,9 +2,12 @@
 
 import React from "react";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { toast } from "@/hooks/useToast";
+import { Popover } from "@/components/Popover";
+import { StarburstLogo } from "@/components/StarburstLogo";
 import {
   ReactFlow,
   Background,
@@ -18,7 +21,9 @@ import {
   type Node,
   ReactFlowProvider,
   useReactFlow,
+  useUpdateNodeInternals,
   ConnectionMode,
+  SelectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { RunView } from "@weavl/shared";
@@ -39,6 +44,9 @@ import {
   Type as TypeIcon,
   Film,
   FileText,
+  ChevronDown,
+  Home,
+  Trash2,
 } from "lucide-react";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
@@ -67,9 +75,31 @@ import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "./constant
  * @returns 完整的画布工作区。
  */
 function CanvasInner() {
+  const router = useRouter();
   const { screenToFlowPosition, setCenter } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
+  const connectionSourceActiveClass = styles.connectionSourceActive ?? "connection-source-active";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [projectName, setProjectName] = useState("未命名项目");
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [activeCanvas, setActiveCanvas] = useState<1 | 2 | 3>(1);
+  const canvasSnapshotsRef = useRef<Record<1 | 2 | 3, { nodes: Node[]; edges: Edge[] }>>({
+    1: { nodes: [], edges: [] },
+    2: { nodes: [], edges: [] },
+    3: { nodes: [], edges: [] },
+  });
+  const nodeIdsKey = nodes.map((node) => node.id).join("|");
+
+  /** handle 位置由 CSS 调整后，刷新 React Flow 缓存的正式边锚点。 */
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      updateNodeInternals(nodes.map((node) => node.id));
+    });
+    return () => window.cancelAnimationFrame(frame);
+    // 节点集合不变时无需因拖动位置反复测量 handle。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeIdsKey, updateNodeInternals]);
   /** 挂载时清洗 时代 type:"bezier" 隐形边 → "default"（React Flow 无此内置类型不渲染） */
   useEffect(() => {
     setEdges((es) =>
@@ -78,6 +108,48 @@ function CanvasInner() {
         : es,
     );
   }, [setEdges]);
+
+  const switchCanvas = useCallback(
+    (next: 1 | 2 | 3) => {
+      if (next === activeCanvas) return;
+      canvasSnapshotsRef.current[activeCanvas] = { nodes, edges };
+      const snapshot = canvasSnapshotsRef.current[next];
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      setActiveCanvas(next);
+      setSelectedNode(null);
+      setEditingId(null);
+      setContextMenu(null);
+      setConnectMenu(null);
+    },
+    [activeCanvas, edges, nodes, setEdges, setNodes],
+  );
+
+  const createProject = useCallback(() => {
+    const emptySnapshots = {
+      1: { nodes: [], edges: [] },
+      2: { nodes: [], edges: [] },
+      3: { nodes: [], edges: [] },
+    } satisfies Record<1 | 2 | 3, { nodes: Node[]; edges: Edge[] }>;
+    canvasSnapshotsRef.current = emptySnapshots;
+    setNodes([]);
+    setEdges([]);
+    setActiveCanvas(1);
+    setProjectName("未命名项目");
+    setSelectedNode(null);
+    setEditingId(null);
+    setProjectMenuOpen(false);
+    toast("已创建空白项目", "success");
+  }, [setEdges, setNodes]);
+
+  const deleteProject = useCallback(() => {
+    if (!window.confirm(`确定删除项目“${projectName}”吗？此操作无法撤销。`)) return;
+    setProjectMenuOpen(false);
+    setNodes([]);
+    setEdges([]);
+    toast("项目已删除", "success");
+    router.push("/projects");
+  }, [projectName, router, setEdges, setNodes]);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   /** 积分悬停弹窗（hover 200ms 开、离开 150ms 缓冲关） */
@@ -144,6 +216,8 @@ function CanvasInner() {
     clientX: 0,
     clientY: 0,
   });
+  /** 标记当前这次拖线是否已由 React Flow 成功连接，防止 onConnectEnd 再按画布空白处理。 */
+  const connectSucceededRef = useRef(false);
   /** click-outside-to-close —— 给 + 添加菜单 / Agent 抽屉 / 节点库提供 ref，
      在 useClickOutside 里统一判断「pointerdown 在白名单外则关闭」。 */
   const addMenuRef = useRef<HTMLDivElement | null>(null);
@@ -630,12 +704,6 @@ function CanvasInner() {
           ),
         );
       }, 360);
-      /** 目标节点闪光 400ms */
-      const targetEl = document.querySelector(`.react-flow__node[data-id="${target}"]`) as HTMLElement | null;
-      if (targetEl) {
-        targetEl.classList.add("node-flash");
-        window.setTimeout(() => targetEl.classList.remove("node-flash"), 420);
-      }
       return newEdgeId;
     },
     [setEdges],
@@ -644,6 +712,8 @@ function CanvasInner() {
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target || connection.source === connection.target) return;
+      connectSucceededRef.current = true;
+      setConnectMenu(null);
       addEdgeDedup(connection.source, connection.target);
     },
     [addEdgeDedup],
@@ -654,12 +724,18 @@ function CanvasInner() {
     (_: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
       if (params.handleType !== "source") return;
       connectStartRef.current = { nodeId: params.nodeId, clientX: 0, clientY: 0 };
+      connectSucceededRef.current = false;
+      if (params.nodeId) {
+        document
+          .querySelector<HTMLElement>(`.react-flow__node[data-id="${params.nodeId}"]`)
+          ?.classList.add(connectionSourceActiveClass);
+      }
       /** 开始拖线，重置 hover/preview/error 状态 */
       setHoverTargetId(null);
       setPreviewState(null);
       setConnectError(null);
     },
-    [],
+    [connectionSourceActiveClass],
   );
 
   /** 拖线连接状态 —— 三态预览 + 成功动效 + 失败 toast */
@@ -668,6 +744,7 @@ function CanvasInner() {
     flowPos: { x: number; y: number };
     clientPos: { x: number; y: number };
   } | null>(null);
+  const [pendingLineStart, setPendingLineStart] = useState<{ x: number; y: number } | null>(null);
   /** 拖线中悬停的目标节点（用来高亮） */
   const [hoverTargetId, setHoverTargetId] = useState<string | null>(null);
   /** 拖线中是否在合法位置上 —— true: 可连 / false: 不可连 / null: 拖到 pane */
@@ -675,6 +752,134 @@ function CanvasInner() {
   /** 连接失败 toast */
   const [connectError, setConnectError] = useState<string | null>(null);
   const connectErrorTimerRef = useRef<number | null>(null);
+
+  /** 鼠标靠近 handle 时，让最近的圆点显现并跟随指针。 */
+  useEffect(() => {
+    const board = document.querySelector(`.${styles.board}`);
+    const handleMagnetClass = styles.handleMagnetActive;
+    const handleProximityClass = styles.handleProximityActive;
+    if (!board || !handleMagnetClass || !handleProximityClass) return;
+    let activeHandle: HTMLElement | null = null;
+    let animationFrameId: number | null = null;
+    let pointerX = 0;
+    let pointerY = 0;
+
+    const resetHandle = (handle: HTMLElement) => {
+      handle.classList.remove(handleMagnetClass);
+      handle.style.removeProperty("--handle-pull-x");
+      handle.style.removeProperty("--handle-pull-y");
+      handle.style.removeProperty("--handle-hit-size");
+    };
+
+    const updateNearestHandle = () => {
+      animationFrameId = null;
+      const handles = board.querySelectorAll<HTMLElement>(`.${styles.cardHandle}`);
+      const selectedNodes = board.querySelectorAll(".react-flow__node.selected");
+      const multiSelectionActive = selectedNodes.length > 1;
+      let nearest: {
+        handle: HTMLElement;
+        pullX: number;
+        pullY: number;
+        hitSize: number;
+        distanceSq: number;
+      } | null = null;
+
+      /* 先集中读取布局，避免在循环里交替读写样式导致强制同步布局。 */
+      for (const handle of handles) {
+        if (multiSelectionActive && handle.closest(".react-flow__node.selected")) continue;
+        /* 拖线开始后源节点不再参与磁吸，避免位移复位时圆球短暂闪回锚点。 */
+        if (
+          handle.classList.contains("connectingfrom") ||
+          handle.closest(`.${connectionSourceActiveClass}`)
+        ) {
+          continue;
+        }
+        const rect = handle.getBoundingClientRect();
+        /* rect 是屏幕坐标，而伪元素位移处于会被 React Flow 缩放的画布坐标系。 */
+        const scale = handle.offsetWidth > 0 ? rect.width / handle.offsetWidth : 1;
+        const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+        const visualOffsetX =
+          (handle.classList.contains("react-flow__handle-left") ? -15 : 15) * safeScale;
+        const screenDx = pointerX - (rect.left + rect.width / 2 + visualOffsetX);
+        const screenDy = pointerY - (rect.top + rect.height / 2);
+        const distanceSq = screenDx * screenDx + screenDy * screenDy;
+        if (distanceSq <= 40 * 40 && (!nearest || distanceSq < nearest.distanceSq)) {
+          nearest = {
+            handle,
+            pullX: screenDx / safeScale,
+            pullY: screenDy / safeScale,
+            /* 反算画布缩放，使 80px 热区和屏幕坐标下 40px 的吸附半径严格一致。 */
+            hitSize: 80 / safeScale,
+            distanceSq,
+          };
+        }
+      }
+
+      if (activeHandle !== nearest?.handle) {
+        if (activeHandle) resetHandle(activeHandle);
+        activeHandle = nearest?.handle ?? null;
+        activeHandle?.classList.add(handleMagnetClass);
+      }
+      if (!nearest) {
+        board.classList.remove(handleProximityClass);
+        return;
+      }
+      board.classList.add(handleProximityClass);
+      /* 换算回画布坐标，保证任意缩放比例下圆心都落在鼠标正下方。 */
+      nearest.handle.style.setProperty("--handle-pull-x", `${nearest.pullX}px`);
+      nearest.handle.style.setProperty("--handle-pull-y", `${nearest.pullY}px`);
+      nearest.handle.style.setProperty("--handle-hit-size", `${nearest.hitSize}px`);
+    };
+
+    const onPointerMove = (event: Event) => {
+      const pointer = event as PointerEvent;
+      pointerX = pointer.clientX;
+      pointerY = pointer.clientY;
+      if (animationFrameId === null) {
+        animationFrameId = window.requestAnimationFrame(updateNearestHandle);
+      }
+    };
+    const onPointerLeave = () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      if (activeHandle) {
+        resetHandle(activeHandle);
+        activeHandle = null;
+      }
+      board.classList.remove(handleProximityClass);
+    };
+    board.addEventListener("pointermove", onPointerMove);
+    board.addEventListener("pointerleave", onPointerLeave);
+    return () => {
+      board.removeEventListener("pointermove", onPointerMove);
+      board.removeEventListener("pointerleave", onPointerLeave);
+      onPointerLeave();
+    };
+  }, [connectionSourceActiveClass]);
+
+  /** 菜单出现后计算源节点右侧 handle，临时连线从这里接到菜单左边缘。 */
+  useLayoutEffect(() => {
+    if (!connectMenu) {
+      setPendingLineStart(null);
+      return;
+    }
+    const board = document.querySelector(`.${styles.board}`) as HTMLElement | null;
+    const sourceNode = document.querySelector(
+      `.react-flow__node[data-id="${connectMenu.sourceNodeId}"]`,
+    ) as HTMLElement | null;
+    const sourceHandle = sourceNode?.querySelector(".react-flow__handle-right") as HTMLElement | null;
+    if (!board || !sourceNode || !sourceHandle) return;
+    const boardRect = board.getBoundingClientRect();
+    const nodeRect = sourceNode.getBoundingClientRect();
+    const handleRect = sourceHandle.getBoundingClientRect();
+    setPendingLineStart({
+      /* 临时虚线从卡片外轮廓起笔，不复用压进卡片内部的正式边锚点。 */
+      x: nodeRect.right - boardRect.left,
+      y: handleRect.top + handleRect.height / 2 - boardRect.top,
+    });
+  }, [connectMenu, nodes]);
 
   /** 判断某节点是否可作为连线目标（用于 hover 状态判定） */
   const isValidTarget = useCallback(
@@ -757,7 +962,14 @@ function CanvasInner() {
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent) => {
       const start = connectStartRef.current;
+      const didConnect = connectSucceededRef.current;
+      if (start.nodeId) {
+        document
+          .querySelector<HTMLElement>(`.react-flow__node[data-id="${start.nodeId}"]`)
+          ?.classList.remove(connectionSourceActiveClass);
+      }
       connectStartRef.current = { nodeId: null, clientX: 0, clientY: 0 };
+      connectSucceededRef.current = false;
       const wasHoverId = hoverTargetId;
       const wasPreview = previewState;
       const wasError = connectError;
@@ -765,7 +977,8 @@ function CanvasInner() {
       setHoverTargetId(null);
       setPreviewState(null);
       setConnectError(null);
-      if (!start.nodeId) return;
+      /* onConnect 已经完成本次连接时，不能再根据松手 DOM 位置弹出创建菜单。 */
+      if (!start.nodeId || didConnect) return;
       const target = event.target as HTMLElement | null;
       if (!target) return;
       const isTouch = "touches" in event;
@@ -783,7 +996,7 @@ function CanvasInner() {
         return;
       }
       if (wasPreview === "connectable" && wasHoverId) {
-        /** 可连：直接连 + success 动画 + 目标节点闪光 */
+        /** 可连：直接连接并保留线条绘制动画。 */
         addEdgeDedup(start.nodeId!, wasHoverId);
         return;
       }
@@ -817,13 +1030,29 @@ function CanvasInner() {
 
       /** 落在 pane 上 → 弹菜单让用户挑新建节点类型 */
       const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
+      const boardRect = (
+        target.closest(`.${styles.board}`) ?? document.querySelector(`.${styles.board}`)
+      )?.getBoundingClientRect();
+      const localX = clientX - (boardRect?.left ?? 0);
+      const localY = clientY - (boardRect?.top ?? 0);
       setConnectMenu({
         sourceNodeId: start.nodeId,
         flowPos,
-        clientPos: { x: clientX, y: clientY },
+        clientPos: {
+          x: Math.max(8, Math.min(localX + 14, (boardRect?.width ?? localX + 242) - 228)),
+          y: Math.max(8, Math.min(localY - 20, (boardRect?.height ?? localY + 360) - 352)),
+        },
       });
     },
-    [screenToFlowPosition, hoverTargetId, previewState, connectError, showConnectError, addEdgeDedup],
+    [
+      screenToFlowPosition,
+      hoverTargetId,
+      previewState,
+      connectError,
+      showConnectError,
+      addEdgeDedup,
+      connectionSourceActiveClass,
+    ],
   );
 
   /** 从「引用该节点生成」菜单中挑一个类型创建节点并连线 */
@@ -911,6 +1140,12 @@ function CanvasInner() {
   const selData = selectedNode?.data as AnyNodeData | undefined;
   const selectedKind: NodeKind = selData && "kind" in selData && selData.kind ? selData.kind : "llm";
   const toolbarItems: { label: string; icon: React.ReactNode }[] = NODE_TOOLBAR[selectedKind] ?? NODE_TOOLBAR.llm ?? [];
+  const selectedNodeCount = nodes.reduce((count, node) => count + (node.selected ? 1 : 0), 0);
+  const selectionHasRaisedTitle = nodes.some((node) => {
+    if (!node.selected) return false;
+    const nodeKind = (node.data as { nodeKind?: string }).nodeKind;
+    return nodeKind === "text" || nodeKind === "image" || nodeKind === "video";
+  });
 
   return (
     <EnterEditContext.Provider
@@ -937,9 +1172,96 @@ function CanvasInner() {
       }}
     >
       <div className={styles.shell}>
-        {/* 顶部栏：积分（悬停弹窗）+ Agent 圆头像并列右上角 */}
+        {/* 顶部栏：左侧项目操作与画布切换，右侧积分与 Agent。 */}
         <div className={styles.topbar}>
-          <div className={styles.topbarLeft} />
+          <div className={styles.topbarLeft}>
+            <Popover
+              mode="click"
+              open={projectMenuOpen}
+              onOpenChange={setProjectMenuOpen}
+              side="bottom"
+              align="start"
+              sideOffset={8}
+              showArrow={false}
+              ariaLabel="项目操作"
+              contentRole="menu"
+              contentClassName={`${styles.projectPopover} glass-strong`}
+              trigger={
+                <button type="button" className={styles.projectMenuTrigger} aria-label="打开项目菜单">
+                  <StarburstLogo size={19} />
+                  <ChevronDown
+                    size={13}
+                    className={`${styles.projectMenuChevron} ${projectMenuOpen ? styles.projectMenuChevronOpen : ""}`}
+                  />
+                </button>
+              }
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.projectMenuItem}
+                onClick={() => {
+                  setProjectMenuOpen(false);
+                  router.push("/home");
+                }}
+              >
+                <Home size={14} />
+                回到主页
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.projectMenuItem}
+                onClick={() => {
+                  setProjectMenuOpen(false);
+                  router.push("/projects");
+                }}
+              >
+                <Layers size={14} />
+                全部项目
+              </button>
+              <button type="button" role="menuitem" className={styles.projectMenuItem} onClick={createProject}>
+                <Plus size={14} />
+                创建项目
+              </button>
+              <div className={styles.projectMenuSeparator} role="separator" />
+              <button
+                type="button"
+                role="menuitem"
+                className={`${styles.projectMenuItem} ${styles.projectMenuItemDanger}`}
+                onClick={deleteProject}
+              >
+                <Trash2 size={14} />
+                删除项目
+              </button>
+            </Popover>
+
+            <input
+              className={styles.projectNameInput}
+              value={projectName}
+              onChange={(event) => setProjectName(event.target.value)}
+              onBlur={() => setProjectName((name) => name.trim() || "未命名项目")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+              aria-label="项目名称"
+              spellCheck={false}
+            />
+
+            <div className={styles.canvasTabs} aria-label="切换画布">
+              {([1, 2, 3] as const).map((canvasNumber) => (
+                <button
+                  key={canvasNumber}
+                  type="button"
+                  className={`${styles.canvasTab} ${activeCanvas === canvasNumber ? styles.canvasTabActive : ""}`}
+                  onClick={() => switchCanvas(canvasNumber)}
+                  aria-pressed={activeCanvas === canvasNumber}
+                >
+                  画布 {canvasNumber}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className={styles.topbarRight}>
             <div className={styles.creditWrap} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
               <button className={styles.creditPill} title="积分">
@@ -1129,8 +1451,15 @@ function CanvasInner() {
             isValidConnection={isValidConnection}
             /** strict 模式 —— 只在松手落在明确的 handle 上才算连接（否则默认按就近 handle 误连） */
             connectionMode={ConnectionMode.Strict}
-            connectionRadius={18}
+            connectionRadius={55}
             nodeTypes={nodeTypes}
+            /** 默认箭头框选；按住空格才允许鼠标拖动画布。 */
+            panOnDrag={false}
+            panActivationKeyCode="Space"
+            selectionOnDrag
+            selectionKeyCode={null}
+            selectionMode={SelectionMode.Partial}
+            multiSelectionKeyCode="Shift"
             fitView
             minZoom={0.3}
             maxZoom={2.5}
@@ -1141,7 +1470,7 @@ function CanvasInner() {
             zoomOnPinch
             /** 连接线样式由全局 :global(.react-flow__connection-path) 控制（默认 connectable 态） */
             proOptions={{ hideAttribution: true }}
-            className={styles.flowRoot}
+            className={`${styles.flowRoot} ${selectionHasRaisedTitle ? (styles.selectionIncludesTitle ?? "") : ""} ${selectedNodeCount > 1 ? (styles.hasMultiSelection ?? "") : ""}`}
           >
             <Background variant={BackgroundVariant.Dots} gap={24} size={1} className={styles.bg} />
             <Controls showInteractive={false} className={styles.controls} />
@@ -1177,53 +1506,69 @@ function CanvasInner() {
 
           {/* 从节点拖线到空白处 → 弹「引用该节点生成」菜单 */}
           {connectMenu && (
-            <div
-              className={styles.contextMenu}
-              style={{ left: connectMenu.clientPos.x, top: connectMenu.clientPos.y, minWidth: 220 }}
-            >
-              <div className={styles.contextMenuHead}>引用该节点生成</div>
-              <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("text")}>
-                <TypeIcon size={13} />
-                文本
-              </button>
-              <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("image")}>
-                <ImageIcon size={13} />
-                图片
-              </button>
-              <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("video")}>
-                <VideoIcon size={13} />
-                视频
-              </button>
-              <div className={styles.contextMenuSep} />
-              <button className={styles.contextMenuItem} disabled title="即将上线">
-                <Sparkles size={13} />
-                智能剪辑
-                <span className={styles.contextMenuBadge}>Beta</span>
-              </button>
-              <button className={styles.contextMenuItem} disabled title="即将上线">
-                <Film size={13} />
-                导演台
-                <span className={`${styles.contextMenuBadge} ${styles.contextMenuBadgeNew}`}>NEW</span>
-              </button>
-              <button className={styles.contextMenuItem} disabled title="即将上线">
-                <Layers size={13} />
-                逐帧拉片
-                <span className={styles.contextMenuBadge}>SD 2.5</span>
-              </button>
-              <div className={styles.contextMenuSep} />
-              <button className={styles.contextMenuItem} disabled title="即将上线">
-                <Music size={13} />
-                音频
-              </button>
-              <button className={styles.contextMenuItem} disabled title="即将上线">
-                <FileText size={13} />
-                脚本
-              </button>
-              <button className={styles.contextMenuItem} disabled title="即将上线">
-                <Link2 size={13} />
-                参考节点
-              </button>
-            </div>
+            <>
+              {pendingLineStart && (
+                <svg className={styles.pendingConnection} aria-hidden="true">
+                  <path
+                    className={styles.pendingConnectionPath}
+                    d={`M ${pendingLineStart.x} ${pendingLineStart.y} C ${pendingLineStart.x + 72} ${pendingLineStart.y}, ${connectMenu.clientPos.x - 72} ${connectMenu.clientPos.y + 20}, ${connectMenu.clientPos.x} ${connectMenu.clientPos.y + 20}`}
+                  />
+                  <circle
+                    className={styles.pendingConnectionDot}
+                    cx={connectMenu.clientPos.x}
+                    cy={connectMenu.clientPos.y + 20}
+                    r="3"
+                  />
+                </svg>
+              )}
+              <div
+                className={styles.contextMenu}
+                style={{ left: connectMenu.clientPos.x, top: connectMenu.clientPos.y, minWidth: 220 }}
+              >
+                <div className={styles.contextMenuHead}>引用该节点生成</div>
+                <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("text")}>
+                  <TypeIcon size={13} />
+                  文本
+                </button>
+                <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("image")}>
+                  <ImageIcon size={13} />
+                  图片
+                </button>
+                <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("video")}>
+                  <VideoIcon size={13} />
+                  视频
+                </button>
+                <div className={styles.contextMenuSep} />
+                <button className={styles.contextMenuItem} disabled title="即将上线">
+                  <Sparkles size={13} />
+                  智能剪辑
+                  <span className={styles.contextMenuBadge}>Beta</span>
+                </button>
+                <button className={styles.contextMenuItem} disabled title="即将上线">
+                  <Film size={13} />
+                  导演台
+                  <span className={`${styles.contextMenuBadge} ${styles.contextMenuBadgeNew}`}>NEW</span>
+                </button>
+                <button className={styles.contextMenuItem} disabled title="即将上线">
+                  <Layers size={13} />
+                  逐帧拉片
+                  <span className={styles.contextMenuBadge}>SD 2.5</span>
+                </button>
+                <div className={styles.contextMenuSep} />
+                <button className={styles.contextMenuItem} disabled title="即将上线">
+                  <Music size={13} />
+                  音频
+                </button>
+                <button className={styles.contextMenuItem} disabled title="即将上线">
+                  <FileText size={13} />
+                  脚本
+                </button>
+                <button className={styles.contextMenuItem} disabled title="即将上线">
+                  <Link2 size={13} />
+                  参考节点
+                </button>
+              </div>
+            </>
           )}
 
           {nodes.length === 0 && (

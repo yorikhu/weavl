@@ -32,7 +32,7 @@ export function TextNode({ data, id }: NodeProps) {
       onDoubleClick={() => edit.enterEdit(id)}
     >
       <Handle type="target" position={Position.Left} className={styles.cardHandle} />
-      <div className={styles.textNodeHead}>
+      <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
         <span>{d.title || "文本"}</span>
       </div>
@@ -113,16 +113,17 @@ function TextNodeEditor({ data }: { data: TextNodeData }) {
       onDoubleClick={(e) => e.stopPropagation()}
     >
       <Handle type="target" position={Position.Left} className={styles.cardHandle} />
-      <div className={styles.textNodeHead}>
+      <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
         <input
-          className={`${styles.textNodeTitleInput} nodrag`}
+          className={`${styles.imageNodeTitleInput} nodrag`}
           value={edit.buffer.title}
           onChange={(e) => {
             edit.setBuffer({ title: e.target.value, text: edit.buffer.text });
           }}
           onKeyDown={(e) => e.stopPropagation()}
-          placeholder="节点标题"
+          onMouseDown={(e) => e.stopPropagation()}
+          placeholder="文本节点"
         />
       </div>
       <div
