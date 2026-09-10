@@ -615,7 +615,6 @@ export default function AeroShards({
         let lastQualityChange = 0;
         let encodeAverage = 0;
         let renderTimestamp = 0;
-        let lastCanvasHeight = canvas.clientHeight;
         let previousRafTimestamp = 0;
         let refreshInterval = 1000 / 60;
         const refreshSamples = new Float32Array(30);
@@ -659,17 +658,14 @@ export default function AeroShards({
 
         const resizeOutput = () => {
           updateBounds();
-          const previousCanvasHeight = lastCanvasHeight;
-          lastCanvasHeight = canvas.clientHeight;
           const dpr = resolveDpr(preset, canvas);
           const nextSize: [number, number] = [
             Math.max(1, Math.round(canvas.clientWidth * dpr)),
             Math.max(1, Math.round(canvas.clientHeight * dpr))
           ];
-          if (nextSize[0] === output.size[0] && nextSize[1] === output.size[1]) return false;
+          if (nextSize[0] === output.size[0] && nextSize[1] === output.size[1]) return;
           output.resize(nextSize);
           resizePostTargets();
-          return lastCanvasHeight > previousCanvasHeight + 1;
         };
 
         unsubscribeResize = output.onResize(() => {
@@ -682,25 +678,7 @@ export default function AeroShards({
           if (resizeDebounceId) window.clearTimeout(resizeDebounceId);
           resizeDebounceId = window.setTimeout(() => {
             resizeDebounceId = 0;
-            const heightIncreased = resizeOutput();
-            const settings = settingsRef.current!;
-            if (
-              heightIncreased &&
-              !settings.paused &&
-              !reduceMotion.matches &&
-              settings.interaction !== INTERACTIONS.none &&
-              settings.rippleIntensity > 0.0001
-            ) {
-              startRipple(
-                ripplesRef.current,
-                [0.5, 0.56],
-                bounds.width / Math.max(bounds.height, 1),
-                0.62
-              );
-              const now = performance.now();
-              interactionDeadline = now + 420;
-              settlingDeadline = now + 1200;
-            }
+            resizeOutput();
             wakeRenderer();
           }, 100);
         });
