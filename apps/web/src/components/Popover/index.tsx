@@ -54,6 +54,7 @@ export function Popover({
   autoFocusOnOpen = true,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
+  const [internalClickOpen, setInternalClickOpen] = useState(false);
 
   if (mode === "hover") {
     return (
@@ -84,16 +85,18 @@ export function Popover({
     );
   }
 
+  const clickOpen = open ?? internalClickOpen;
   const clickTrigger = <PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>;
   const handleClickOpenChange = (nextOpen: boolean) => {
     if (nextOpen) setHoverOpen(false);
+    if (open === undefined) setInternalClickOpen(nextOpen);
     onOpenChange?.(nextOpen);
   };
 
   return (
     <TooltipPrimitive.Provider delayDuration={0} skipDelayDuration={0}>
-      <TooltipPrimitive.Root open={hoverOpen && !open} disableHoverableContent>
-        <PopoverPrimitive.Root open={open} onOpenChange={handleClickOpenChange}>
+      <TooltipPrimitive.Root open={hoverOpen && !clickOpen} disableHoverableContent>
+        <PopoverPrimitive.Root open={clickOpen} onOpenChange={handleClickOpenChange}>
           {hint ? (
             <TooltipPrimitive.Trigger
               asChild
@@ -119,34 +122,36 @@ export function Popover({
               </TooltipPrimitive.Content>
             </TooltipPrimitive.Portal>
           )}
-          <PopoverPrimitive.Portal>
-          <PopoverPrimitive.Content
-            className={classes(styles.content, styles.clickContent, contentClassName)}
-            side={side}
-            align={align}
-            sideOffset={sideOffset}
-            collisionPadding={collisionPadding}
-            aria-label={ariaLabel}
-            role={contentRole}
-            onOpenAutoFocus={(event) => {
-              if (!autoFocusOnOpen) event.preventDefault();
-            }}
-            onCloseAutoFocus={(event) => event.preventDefault()}
-            onInteractOutside={(event) => {
-              const target = event.detail.originalEvent.target;
-              if (
-                preserveOpenOnOutsideSelector &&
-                target instanceof Element &&
-                target.closest(preserveOpenOnOutsideSelector)
-              ) {
-                event.preventDefault();
-              }
-            }}
-          >
-              {children}
-              {showArrow && <PopoverPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
-            </PopoverPrimitive.Content>
-          </PopoverPrimitive.Portal>
+          {clickOpen && (
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Content
+                className={classes(styles.content, styles.clickContent, contentClassName)}
+                side={side}
+                align={align}
+                sideOffset={sideOffset}
+                collisionPadding={collisionPadding}
+                aria-label={ariaLabel}
+                role={contentRole}
+                onOpenAutoFocus={(event) => {
+                  if (!autoFocusOnOpen) event.preventDefault();
+                }}
+                onCloseAutoFocus={(event) => event.preventDefault()}
+                onInteractOutside={(event) => {
+                  const target = event.detail.originalEvent.target;
+                  if (
+                    preserveOpenOnOutsideSelector &&
+                    target instanceof Element &&
+                    target.closest(preserveOpenOnOutsideSelector)
+                  ) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                {children}
+                {showArrow && <PopoverPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
+              </PopoverPrimitive.Content>
+            </PopoverPrimitive.Portal>
+          )}
         </PopoverPrimitive.Root>
       </TooltipPrimitive.Root>
     </TooltipPrimitive.Provider>

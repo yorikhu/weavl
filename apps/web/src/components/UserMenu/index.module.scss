@@ -37,11 +37,14 @@
 }
 
 // ---- Radix 内容层（玻璃拟态） ----
-.content {
+.content.content {
   min-width: 256px;
+  border: 1px solid var(--surface-border);
   border-radius: 16px;
+  background: var(--surface);
   padding: 6px;
-  z-index: 100;
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   animation: popover-in 0.16s ease-out;
 }
 
