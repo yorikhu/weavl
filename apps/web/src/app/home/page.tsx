@@ -87,6 +87,8 @@ interface PromptChoice {
   icon: LucideIcon;
 }
 
+type PromptMenu = "model" | "skill" | "mode";
+
 const MODEL_OPTIONS: PromptChoice[] = [
   { id: "auto", label: "智能选择", description: "根据任务自动匹配合适模型", icon: Sparkles },
   { id: "quality", label: "高质量模型", description: "优先复杂推理与生成质量", icon: Cpu },
@@ -139,8 +141,14 @@ function PromptChoicePopover({
       contentClassName={styles.attachmentPopover}
       hint={hint}
       hintAlign="center"
+      preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
       trigger={
-        <button type="button" className={styles.promptIconButton} aria-label={label}>
+        <button
+          type="button"
+          className={styles.promptIconButton}
+          aria-label={label}
+          data-prompt-popover-trigger
+        >
           <TriggerIcon size={14} />
         </button>
       }
@@ -177,7 +185,7 @@ export default function HomePage() {
   const [prompt, setPrompt] = useState("");
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [attachmentComposerExpanded, setAttachmentComposerExpanded] = useState(false);
-  const [activePromptMenu, setActivePromptMenu] = useState<"model" | "skill" | "mode" | null>(null);
+  const [activePromptMenu, setActivePromptMenu] = useState<PromptMenu | null>(null);
   const [selectedModel, setSelectedModel] = useState("auto");
   const [selectedSkill, setSelectedSkill] = useState("auto");
   const [selectedMode, setSelectedMode] = useState("workflow");
@@ -200,9 +208,10 @@ export default function HomePage() {
 
     setAttachmentMenuOpen(open);
     if (!open) {
-      setAttachmentComposerExpanded(false);
       return;
     }
+
+    setActivePromptMenu(null);
 
     if (prompt || document.activeElement === promptInputRef.current) {
       setAttachmentComposerExpanded(true);
@@ -213,6 +222,15 @@ export default function HomePage() {
       setAttachmentComposerExpanded(true);
       attachmentExpandTimerRef.current = null;
     }, 90);
+  };
+
+  const handlePromptMenuOpenChange = (menu: PromptMenu, open: boolean) => {
+    setActivePromptMenu((currentMenu) => {
+      if (open) return menu;
+      return currentMenu === menu ? null : currentMenu;
+    });
+
+    if (open) setAttachmentMenuOpen(false);
   };
 
   const openLocalAttachmentPicker = () => {
@@ -306,11 +324,13 @@ export default function HomePage() {
               contentClassName={styles.attachmentPopover}
               hint="添加附件"
               hintAlign="center"
+              preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
               trigger={
                 <button
                   type="button"
                   className={`${styles.promptIconButton} ${styles.promptPlus}`}
                   aria-label="添加附件"
+                  data-prompt-popover-trigger
                   onMouseDown={(event) => event.preventDefault()}
                 >
                   <Plus size={15} />
@@ -368,7 +388,7 @@ export default function HomePage() {
                 options={MODEL_OPTIONS}
                 selected={selectedModel}
                 open={activePromptMenu === "model"}
-                onOpenChange={(open) => setActivePromptMenu(open ? "model" : null)}
+                onOpenChange={(open) => handlePromptMenuOpenChange("model", open)}
                 onSelect={(id) => {
                   setSelectedModel(id);
                   setActivePromptMenu(null);
@@ -381,7 +401,7 @@ export default function HomePage() {
                 options={SKILL_OPTIONS}
                 selected={selectedSkill}
                 open={activePromptMenu === "skill"}
-                onOpenChange={(open) => setActivePromptMenu(open ? "skill" : null)}
+                onOpenChange={(open) => handlePromptMenuOpenChange("skill", open)}
                 onSelect={(id) => {
                   setSelectedSkill(id);
                   setActivePromptMenu(null);
@@ -394,7 +414,7 @@ export default function HomePage() {
                 options={MODE_OPTIONS}
                 selected={selectedMode}
                 open={activePromptMenu === "mode"}
-                onOpenChange={(open) => setActivePromptMenu(open ? "mode" : null)}
+                onOpenChange={(open) => handlePromptMenuOpenChange("mode", open)}
                 onSelect={(id) => {
                   setSelectedMode(id);
                   setActivePromptMenu(null);

@@ -25,6 +25,7 @@ interface PopoverProps {
   onOpenChange?: (open: boolean) => void;
   hint?: ReactNode;
   hintAlign?: Align;
+  preserveOpenOnOutsideSelector?: string;
 }
 
 const classes = (...names: Array<string | undefined>) => names.filter(Boolean).join(" ");
@@ -48,6 +49,7 @@ export function Popover({
   onOpenChange,
   hint,
   hintAlign = align,
+  preserveOpenOnOutsideSelector,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
 
@@ -116,15 +118,26 @@ export function Popover({
             </TooltipPrimitive.Portal>
           )}
           <PopoverPrimitive.Portal>
-            <PopoverPrimitive.Content
-              className={classes(styles.content, styles.clickContent, contentClassName)}
-              side={side}
-              align={align}
-              sideOffset={sideOffset}
-              collisionPadding={collisionPadding}
-              aria-label={ariaLabel}
-              role={contentRole}
-            >
+          <PopoverPrimitive.Content
+            className={classes(styles.content, styles.clickContent, contentClassName)}
+            side={side}
+            align={align}
+            sideOffset={sideOffset}
+            collisionPadding={collisionPadding}
+            aria-label={ariaLabel}
+            role={contentRole}
+            onCloseAutoFocus={(event) => event.preventDefault()}
+            onInteractOutside={(event) => {
+              const target = event.detail.originalEvent.target;
+              if (
+                preserveOpenOnOutsideSelector &&
+                target instanceof Element &&
+                target.closest(preserveOpenOnOutsideSelector)
+              ) {
+                event.preventDefault();
+              }
+            }}
+          >
               {children}
               {showArrow && <PopoverPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
             </PopoverPrimitive.Content>
