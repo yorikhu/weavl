@@ -6,6 +6,7 @@ export const FLOWS = { stream: 0, vortex: 1, ribbon: 2 } as const;
 
 export const RIPPLE_SPEED = 4.2;
 export const RIPPLE_TAIL = 1.8;
+export const SHARD_BASE_WORLD_SIZE = 0.0125;
 
 export const MATERIAL_PRESETS = {
   pearl: { roughness: 0.46, brightness: 0.92, glow: 0.54, highlightMix: 0.78 },

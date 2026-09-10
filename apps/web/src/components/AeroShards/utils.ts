@@ -1,4 +1,4 @@
-import { BLOOM_SCALES, RIPPLE_SPEED, RIPPLE_TAIL } from './constants';
+import { BLOOM_SCALES, RIPPLE_SPEED, RIPPLE_TAIL, SHARD_BASE_WORLD_SIZE } from './constants';
 import type {
   Color,
   FrameState,
@@ -19,6 +19,21 @@ export const advanceFrameDeadline = (timestamp: number, deadline: number, interv
 };
 
 export const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+/**
+ * Converts the configured shard size into world units while preserving its initial CSS-pixel footprint.
+ *
+ * @param shardSize - User-configured shard size multiplier.
+ * @param referenceHeight - Canvas CSS height captured when the renderer starts.
+ * @param currentHeight - Current canvas CSS height.
+ * @returns A world-space size compensated for the current canvas height.
+ */
+export const resolveFixedShardWorldSize = (
+  shardSize: number,
+  referenceHeight: number,
+  currentHeight: number
+): number =>
+  SHARD_BASE_WORLD_SIZE * shardSize * (Math.max(referenceHeight, 1) / Math.max(currentHeight, 1));
 
 export const createFormation = (flow: number) => ({ weights: layoutVector(flow), velocity: [0, 0, 0, 0] as Vector4 });
 

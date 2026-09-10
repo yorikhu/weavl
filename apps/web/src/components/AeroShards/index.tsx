@@ -44,6 +44,7 @@ import {
   resetPointerMotion,
   resolveBloomSize,
   resolveDpr,
+  resolveFixedShardWorldSize,
   resolveFrameInterval,
   resolvePathLength,
   resolveQuality,
@@ -383,6 +384,7 @@ export default function AeroShards({
     const canvas = canvasRef.current;
     const root = rootRef.current;
     if (!canvas || !root) return;
+    const shardSizeReferenceHeight = Math.max(canvas.clientHeight, 1);
     resetPointerMotion(pointerRef.current);
     ripplesRef.current = createRipples();
     holdRef.current = createHold();
@@ -777,8 +779,11 @@ export default function AeroShards({
             700,
             Math.round(preset.count * settings.detailCount * runtimeQuality.countScale)
           );
-          const densityCompensation = Math.pow(1 / runtimeQuality.countScale, 0.2);
-          const shardWorldSize = 0.0125 * settings.shardSize * densityCompensation;
+          const shardWorldSize = resolveFixedShardWorldSize(
+            settings.shardSize,
+            shardSizeReferenceHeight,
+            canvas.clientHeight
+          );
           const aspect = output.size[0] / Math.max(output.size[1], 1);
           const lightPresence = settings.interaction === INTERACTIONS.none ? 0 : pointer.presence;
           const pointerShiftX = (pointer.position[0] - 0.5) * 0.38 * lightPresence;
