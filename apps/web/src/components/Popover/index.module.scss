@@ -29,6 +29,8 @@
 
 .arrow {
   fill: var(--glass-strong);
+  stroke: var(--popover-border);
+  stroke-width: 1px;
 }
 
 @keyframes popover-enter {
