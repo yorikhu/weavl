@@ -3,7 +3,7 @@
 .shell {
   position: fixed;
   inset: 0;
-  background: #0d0d0f;
+  background: #101012;
   display: flex;
   flex-direction: column;
   color: #e6e8ec;
@@ -23,10 +23,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 0.5px solid #232326;
-  background: rgba(20, 20, 22, 0.72);
-  backdrop-filter: blur(12px);
+  min-height: 56px;
+  padding: 10px 16px 8px;
+  border-bottom: 0;
+  background: transparent;
   flex-shrink: 0;
   z-index: 10;
 }
@@ -41,6 +41,17 @@
 .topbarLeft {
   min-width: 0;
   flex: 1;
+}
+
+.projectIdentity {
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: #ffffff0d;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
 }
 
 .projectMenuTrigger {
@@ -60,9 +71,16 @@
     border-color 0.15s;
 
   &:hover {
-    background: var(--surface-hover);
-    border-color: var(--surface-border);
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.14);
   }
+}
+
+.projectMenuTriggerOpen,
+.projectMenuTriggerOpen:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.16);
 }
 
 .projectMenuChevron {
@@ -71,16 +89,32 @@
 }
 
 .projectMenuChevronOpen {
+  color: var(--foreground);
   transform: rotate(180deg);
 }
 
 .projectPopover {
+  --project-popover-background: var(--glass-strong);
   min-width: 190px;
   padding: 5px;
   border-radius: 12px;
-  background: var(--glass-strong);
+  background: var(--project-popover-background);
   color: var(--foreground);
   backdrop-filter: blur(18px);
+}
+
+:global(html:not(.dark)) .projectPopover {
+  --project-popover-background: rgba(255, 255, 255, 0.99);
+  background: var(--project-popover-background);
+  border-color: rgba(15, 23, 42, 0.18);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+
+:global(html.dark) .projectPopover {
+  --project-popover-background: rgba(38, 38, 42, 0.98);
+  background: var(--project-popover-background);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
 }
 
 .projectMenuItem {
@@ -91,14 +125,13 @@
   align-items: center;
   gap: 9px;
   border-radius: 8px;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   font-size: 12px;
   text-align: left;
   cursor: pointer;
 
   &:hover {
-    color: var(--foreground);
-    background: var(--surface-hover);
+    background: color-mix(in srgb, var(--foreground) 12%, var(--project-popover-background));
   }
 }
 
@@ -140,39 +173,6 @@
     background: var(--surface);
     border-color: var(--surface-hover-border);
   }
-}
-
-.canvasTabs {
-  height: 28px;
-  padding: 2px;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-  border: 1px solid var(--surface-border);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-}
-
-.canvasTab {
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 6px;
-  color: var(--muted-foreground);
-  font-size: 10.5px;
-  white-space: nowrap;
-  cursor: pointer;
-
-  &:hover {
-    color: var(--foreground);
-    background: var(--surface-hover);
-  }
-}
-
-.canvasTabActive {
-  color: var(--foreground);
-  background: var(--surface);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .iconBtn {
@@ -226,33 +226,26 @@
   }
 }
 
-.creditPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 0.5px solid rgba(245, 158, 11, 0.32);
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  &:hover {
-    background: rgba(245, 158, 11, 0.18);
-  }
+.canvasHeaderCapsule {
+  --header-capsule-background: #ffffff0d;
+  --header-capsule-active-background: #ffffff18;
+  --header-capsule-border: rgba(255, 255, 255, 0.13);
+  --header-capsule-active-border: rgba(255, 255, 255, 0.22);
+  --header-capsule-foreground: #ffffff;
+  --header-capsule-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  --account-plan-background: rgba(255, 255, 255, 0.075);
+  --account-plan-border: rgba(255, 255, 255, 0.1);
 }
 
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #26262b;
-  color: #e6e8ec;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+:global(html:not(.dark)) .canvasHeaderCapsule {
+  --header-capsule-background: #0000000d;
+  --header-capsule-active-background: #00000018;
+  --header-capsule-border: rgba(15, 23, 42, 0.14);
+  --header-capsule-active-border: rgba(15, 23, 42, 0.24);
+  --header-capsule-foreground: #111827;
+  --header-capsule-shadow: 0 5px 18px rgba(15, 23, 42, 0.1);
+  --account-plan-background: rgba(15, 23, 42, 0.07);
+  --account-plan-border: rgba(15, 23, 42, 0.11);
 }
 
 // =============== 节点选中工具胶囊（按 LibTV 模式） ===============
@@ -321,6 +314,29 @@
   background: #101012;
   width: 100%;
   height: 100%;
+}
+
+:global(html:not(.dark)) .shell,
+:global(html:not(.dark)) .board,
+:global(html:not(.dark)) .flowRoot {
+  background: #f5f6f8;
+}
+
+:global(html:not(.dark)) .projectIdentity {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: #0000000d;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.08);
+}
+
+:global(html:not(.dark)) .projectMenuTrigger:hover {
+  border-color: rgba(15, 23, 42, 0.15);
+  background: #00000012;
+}
+
+:global(html:not(.dark)) .projectMenuTriggerOpen,
+:global(html:not(.dark)) .projectMenuTriggerOpen:hover {
+  border-color: rgba(15, 23, 42, 0.22);
+  background: #00000018;
 }
 
 /* 画布默认是箭头选择模式；只有按住 Space 时 React Flow 才添加 draggable。 */
@@ -438,17 +454,153 @@
   fill: rgba(255, 255, 255, 0.12);
 }
 
-.controls :global(button) {
-  background: #161618;
-  border-color: #242428;
-  color: #a8a8b2;
-  border-bottom: 0.5px solid #242428;
-  &:hover {
-    background: #1a1a1e;
-    color: #e6e8ec;
+:global(html:not(.dark)) .bg :global(.react-flow__background-pattern.dots) {
+  fill: rgba(15, 23, 42, 0.13);
+}
+
+.viewportControls {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 35;
+  height: 36px;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(28, 28, 31, 0.92);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+
+  > button {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #a8a8b2;
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      background 0.15s;
+
+    &:hover {
+      color: #e6e8ec;
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    &:active {
+      background: rgba(255, 255, 255, 0.13);
+    }
   }
-  svg {
-    fill: currentColor;
+}
+
+.viewportControlsDivider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.zoomTrigger {
+  width: auto !important;
+  min-width: 48px;
+  padding: 0 7px;
+  color: #d5d5da !important;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoomTriggerOpen {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.zoomPopover {
+  width: 190px;
+  padding: 6px;
+  border-radius: 13px;
+  background: rgba(38, 38, 42, 0.98);
+  color: #e6e8ec;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.zoomInputRow {
+  min-height: 38px;
+  padding: 5px 7px 5px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #c7c7ce;
+  font-size: 11px;
+}
+
+.zoomInputWrap {
+  height: 28px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #a8a8b2;
+
+  &:focus-within {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  input {
+    width: 42px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    font-size: 11px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      margin: 0;
+      appearance: none;
+    }
+  }
+}
+
+.zoomPreset {
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #c7c7ce;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: #ffffff;
+  }
+
+  strong {
+    color: inherit;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -1374,69 +1526,93 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
   pointer-events: none;
-  > * {
-    pointer-events: auto;
+}
+
+.guideCard {
+  width: min(420px, calc(100vw - 48px));
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  background: rgba(27, 27, 30, 0.86);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(18px);
+}
+
+.guideIcon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e6e8ec;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
-.guideBubble {
-  position: relative;
-  background: rgba(20, 20, 22, 0.92);
-  backdrop-filter: blur(12px);
-  border: 0.5px solid #232326;
-  border-radius: 12px;
-  padding: 12px 18px;
-  text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: -7px;
-    left: 50%;
-    transform: translateX(-50%) rotate(45deg);
-    width: 12px;
-    height: 12px;
-    background: rgba(20, 20, 22, 0.92);
-    border-right: 0.5px solid #232326;
-    border-bottom: 0.5px solid #232326;
-  }
+.guideCopy {
+  min-width: 0;
 }
 
 .guideTitle {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: #e6e8ec;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
+  letter-spacing: 0.01em;
 }
 .guideSub {
   font-size: 11px;
-  color: #8a8a92;
+  line-height: 1.5;
+  color: #9a9aa3;
 }
 
 .guideLoad {
+  grid-column: 1 / -1;
+  justify-self: stretch;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
-  border-radius: 12px;
-  border: 0.5px solid #f59e0b;
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  min-height: 34px;
+  margin-top: 2px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e6e8ec;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
-  &:hover:not(:disabled) {
-    background: rgba(245, 158, 11, 0.2);
-  }
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  pointer-events: auto;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 }
 
@@ -1985,31 +2161,6 @@
   }
 }
 
-// 底部添加弹层（复用 contextMenu 视觉）
-.addWrap {
-  position: relative;
-}
-
-.addMenu {
-  position: absolute;
-  bottom: 44px;
-  left: 0;
-  min-width: 150px;
-  padding: 4px;
-  background: rgba(20, 20, 22, 0.96);
-  backdrop-filter: blur(12px);
-  border: 0.5px solid #232326;
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
-  animation: fade 0.12s ease;
-  z-index: 40;
-}
-
-.addMenuSep {
-  height: 0.5px;
-  background: #232326;
-  margin: 4px 6px;
-}
 
 // =============== 节点内编辑态（双击原地放大） ===============
 .nodeEditor {
@@ -2550,66 +2701,7 @@
   white-space: nowrap;
 }
 
-// =============== v38：+ 圆角块位于左下角缩放控件右侧（不动缩放控件默认位置） ===============
-.bottomLeftDock {
-  position: absolute;
-  left: 64px;
-  bottom: 15px;
-  z-index: 30;
-}
-
-.addFab {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: #1f1f23;
-  border: 0.5px solid #3a3a41;
-  color: #e6e8ec;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-  &:hover {
-    background: #26262c;
-    border-color: #4a4a52;
-  }
-}
-
-.addFabActive {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.45);
-  color: #f59e0b;
-}
-
 // =============== v38：Agent 右侧抽屉 ===============
-.agentAvatarBtn {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #26262c;
-  border: 0.5px solid #3a3a41;
-  color: #e6e8ec;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-  &:hover {
-    background: #2d2d33;
-  }
-}
-
-.agentAvatarBtnActive {
-  background: #534ab7;
-  border-color: #7f77dd;
-  color: #fff;
-}
-
 .agentDrawer {
   position: absolute;
   top: 52px;
@@ -2768,146 +2860,161 @@
   }
 }
 
-// =============== v39：积分悬停弹窗 ===============
-.creditWrap {
-  position: relative;
+// =============== 亮色主题：画布主界面 ===============
+.shellLight {
+  color: #111827;
 }
 
-.creditPopover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 340px;
-  background: rgba(22, 22, 24, 0.97);
-  backdrop-filter: blur(12px);
-  border: 0.5px solid #2d2d33;
-  border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
-  padding: 12px 0 6px;
-  z-index: 70;
-  animation: creditIn 0.14s ease;
+.shellLight .board,
+.shellLight .flowRoot {
+  background: #f5f6f8;
 }
 
-@keyframes creditIn {
-  from {
-    transform: translateY(-4px);
-    opacity: 0;
+.shellLight .projectIdentity {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: #0000000d;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.08);
+}
+
+.shellLight .projectMenuTrigger:hover {
+  border-color: rgba(15, 23, 42, 0.15);
+  background: #00000012;
+}
+
+.shellLight .projectMenuTriggerOpen,
+.shellLight .projectMenuTriggerOpen:hover {
+  border-color: rgba(15, 23, 42, 0.22);
+  background: #00000018;
+}
+
+.shellLight .bg :global(.react-flow__background-pattern.dots) {
+  fill: rgba(15, 23, 42, 0.13);
+}
+
+.shellLight .viewportControls {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  > button {
+    color: #64748b;
+
+    &:hover {
+      color: #0f172a;
+      background: rgba(15, 23, 42, 0.07);
+    }
+
+    &:active {
+      background: rgba(15, 23, 42, 0.11);
+    }
   }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
-.creditMemberCard {
-  margin: 0 12px 10px;
-  padding: 12px 14px;
-  background: #0d0d0f;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.shellLight .viewportControlsDivider {
+  background: rgba(15, 23, 42, 0.14);
 }
 
-.creditMemberIcon {
-  color: #f59e0b;
+.shellLight .zoomTrigger {
+  color: #334155 !important;
 }
 
-.creditMemberLabel {
-  color: #e6e8ec;
-  font-size: 13px;
+.shellLight .zoomTriggerOpen {
+  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.09) !important;
 }
 
-.creditMemberBtn {
-  margin-left: auto;
-  padding: 4px 12px;
-  border-radius: 8px;
-  border: none;
-  background: #f59e0b;
-  color: #1a1205;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
+.shellLight .minimap {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.shellLight .guideCard {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.shellLight .guideIcon {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+
   &:hover {
-    filter: brightness(1.08);
+    border-color: rgba(15, 23, 42, 0.22);
+    background: rgba(15, 23, 42, 0.1);
   }
 }
 
-.creditBalanceRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 16px 4px;
+.shellLight .guideTitle {
+  color: #0f172a;
 }
 
-.creditBalanceLabel {
-  color: #e6e8ec;
-  font-size: 13px;
-  b {
-    font-weight: 500;
-  }
+.shellLight .guideSub {
+  color: #64748b;
 }
 
-.creditRecharge {
-  border: none;
-  background: transparent;
-  color: #f59e0b;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
+.shellLight .guideLoad {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: rgba(15, 23, 42, 0.055);
+  color: #1e293b;
+
   &:hover {
-    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(15, 23, 42, 0.21);
+    background: rgba(15, 23, 42, 0.09);
   }
 }
 
-.creditDetailList {
-  padding: 4px 16px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.shellLight .contextMenu {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
 }
 
-.creditDetailRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #a8a8b2;
-  font-size: 12px;
-  span:last-child {
-    color: #e6e8ec;
+.shellLight .contextMenuHead {
+  color: #64748b;
+}
+
+.shellLight .contextMenuItem {
+  color: #475569;
+}
+
+.shellLight .contextMenuSep {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+:global(html:not(.dark)) .zoomPopover {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+}
+
+:global(html:not(.dark)) .zoomInputRow {
+  color: #475569;
+}
+
+:global(html:not(.dark)) .zoomInputWrap {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.055);
+  color: #64748b;
+
+  &:focus-within {
+    border-color: rgba(15, 23, 42, 0.28);
+    background: rgba(15, 23, 42, 0.08);
+  }
+
+  input {
+    color: #0f172a;
   }
 }
 
-.creditMenuSep {
-  height: 0.5px;
-  background: #27272c;
-  margin: 0 6px;
-}
+:global(html:not(.dark)) .zoomPreset {
+  color: #475569;
 
-.creditMenuList {
-  padding: 4px 0;
-}
-
-.creditMenuItem {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  background: transparent;
-  border: none;
-  color: #e6e8ec;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
-  svg {
-    color: #5e5e66;
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.07);
   }
 }

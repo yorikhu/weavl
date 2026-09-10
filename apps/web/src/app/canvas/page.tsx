@@ -8,11 +8,14 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { toast } from "@/hooks/useToast";
 import { Popover } from "@/components/Popover";
 import { StarburstLogo } from "@/components/StarburstLogo";
+import { UserMenu } from "@/components/UserMenu";
+import { HeaderCapsule } from "@/components/HeaderCapsule";
+import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
+import { useTheme } from "@/provider/ThemeProvider";
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
@@ -21,6 +24,7 @@ import {
   type Node,
   ReactFlowProvider,
   useReactFlow,
+  useViewport,
   useUpdateNodeInternals,
   ConnectionMode,
   SelectionMode,
@@ -30,8 +34,6 @@ import type { RunView } from "@weavl/shared";
 import {
   RefreshCw,
   X,
-  ChevronRight,
-  Coins,
   Plus,
   Send,
   Link2,
@@ -47,6 +49,8 @@ import {
   ChevronDown,
   Home,
   Trash2,
+  Minus,
+  LocateFixed,
 } from "lucide-react";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
@@ -69,6 +73,8 @@ import type {
 } from "./types/nodes";
 import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "./constants";
 
+const INITIAL_CANVAS_VIEWPORT = { x: 0, y: 0, zoom: 0.8 };
+
 /**
  * 协调 React Flow 状态、节点编辑、连线以及页面级浮层。
  *
@@ -76,19 +82,17 @@ import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "./constant
  */
 function CanvasInner() {
   const router = useRouter();
-  const { screenToFlowPosition, setCenter } = useReactFlow();
+  const { theme } = useTheme();
+  const { screenToFlowPosition, setCenter, zoomIn, zoomOut, zoomTo, fitView } = useReactFlow();
+  const { zoom } = useViewport();
   const updateNodeInternals = useUpdateNodeInternals();
   const connectionSourceActiveClass = styles.connectionSourceActive ?? "connection-source-active";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [projectName, setProjectName] = useState("未命名项目");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const [activeCanvas, setActiveCanvas] = useState<1 | 2 | 3>(1);
-  const canvasSnapshotsRef = useRef<Record<1 | 2 | 3, { nodes: Node[]; edges: Edge[] }>>({
-    1: { nodes: [], edges: [] },
-    2: { nodes: [], edges: [] },
-    3: { nodes: [], edges: [] },
-  });
+  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
+  const [zoomDraft, setZoomDraft] = useState("80");
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
 
   /** handle 位置由 CSS 调整后，刷新 React Flow 缓存的正式边锚点。 */
@@ -109,32 +113,9 @@ function CanvasInner() {
     );
   }, [setEdges]);
 
-  const switchCanvas = useCallback(
-    (next: 1 | 2 | 3) => {
-      if (next === activeCanvas) return;
-      canvasSnapshotsRef.current[activeCanvas] = { nodes, edges };
-      const snapshot = canvasSnapshotsRef.current[next];
-      setNodes(snapshot.nodes);
-      setEdges(snapshot.edges);
-      setActiveCanvas(next);
-      setSelectedNode(null);
-      setEditingId(null);
-      setContextMenu(null);
-      setConnectMenu(null);
-    },
-    [activeCanvas, edges, nodes, setEdges, setNodes],
-  );
-
   const createProject = useCallback(() => {
-    const emptySnapshots = {
-      1: { nodes: [], edges: [] },
-      2: { nodes: [], edges: [] },
-      3: { nodes: [], edges: [] },
-    } satisfies Record<1 | 2 | 3, { nodes: Node[]; edges: Edge[] }>;
-    canvasSnapshotsRef.current = emptySnapshots;
     setNodes([]);
     setEdges([]);
-    setActiveCanvas(1);
     setProjectName("未命名项目");
     setSelectedNode(null);
     setEditingId(null);
@@ -151,34 +132,6 @@ function CanvasInner() {
     router.push("/projects");
   }, [projectName, router, setEdges, setNodes]);
   const [showLibrary, setShowLibrary] = useState(false);
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  /** 积分悬停弹窗（hover 200ms 开、离开 150ms 缓冲关） */
-  const [creditHover, setCreditHover] = useState(false);
-  const creditOpenTimer = useRef<number | null>(null);
-  const creditCloseTimer = useRef<number | null>(null);
-  const openCredit = useCallback(() => {
-    if (creditCloseTimer.current) {
-      window.clearTimeout(creditCloseTimer.current);
-      creditCloseTimer.current = null;
-    }
-    if (creditHover) return;
-    creditOpenTimer.current = window.setTimeout(() => setCreditHover(true), 200);
-  }, [creditHover]);
-  const closeCredit = useCallback(() => {
-    if (creditOpenTimer.current) {
-      window.clearTimeout(creditOpenTimer.current);
-      creditOpenTimer.current = null;
-    }
-    if (!creditHover) return;
-    creditCloseTimer.current = window.setTimeout(() => setCreditHover(false), 150);
-  }, [creditHover]);
-  useEffect(
-    () => () => {
-      if (creditOpenTimer.current) window.clearTimeout(creditOpenTimer.current);
-      if (creditCloseTimer.current) window.clearTimeout(creditCloseTimer.current);
-    },
-    [],
-  );
   /** Agent 抽屉（右上角头像展开）+ 气泡消息流 */
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentMessages, setAgentMessages] = useState<{ role: "user" | "agent"; text: string; thumb?: string | null }[]>(
@@ -218,10 +171,8 @@ function CanvasInner() {
   });
   /** 标记当前这次拖线是否已由 React Flow 成功连接，防止 onConnectEnd 再按画布空白处理。 */
   const connectSucceededRef = useRef(false);
-  /** click-outside-to-close —— 给 + 添加菜单 / Agent 抽屉 / 节点库提供 ref，
+  /** click-outside-to-close —— 给 Agent 抽屉 / 节点库提供 ref，
      在 useClickOutside 里统一判断「pointerdown 在白名单外则关闭」。 */
-  const addMenuRef = useRef<HTMLDivElement | null>(null);
-  const addFabBtnRef = useRef<HTMLButtonElement | null>(null);
   const agentDrawerRef = useRef<HTMLDivElement | null>(null);
   const agentBtnRef = useRef<HTMLButtonElement | null>(null);
   const libraryRef = useRef<HTMLDivElement | null>(null);
@@ -544,7 +495,6 @@ function CanvasInner() {
   }, [editingId, commitEdit]);
 
   /** click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
-  useClickOutside(showAddMenu, [addMenuRef, addFabBtnRef], () => setShowAddMenu(false));
   useClickOutside(agentOpen, [agentDrawerRef, agentBtnRef], () => setAgentOpen(false));
   useClickOutside(showLibrary, [libraryRef], () => setShowLibrary(false));
 
@@ -603,22 +553,68 @@ function CanvasInner() {
     [setNodes],
   );
 
-  /** 右键菜单状态 */
+  /** 画布添加菜单状态（右键或双击空白处触发）。 */
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; flowPos: { x: number; y: number } } | null>(
     null,
+  );
+  const openCanvasAddMenu = useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = document.querySelector(`.${styles.board}`)?.getBoundingClientRect();
+      if (!rect) return;
+      setContextMenu({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+        flowPos: screenToFlowPosition({ x: clientX, y: clientY }),
+      });
+      setConnectMenu(null);
+    },
+    [screenToFlowPosition],
   );
   const onPaneContextMenu = useCallback(
     (e: React.MouseEvent | MouseEvent) => {
       e.preventDefault();
-      const rect = (e.target as HTMLElement).closest(`.${styles.board}`)?.getBoundingClientRect();
-      if (!rect) return;
-      setContextMenu({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-        flowPos: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
-      });
+      openCanvasAddMenu(e.clientX, e.clientY);
     },
-    [screenToFlowPosition],
+    [openCanvasAddMenu],
+  );
+  const onBoardDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest(
+          ".react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, button, input, textarea, [contenteditable='true']",
+        ) ||
+        target.closest(`.${styles.contextMenu}`)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      openCanvasAddMenu(e.clientX, e.clientY);
+    },
+    [openCanvasAddMenu],
+  );
+
+  const applyZoomPercent = useCallback(
+    (percent: number, closeMenu = false) => {
+      const clamped = Math.min(250, Math.max(30, percent));
+      setZoomDraft(String(Math.round(clamped)));
+      void zoomTo(clamped / 100, { duration: 180 });
+      if (closeMenu) setZoomMenuOpen(false);
+    },
+    [zoomTo],
+  );
+
+  const commitZoomDraft = useCallback(
+    (closeMenu = false) => {
+      const parsed = Number.parseFloat(zoomDraft);
+      if (!Number.isFinite(parsed)) {
+        setZoomDraft(String(Math.round(zoom * 100)));
+        return;
+      }
+      applyZoomPercent(parsed, closeMenu);
+    },
+    [applyZoomPercent, zoom, zoomDraft],
   );
 
   /** 节点库添加（业务能力） */
@@ -1171,10 +1167,11 @@ function CanvasInner() {
         videoEditStateRef,
       }}
     >
-      <div className={styles.shell}>
-        {/* 顶部栏：左侧项目操作与画布切换，右侧积分与 Agent。 */}
+      <div className={`${styles.shell} ${theme === "light" ? styles.shellLight : ""}`}>
+        {/* 顶部栏：左侧项目操作，右侧账户与 Agent。 */}
         <div className={styles.topbar}>
           <div className={styles.topbarLeft}>
+            <div className={styles.projectIdentity}>
             <Popover
               mode="click"
               open={projectMenuOpen}
@@ -1187,7 +1184,12 @@ function CanvasInner() {
               contentRole="menu"
               contentClassName={`${styles.projectPopover} glass-strong`}
               trigger={
-                <button type="button" className={styles.projectMenuTrigger} aria-label="打开项目菜单">
+                <button
+                  type="button"
+                  className={`${styles.projectMenuTrigger} ${projectMenuOpen ? styles.projectMenuTriggerOpen : ""}`}
+                  aria-label="打开项目菜单"
+                  aria-expanded={projectMenuOpen}
+                >
                   <StarburstLogo size={19} />
                   <ChevronDown
                     size={13}
@@ -1247,92 +1249,30 @@ function CanvasInner() {
               aria-label="项目名称"
               spellCheck={false}
             />
-
-            <div className={styles.canvasTabs} aria-label="切换画布">
-              {([1, 2, 3] as const).map((canvasNumber) => (
-                <button
-                  key={canvasNumber}
-                  type="button"
-                  className={`${styles.canvasTab} ${activeCanvas === canvasNumber ? styles.canvasTabActive : ""}`}
-                  onClick={() => switchCanvas(canvasNumber)}
-                  aria-pressed={activeCanvas === canvasNumber}
-                >
-                  画布 {canvasNumber}
-                </button>
-              ))}
             </div>
           </div>
           <div className={styles.topbarRight}>
-            <div className={styles.creditWrap} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
-              <button className={styles.creditPill} title="积分">
-                <Coins size={12} />
-                100
-              </button>
-              {creditHover && (
-                <div className={styles.creditPopover} onMouseEnter={openCredit} onMouseLeave={closeCredit}>
-                  <div className={styles.creditMemberCard}>
-                    <Coins size={14} className={styles.creditMemberIcon} />
-                    <span className={styles.creditMemberLabel}>个人非会员</span>
-                    <button className={styles.creditMemberBtn}>开通会员</button>
-                  </div>
-                  <div className={styles.creditBalanceRow}>
-                    <span className={styles.creditBalanceLabel}>
-                      积分余额：<b>100点</b>
-                    </span>
-                    <button className={styles.creditRecharge}>充值</button>
-                  </div>
-                  <div className={styles.creditDetailList}>
-                    <div className={styles.creditDetailRow}>
-                      <span>会员订阅积分</span>
-                      <span>0点</span>
-                    </div>
-                    <div className={styles.creditDetailRow}>
-                      <span>通用充值积分</span>
-                      <span>0点</span>
-                    </div>
-                    <div className={styles.creditDetailRow}>
-                      <span>模型卡积分</span>
-                      <span>0点</span>
-                    </div>
-                    <div className={styles.creditDetailRow}>
-                      <span>免费积分</span>
-                      <span>100点</span>
-                    </div>
-                  </div>
-                  <div className={styles.creditMenuSep} />
-                  <div className={styles.creditMenuList}>
-                    <button className={styles.creditMenuItem} onClick={() => toast("订阅管理：即将上线", "info")}>
-                      <span>订阅管理</span>
-                      <ChevronRight size={13} />
-                    </button>
-                    <button className={styles.creditMenuItem} onClick={() => toast("积分管理：即将上线", "info")}>
-                      <span>积分管理</span>
-                      <ChevronRight size={13} />
-                    </button>
-                    <button
-                      className={styles.creditMenuItem}
-                      onClick={() => toast("积分消耗顺序设置：即将上线", "info")}
-                    >
-                      <span>积分消耗顺序设置</span>
-                      <ChevronRight size={13} />
-                    </button>
-                    <button className={styles.creditMenuItem} onClick={() => toast("联系客服：即将上线", "info")}>
-                      <span>联系客服</span>
-                      <ChevronRight size={13} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            <button
+            <UserMenu
+              trigger={
+                <AccountHeaderCapsule
+                  amount={100}
+                  plan="Plus"
+                  className={styles.canvasHeaderCapsule}
+                  aria-label="用户菜单"
+                />
+              }
+            />
+            <HeaderCapsule
               ref={agentBtnRef}
-              className={`${styles.agentAvatarBtn} ${agentOpen ? styles.agentAvatarBtnActive : ""}`}
+              className={styles.canvasHeaderCapsule}
+              active={agentOpen}
               title="织光 Agent"
               aria-label="织光 Agent"
               onClick={() => setAgentOpen((v) => !v)}
             >
               <Bot size={15} />
-            </button>
+              <span>Agent</span>
+            </HeaderCapsule>
           </div>
         </div>
 
@@ -1428,7 +1368,7 @@ function CanvasInner() {
         <VideoEditPanel />
 
         {/* 画布主区 */}
-        <div className={styles.board}>
+        <div className={styles.board} onDoubleClick={onBoardDoubleClick}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1460,7 +1400,7 @@ function CanvasInner() {
             selectionKeyCode={null}
             selectionMode={SelectionMode.Partial}
             multiSelectionKeyCode="Shift"
-            fitView
+            defaultViewport={INITIAL_CANVAS_VIEWPORT}
             minZoom={0.3}
             maxZoom={2.5}
             /** Mac 触控板原生手势 —— 双指滚动=平移画布，捏合(ctrl+wheel)=缩放；
@@ -1468,14 +1408,91 @@ function CanvasInner() {
             panOnScroll
             zoomOnScroll={false}
             zoomOnPinch
+            zoomOnDoubleClick={false}
             /** 连接线样式由全局 :global(.react-flow__connection-path) 控制（默认 connectable 态） */
             proOptions={{ hideAttribution: true }}
             className={`${styles.flowRoot} ${selectionHasRaisedTitle ? (styles.selectionIncludesTitle ?? "") : ""} ${selectedNodeCount > 1 ? (styles.hasMultiSelection ?? "") : ""}`}
           >
-            <Background variant={BackgroundVariant.Dots} gap={24} size={1} className={styles.bg} />
-            <Controls showInteractive={false} className={styles.controls} />
+            <Background variant={BackgroundVariant.Dots} gap={12} size={1} className={styles.bg} />
             <MiniMap pannable zoomable className={styles.minimap} maskColor="rgba(13, 13, 15, 0.7)" />
           </ReactFlow>
+
+          <div className={styles.viewportControls} aria-label="画布缩放控制">
+            <button type="button" onClick={() => void zoomIn({ duration: 180 })} aria-label="放大画布" title="放大">
+              <Plus size={14} />
+            </button>
+            <button type="button" onClick={() => void zoomOut({ duration: 180 })} aria-label="缩小画布" title="缩小">
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => void fitView({ padding: 0.2, maxZoom: 1, duration: 260 })}
+              aria-label="定位全部节点"
+              title="定位全部节点"
+            >
+              <LocateFixed size={14} />
+            </button>
+            <span className={styles.viewportControlsDivider} aria-hidden="true" />
+            <Popover
+              mode="click"
+              open={zoomMenuOpen}
+              onOpenChange={(open) => {
+                setZoomMenuOpen(open);
+                if (open) setZoomDraft(String(Math.round(zoom * 100)));
+              }}
+              side="top"
+              align="end"
+              sideOffset={8}
+              showArrow={false}
+              ariaLabel="设置画布缩放比例"
+              contentClassName={styles.zoomPopover}
+              trigger={
+                <button
+                  type="button"
+                  className={`${styles.zoomTrigger} ${zoomMenuOpen ? styles.zoomTriggerOpen : ""}`}
+                  aria-label={`当前画布比例 ${Math.round(zoom * 100)}%`}
+                  aria-expanded={zoomMenuOpen}
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+              }
+            >
+              <label className={styles.zoomInputRow}>
+                <span>缩放比例</span>
+                <span className={styles.zoomInputWrap}>
+                  <input
+                    type="number"
+                    min={30}
+                    max={250}
+                    step={5}
+                    value={zoomDraft}
+                    onChange={(event) => setZoomDraft(event.target.value)}
+                    onBlur={() => commitZoomDraft()}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        commitZoomDraft(true);
+                      }
+                    }}
+                    aria-label="画布缩放百分比"
+                  />
+                  <span>%</span>
+                </span>
+              </label>
+              <button type="button" className={styles.zoomPreset} onClick={() => applyZoomPercent(50, true)}>
+                <span>适合概览</span>
+                <strong>50%</strong>
+              </button>
+              <button type="button" className={styles.zoomPreset} onClick={() => applyZoomPercent(100, true)}>
+                <span>实际大小</span>
+                <strong>100%</strong>
+              </button>
+              <button type="button" className={styles.zoomPreset} onClick={() => applyZoomPercent(200, true)}>
+                <span>细节查看</span>
+                <strong>200%</strong>
+              </button>
+            </Popover>
+          </div>
 
           {/* 连线失败 toast */}
           {connectError && (
@@ -1500,6 +1517,17 @@ function CanvasInner() {
               <button className={styles.contextMenuItem} onClick={() => addBasicNode("video", contextMenu.flowPos)}>
                 <VideoIcon size={13} />
                 视频
+              </button>
+              <div className={styles.contextMenuSep} />
+              <button
+                className={styles.contextMenuItem}
+                onClick={() => {
+                  setContextMenu(null);
+                  setShowLibrary(true);
+                }}
+              >
+                <Sparkles size={13} />
+                业务能力…
               </button>
             </div>
           )}
@@ -1573,80 +1601,29 @@ function CanvasInner() {
 
           {nodes.length === 0 && (
             <div className={styles.guide}>
-              <div className={styles.guideBubble}>
-                <div className={styles.guideTitle}>右键画布 · 添加节点</div>
-                <div className={styles.guideSub}>文本 / 图片 / 视频，也可从节点 handle 拖出连线</div>
+              <div className={styles.guideCard}>
+                <button
+                  type="button"
+                  className={styles.guideIcon}
+                  aria-label="添加节点"
+                  title="添加节点"
+                  onClick={(event) => openCanvasAddMenu(event.clientX, event.clientY)}
+                >
+                  <Plus size={18} />
+                </button>
+                <div className={styles.guideCopy}>
+                  <div className={styles.guideTitle}>双击画布，添加第一个节点</div>
+                  <div className={styles.guideSub}>支持文本、图片与视频，创建后可从两侧连接点继续编排</div>
+                </div>
+                {hasRun && (
+                  <button className={styles.guideLoad} onClick={() => void loadFromLatest()}>
+                    <RefreshCw size={14} />
+                    从最近任务加载
+                  </button>
+                )}
               </div>
-              <button className={styles.guideLoad} onClick={() => void loadFromLatest()} disabled={!hasRun}>
-                <RefreshCw size={14} />
-                {hasRun ? "从最近任务加载" : "暂无已完成任务"}
-              </button>
             </div>
           )}
-        </div>
-
-        {/* 底部：5 个工具图标（简化版） + 中央 chat-bar */}
-        {/* 底部：仅左下角 + 圆角块（点击弹节点菜单），其余工具与聊天栏全部移除 */}
-        <div className={styles.bottomLeftDock}>
-          <div className={styles.addWrap}>
-            <button
-              ref={addFabBtnRef}
-              className={`${styles.addFab} ${showAddMenu ? styles.addFabActive : ""}`}
-              title="添加节点"
-              onClick={() => {
-                setShowAddMenu((v) => !v);
-                setShowLibrary(false);
-              }}
-            >
-              <Plus size={16} />
-            </button>
-            {showAddMenu && (
-              <div ref={addMenuRef} className={styles.addMenu}>
-                <div className={styles.contextMenuHead}>基础节点</div>
-                <button
-                  className={styles.contextMenuItem}
-                  onClick={() => {
-                    addBasicNode("text");
-                    setShowAddMenu(false);
-                  }}
-                >
-                  <TypeIcon size={13} />
-                  文本
-                </button>
-                <button
-                  className={styles.contextMenuItem}
-                  onClick={() => {
-                    addBasicNode("image");
-                    setShowAddMenu(false);
-                  }}
-                >
-                  <ImageIcon size={13} />
-                  图片
-                </button>
-                <button
-                  className={styles.contextMenuItem}
-                  onClick={() => {
-                    addBasicNode("video");
-                    setShowAddMenu(false);
-                  }}
-                >
-                  <VideoIcon size={13} />
-                  视频
-                </button>
-                <div className={styles.addMenuSep} />
-                <button
-                  className={styles.contextMenuItem}
-                  onClick={() => {
-                    setShowLibrary(true);
-                    setShowAddMenu(false);
-                  }}
-                >
-                  <Sparkles size={13} />
-                  业务能力…
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* 节点库弹层（基础节点 + 业务能力双区） */}
