@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { draw, effect, frame, init, sampler, surface, target, uniforms } from 'vgpu';
 import type { Frame } from 'vgpu';
 
-import styles from './AeroShards.module.scss';
+import styles from './index.module.scss';
 
 const PLACEMENTS = { right: 0, left: 1, center: 2, full: 3 };
 const MATERIALS = { pearl: 0, chrome: 1, satin: 2 };
