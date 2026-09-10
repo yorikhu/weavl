@@ -3,6 +3,7 @@ import { RIPPLE_SPEED, RIPPLE_TAIL } from './constants';
 export const SHARD_SHADER = `
 struct ViewParams {
   viewport: vec4f,
+  screen: vec4f,
   shape: vec4f,
   effects: vec4f,
   composition: vec4f,
@@ -444,17 +445,18 @@ fn vs_main(
   let bankedFacing = facing * rollCos - side * rollSin;
   let depthScale = mix(0.56, 1.58, clamp(renderPosition.z * 0.62 + 0.5, 0.0, 1.0));
   let scaleShape = 0.46 + seedScale * 0.58 + pow(seedScale, 12.0) * 1.55;
-  let size = view.viewport.y * scaleShape * depthScale * (1.0 - view.gather.z * 0.3);
+  let perspective = 1.0 / max(0.62, 1.0 - renderPosition.z * 0.34);
+  let size = view.viewport.y * scaleShape * depthScale * (1.0 - view.gather.z * 0.3)
+    * view.viewport.z * perspective;
   let width = size * 0.72;
   let lengthScale = size * 1.26 * view.effects.z;
-  let world = renderPosition
-    + direction * local.y * lengthScale
-    + bankedSide * local.x * width
-    + bankedFacing * local.z * width;
-
-  let perspective = 1.0 / max(0.62, 1.0 - world.z * 0.34);
-  let ndc = world.xy * view.viewport.z / vec2f(aspect, 1.0) * perspective;
-  let depth = clamp(0.56 - world.z * 0.24, 0.03, 0.97);
+  let directionScreen = safeNormalize2(direction.xy);
+  let screenOffset = directionScreen * local.y * lengthScale
+    + bankedSide.xy * local.x * width
+    + bankedFacing.xy * local.z * width;
+  let centerNdc = renderPosition.xy * view.viewport.z / vec2f(aspect, 1.0) * perspective;
+  let ndc = centerNdc + screenOffset * view.screen.zw;
+  let depth = clamp(0.56 - renderPosition.z * 0.24, 0.03, 0.97);
   let triangle = vertexIndex / 3u;
   let corner = vertexIndex % 3u;
   var mapped = vec3f(0.0);

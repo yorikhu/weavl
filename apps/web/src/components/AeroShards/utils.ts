@@ -21,19 +21,14 @@ export const advanceFrameDeadline = (timestamp: number, deadline: number, interv
 export const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 /**
- * Converts the configured shard size into world units while preserving its initial CSS-pixel footprint.
+ * Resolves the shard's fixed CSS-pixel scale from the renderer's initial height.
  *
  * @param shardSize - User-configured shard size multiplier.
  * @param referenceHeight - Canvas CSS height captured when the renderer starts.
- * @param currentHeight - Current canvas CSS height.
- * @returns A world-space size compensated for the current canvas height.
+ * @returns The base half-size in CSS pixels.
  */
-export const resolveFixedShardWorldSize = (
-  shardSize: number,
-  referenceHeight: number,
-  currentHeight: number
-): number =>
-  SHARD_BASE_WORLD_SIZE * shardSize * (Math.max(referenceHeight, 1) / Math.max(currentHeight, 1));
+export const resolveFixedShardPixelSize = (shardSize: number, referenceHeight: number): number =>
+  SHARD_BASE_WORLD_SIZE * shardSize * Math.max(referenceHeight, 1) * 0.5;
 
 export const createFormation = (flow: number) => ({ weights: layoutVector(flow), velocity: [0, 0, 0, 0] as Vector4 });
 

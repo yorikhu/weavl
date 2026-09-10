@@ -44,7 +44,7 @@ import {
   resetPointerMotion,
   resolveBloomSize,
   resolveDpr,
-  resolveFixedShardWorldSize,
+  resolveFixedShardPixelSize,
   resolveFrameInterval,
   resolvePathLength,
   resolveQuality,
@@ -61,6 +61,7 @@ const createRenderGraph = (
 ) => {
   const viewParams = uniforms(gpu, {
     viewport: [1, 0.0132, 1, 0],
+    screen: [1, 1, 2, 2],
     shape: [1, 1, 0.36, 0],
     effects: [1, 2, 1, 1.12],
     composition: [0, 0, 0, 1],
@@ -585,8 +586,9 @@ export default function AeroShards({
         const outputFormat = (
           navigator as Navigator & { gpu: { getPreferredCanvasFormat(): string } }
         ).gpu.getPreferredCanvasFormat();
+        const renderDpr = resolveDpr(preset, canvas);
         const output = surface(gpu, canvas, {
-          dpr: resolveDpr(preset, canvas),
+          dpr: renderDpr,
           autoResize: false,
           format: outputFormat
         });
@@ -658,12 +660,12 @@ export default function AeroShards({
 
         const resizeOutput = () => {
           updateBounds();
-          const dpr = resolveDpr(preset, canvas);
+          const nextWidth = Math.max(1, Math.round(canvas.clientWidth * renderDpr));
+          if (nextWidth === output.size[0]) return;
           const nextSize: [number, number] = [
-            Math.max(1, Math.round(canvas.clientWidth * dpr)),
-            Math.max(1, Math.round(canvas.clientHeight * dpr))
+            nextWidth,
+            Math.max(1, Math.round(canvas.clientHeight * renderDpr))
           ];
-          if (nextSize[0] === output.size[0] && nextSize[1] === output.size[1]) return;
           output.resize(nextSize);
           resizePostTargets();
         };
@@ -757,12 +759,10 @@ export default function AeroShards({
             700,
             Math.round(preset.count * settings.detailCount * runtimeQuality.countScale)
           );
-          const shardWorldSize = resolveFixedShardWorldSize(
-            settings.shardSize,
-            shardSizeReferenceHeight,
-            canvas.clientHeight
-          );
-          const aspect = output.size[0] / Math.max(output.size[1], 1);
+          const shardPixelSize = resolveFixedShardPixelSize(settings.shardSize, shardSizeReferenceHeight);
+          const cssWidth = Math.max(canvas.clientWidth, 1);
+          const cssHeight = Math.max(canvas.clientHeight, 1);
+          const aspect = cssWidth / cssHeight;
           const lightPresence = settings.interaction === INTERACTIONS.none ? 0 : pointer.presence;
           const pointerShiftX = (pointer.position[0] - 0.5) * 0.38 * lightPresence;
           const pointerShiftY = (pointer.position[1] - 0.5) * -0.24 * lightPresence;
@@ -785,7 +785,8 @@ export default function AeroShards({
           ]);
 
           graph.viewParams.set({
-            viewport: [aspect, shardWorldSize, renderScale, flowDistance],
+            viewport: [aspect, shardPixelSize, renderScale, flowDistance],
+            screen: [cssWidth, cssHeight, 2 / cssWidth, 2 / cssHeight],
             shape: [settings.spread, settings.depth, settings.turbulence, pointerShiftY],
             effects: [settings.spin, settings.edgeSoftness, settings.stretch, settings.exposure],
             composition: layoutWeights,
