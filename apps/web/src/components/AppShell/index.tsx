@@ -7,7 +7,6 @@ import {
   Bot,
   Bookmark,
   CircleHelp,
-  Crown,
   Heart,
   Layers,
   LayoutGrid,
@@ -17,9 +16,9 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
-import { CreditsBadge } from "@/components/CreditsBadge";
 import { StarburstLogo } from "@/components/StarburstLogo";
 import { UserMenu } from "@/components/UserMenu";
+import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
 import styles from "./index.module.scss";
 
 const NAV_ITEMS = [
@@ -125,12 +124,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className={`${styles.header} frost-header`}>
           <span className={styles.pageTitle}>{NAV_ITEMS.find((i) => i.href === pathname)?.label ?? "Weavl 织光拾忆"}</span>
           <div className={styles.headerRight}>
-            <button className={styles.proBtn}>
-              <Crown size={14} />
-              开通会员
-            </button>
-            <CreditsBadge amount={0} />
-            <UserMenu />
+            <UserMenu trigger={<AccountHeaderCapsule amount={0} plan="Free" aria-label="用户菜单" />} />
           </div>
         </header>
         <main className={styles.main}>{children}</main>

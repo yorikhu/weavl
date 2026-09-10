@@ -345,26 +345,6 @@
   margin-left: auto;
 }
 
-// 开通会员按钮
-.proBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover {
-    background: rgba(245, 158, 11, 0.2);
-  }
-}
-
 // 头像
 .avatarWrap {
   position: relative;

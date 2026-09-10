@@ -1,6 +1,7 @@
 "use client";
 
 import { Switch as SwitchPrimitive } from "radix-ui";
+import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CreditCard, Crown, LogOut, Moon, Terminal, User, UserCircle2 } from "lucide-react";
 import { Popover } from "@/components/Popover";
@@ -10,8 +11,12 @@ import styles from "./index.module.scss";
 const Switch = SwitchPrimitive.Root;
 const SwitchThumb = SwitchPrimitive.Thumb;
 
+interface UserMenuProps {
+  trigger?: ReactElement;
+}
+
 /** 头像下拉菜单：会员/积分/存储/个人中心/订阅发票/CLI/通知/主题 Switch/退出 */
-export function UserMenu() {
+export function UserMenu({ trigger }: UserMenuProps = {}) {
   const router = useRouter();
   const { theme, toggle } = useTheme();
   const isDark = theme === "dark";
@@ -26,14 +31,14 @@ export function UserMenu() {
       contentRole="menu"
       showArrow={false}
       contentClassName={`${styles.content} glass-strong glass-sheen`}
-      trigger={
+      trigger={trigger ?? (
         <button className={styles.trigger} aria-label="用户菜单">
           <span className={styles.avatar}>
             <User size={16} />
           </span>
           <span className={styles.avatarDot} />
         </button>
-      }
+      )}
     >
       <>
           {/* 会员头卡 */}
