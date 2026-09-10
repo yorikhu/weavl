@@ -42,15 +42,15 @@ import {
 } from "lucide-react";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
-import { EnterEditContext } from "@/features/canvas/editContext";
-import type { EditCtx } from "@/features/canvas/editContext";
+import { EnterEditContext } from "./editContext";
+import type { EditCtx } from "./editContext";
 import {
   ImageEditPanel,
   VideoEditPanel,
   nodeTypes,
-} from "@/features/canvas/components/CanvasNodes";
-import { FloatingToolbar } from "@/features/canvas/components/FloatingToolbar";
-import { KIND_META } from "@/features/canvas/types/kindMeta";
+} from "./components/CanvasNodes";
+import { FloatingToolbar } from "./components/FloatingToolbar";
+import { KIND_META } from "./types/kindMeta";
 import type {
   AnyNodeData,
   CardField,
@@ -58,8 +58,8 @@ import type {
   NodeKind,
   TextNodeData,
   VideoNodeData,
-} from "@/features/canvas/types/nodes";
-import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "@/features/canvas/constants";
+} from "./types/nodes";
+import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "./constants";
 
 /**
  * 协调 React Flow 状态、节点编辑、连线以及页面级浮层。

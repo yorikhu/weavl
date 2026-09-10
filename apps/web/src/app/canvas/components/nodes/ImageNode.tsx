@@ -4,11 +4,11 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import { ChevronDown, Image as ImageIcon, ImagePlus, Maximize2, MonitorPlay, Palette, RefreshCw, Send, SlidersHorizontal, Sparkles, Tag, Upload, Zap } from "lucide-react";
-import { EnterEditContext } from "@/features/canvas/editContext";
-import { shallowEqual } from "@/features/canvas/components/nodes/utils";
-import { KIND_META } from "@/features/canvas/types/kindMeta";
-import type { ImageNodeData } from "@/features/canvas/types/nodes";
-import styles from "@/app/canvas/page.module.scss";
+import { EnterEditContext } from "../../editContext";
+import { KIND_META } from "../../types/kindMeta";
+import type { ImageNodeData } from "../../types/nodes";
+import styles from "../../page.module.scss";
+import { shallowEqual } from "./utils";
 
 /**
  * 渲染图片节点在浏览态和编辑态共用的卡片主体。

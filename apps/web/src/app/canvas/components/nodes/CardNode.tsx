@@ -4,10 +4,10 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { CheckCircle2, Sparkles, X } from "lucide-react";
 import { toast } from "@/hooks/useToast";
-import { EnterEditContext } from "@/features/canvas/editContext";
-import { KIND_META } from "@/features/canvas/types/kindMeta";
-import type { CardNodeData } from "@/features/canvas/types/nodes";
-import styles from "@/app/canvas/page.module.scss";
+import { EnterEditContext } from "../../editContext";
+import { KIND_META } from "../../types/kindMeta";
+import type { CardNodeData } from "../../types/nodes";
+import styles from "../../page.module.scss";
 
 /**
  * 渲染卡片节点通用的 Markdown 文本编辑器。

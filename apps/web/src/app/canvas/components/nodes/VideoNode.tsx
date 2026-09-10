@@ -4,10 +4,10 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from "rea
 import { createPortal } from "react-dom";
 import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import { ChevronDown, FileText, Film, ImagePlus, Layers, Maximize2, MonitorPlay, RefreshCw, Send, Share2, Sparkles, Tag, Type as TypeGlyph, User as UserIcon, Video as VideoIcon, Volume2, Zap } from "lucide-react";
-import { EnterEditContext } from "@/features/canvas/editContext";
-import { shallowEqual } from "@/features/canvas/components/nodes/utils";
-import type { VideoNodeData } from "@/features/canvas/types/nodes";
-import styles from "@/app/canvas/page.module.scss";
+import { EnterEditContext } from "../../editContext";
+import type { VideoNodeData } from "../../types/nodes";
+import styles from "../../page.module.scss";
+import { shallowEqual } from "./utils";
 
 /**
  * 渲染视频节点在浏览态和编辑态共用的卡片主体。

@@ -3,9 +3,9 @@
 import { useCallback, useContext, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Type as TypeIcon } from "lucide-react";
-import { EnterEditContext } from "@/features/canvas/editContext";
-import type { TextNodeData } from "@/features/canvas/types/nodes";
-import styles from "@/app/canvas/page.module.scss";
+import { EnterEditContext } from "../../editContext";
+import type { TextNodeData } from "../../types/nodes";
+import styles from "../../page.module.scss";
 
 /**
  * 渲染 React Flow 文本节点，并根据编辑上下文切换展示状态。
