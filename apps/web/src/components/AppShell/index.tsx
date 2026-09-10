@@ -7,7 +7,6 @@ import {
   Bot,
   Bookmark,
   CircleHelp,
-  Crown,
   Heart,
   Layers,
   LayoutGrid,
@@ -17,9 +16,9 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
-import { CreditsBadge } from "@/components/CreditsBadge";
 import { StarburstLogo } from "@/components/StarburstLogo";
 import { UserMenu } from "@/components/UserMenu";
+import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
 import styles from "./index.module.scss";
 
 const NAV_ITEMS = [
@@ -66,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <StarburstLogo size={22} />
                 <span className={styles.brandText}>
                   <span className={styles.brandName}>Weavl</span>
-                  <span className={styles.brandSub}>织光</span>
+                  <span className={styles.brandSub}>织光拾忆</span>
                 </span>
               </Link>
               <button className={styles.collapseBtn} onClick={() => setCollapsed(true)} title="收起侧栏">
@@ -123,14 +122,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ============ 右侧：header + 内容 ============ */}
       <div className={styles.right}>
         <header className={`${styles.header} frost-header`}>
-          <span className={styles.pageTitle}>{NAV_ITEMS.find((i) => i.href === pathname)?.label ?? "Weavl 织光"}</span>
+          <span className={styles.pageTitle}>{NAV_ITEMS.find((i) => i.href === pathname)?.label ?? "Weavl 织光拾忆"}</span>
           <div className={styles.headerRight}>
-            <button className={styles.proBtn}>
-              <Crown size={14} />
-              开通会员
-            </button>
-            <CreditsBadge amount={0} />
-            <UserMenu />
+            <UserMenu trigger={<AccountHeaderCapsule amount={0} plan="Free" aria-label="用户菜单" />} />
           </div>
         </header>
         <main className={styles.main}>{children}</main>

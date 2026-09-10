@@ -37,11 +37,13 @@
 }
 
 // ---- Radix 内容层（玻璃拟态） ----
-.content {
+.content.content {
   min-width: 256px;
   border-radius: 16px;
+  background: var(--surface);
   padding: 6px;
-  z-index: 100;
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   animation: popover-in 0.16s ease-out;
 }
 
@@ -50,9 +52,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 4px 4px 8px;
+  margin: 4px 4px 12px;
   padding: 12px;
+  border: 1px solid var(--surface-border);
   border-radius: 12px;
+  background: var(--surface-hover);
 }
 
 .profileLeft {
@@ -133,29 +137,41 @@
   background: var(--surface-hover-border);
 }
 
-// 菜单条目（Radix Item）
+// 菜单条目
 .item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   gap: 12px;
   padding: 9px 12px;
+  border: 0;
   border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
   font-size: 12px;
+  text-align: left;
   color: var(--foreground);
   cursor: pointer;
   outline: none;
-  transition: background 0.15s;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
 
   &:hover,
-  &:focus {
-    background: var(--glass);
+  &:focus-visible {
+    background: var(--surface-hover);
   }
 
   &.danger {
     color: #f87171;
+
+    .itemIcon {
+      color: currentColor;
+    }
+
     &:hover,
-    &:focus {
+    &:focus-visible {
       background: rgba(248, 113, 113, 0.1);
     }
   }
@@ -179,7 +195,7 @@
 .separator {
   height: 1px;
   margin: 4px 8px;
-  background: var(--glass-border);
+  background: var(--surface-border);
 }
 
 // 深色模式 Switch 行
@@ -198,8 +214,8 @@
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-hover);
   position: relative;
   cursor: pointer;
   transition: all 0.2s;

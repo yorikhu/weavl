@@ -1,0 +1,47 @@
+.credits {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+
+  svg {
+    color: currentColor;
+  }
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 1px;
+  flex-shrink: 0;
+  background: currentColor;
+  opacity: 0.2;
+}
+
+.plan {
+  height: 22px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--account-plan-border, color-mix(in srgb, currentColor 11%, transparent));
+  border-radius: 7px;
+  background: var(--account-plan-background, color-mix(in srgb, currentColor 7%, transparent));
+  color: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #696970, #4b4b52);
+  color: #ffffff;
+}

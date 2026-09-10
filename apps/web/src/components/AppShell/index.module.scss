@@ -42,7 +42,7 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
   cursor: pointer;
@@ -64,15 +64,15 @@
 }
 
 .brandName {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .brandSub {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 // 常显收起按钮（展开态显示）
@@ -80,13 +80,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border: none;
+  border: 1px solid var(--nav-active-border);
   border-radius: 8px;
-  background: transparent;
-  color: var(--muted-foreground);
+  background: var(--nav-active);
+  color: var(--foreground);
   cursor: pointer;
   transition: all 0.2s;
 
@@ -133,7 +133,7 @@
 
 .expandLayer {
   position: absolute;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   opacity: 0;
 }
 
@@ -171,22 +171,39 @@
   padding: 0 12px;
   border: 1px solid transparent;
   border-radius: 12px;
-  font-size: 13px;
-  color: var(--nav-text); // 提亮的未选中态
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--foreground);
   text-decoration: none;
-  transition: all 0.2s;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
   box-sizing: border-box;
+
+  svg {
+    opacity: 0.76;
+    transition: opacity 0.16s ease;
+  }
 
   &:hover {
     background: var(--nav-hover);
+    border-color: var(--sider-border);
     color: var(--foreground);
+
+    svg {
+      opacity: 1;
+    }
   }
 
   &.active {
     border-color: var(--nav-active-border);
     background: var(--nav-active);
-    font-weight: 500;
     color: var(--foreground);
+
+    svg {
+      opacity: 1;
+    }
   }
 
   .collapsed & {
@@ -210,9 +227,9 @@
 .spaceTitle {
   margin: 0 0 8px 12px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--faint-foreground);
+  color: var(--foreground);
 }
 
 .spaceItem {
@@ -222,17 +239,30 @@
   height: 36px;
   width: 100%;
   padding: 0 12px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  font-size: 12px;
-  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+
+  svg {
+    opacity: 0.72;
+    transition: opacity 0.16s ease;
+  }
 
   &:hover {
     background: var(--nav-hover);
+    border-color: var(--sider-border);
     color: var(--foreground);
+
+    svg {
+      opacity: 1;
+    }
   }
 
   & > span {
@@ -255,16 +285,20 @@
   height: 40px;
   width: 100%;
   padding: 0 12px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
-  font-size: 13px;
-  color: var(--nav-text); // 与菜单同步提亮
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--foreground);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
 
   &:hover {
     background: var(--nav-hover);
+    border-color: var(--sider-border);
     color: var(--foreground);
   }
 
@@ -301,34 +335,14 @@
 }
 
 .pageTitle {
-  font-size: 14px;
-  font-weight: 500;
+  display: none;
 }
 
 .headerRight {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-// 开通会员按钮
-.proBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover {
-    background: rgba(245, 158, 11, 0.2);
-  }
+  margin-left: auto;
 }
 
 // 头像

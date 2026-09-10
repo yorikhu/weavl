@@ -1,0 +1,42 @@
+.root {
+  height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-shrink: 0;
+  border: 1px solid var(--header-capsule-border, color-mix(in srgb, var(--foreground) 16%, transparent));
+  border-radius: 12px;
+  background: var(
+    --header-capsule-background,
+    color-mix(in srgb, var(--foreground) 5%, transparent)
+  );
+  color: var(--header-capsule-foreground, var(--foreground));
+  box-shadow: var(--header-capsule-shadow, 0 5px 18px rgba(0, 0, 0, 0.12));
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.16s,
+    border-color 0.16s,
+    transform 0.16s;
+}
+
+.root:hover,
+.root[data-state="open"],
+.active {
+  border-color: var(--header-capsule-active-border, color-mix(in srgb, var(--foreground) 26%, transparent));
+  background: var(
+    --header-capsule-active-background,
+    color-mix(in srgb, var(--foreground) 9%, transparent)
+  );
+}
+
+.root:active {
+  transform: scale(0.98);
+}
+
+.endInset {
+  padding: 4px 5px 4px 10px;
+}

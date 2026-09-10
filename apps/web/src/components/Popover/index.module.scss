@@ -1,0 +1,65 @@
+.content {
+  outline: none;
+}
+
+.clickContent {
+  z-index: 1100;
+  border: 1px solid var(--popover-border);
+  box-shadow: 4px 6px 14px rgba(15, 23, 42, 0.14);
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: popover-enter 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hoverContent {
+  z-index: 1000;
+  padding: 10px 12px;
+  border: 1px solid var(--popover-border);
+  border-radius: 8px;
+  background: var(--glass-strong);
+  box-shadow: 3px 5px 12px rgba(15, 23, 42, 0.13);
+  color: var(--foreground);
+  font-size: 10.5px;
+  font-weight: 550;
+  line-height: 1.35;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: tooltip-enter 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.arrow {
+  fill: var(--glass-strong);
+  stroke: var(--popover-border);
+  stroke-width: 1px;
+}
+
+@keyframes popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tooltip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clickContent,
+  .hoverContent {
+    animation-duration: 0.01ms;
+  }
+}

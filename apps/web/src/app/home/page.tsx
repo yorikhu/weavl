@@ -1,10 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bot, Clock, Layers, Plus, Workflow } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUp,
+  Bot,
+  Box,
+  Check,
+  Clock,
+  Cpu,
+  Images,
+  Layers,
+  Plus,
+  SlidersHorizontal,
+  Sparkles,
+  Upload,
+  Workflow,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Popover } from "@/components/Popover";
+import { useTheme } from "@/provider/ThemeProvider";
 import styles from "./page.module.scss";
+
+const AeroShards = memo(dynamic(() => import("@/components/AeroShards"), { ssr: false }));
 
 /* 工作流模板（mock，后续接 templates API） */
 const TEMPLATES = [
@@ -60,13 +81,194 @@ const MY_AGENTS = [
 
 const HOT_TAGS = ["古风视频", "电商主图", "小红书图文", "短剧分镜"] as const;
 
+interface PromptChoice {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+}
+
+type PromptMenu = "model" | "skill" | "mode";
+
+const MODEL_OPTIONS: PromptChoice[] = [
+  { id: "auto", label: "智能选择", description: "根据任务自动匹配合适模型", icon: Sparkles },
+  { id: "quality", label: "高质量模型", description: "优先复杂推理与生成质量", icon: Cpu },
+  { id: "fast", label: "快速模型", description: "优先响应速度与轻量任务", icon: Bot },
+];
+
+const SKILL_OPTIONS: PromptChoice[] = [
+  { id: "auto", label: "自动匹配 Skill", description: "根据输入自动加载专业能力", icon: Sparkles },
+  { id: "visual", label: "视觉创作", description: "图像、设计与视觉内容生成", icon: Images },
+  { id: "workflow", label: "工作流编排", description: "拆解任务并连接多个执行步骤", icon: Workflow },
+];
+
+const MODE_OPTIONS: PromptChoice[] = [
+  { id: "workflow", label: "工作流模式", description: "生成可继续编辑的完整工作流", icon: Workflow },
+  { id: "direct", label: "直接生成", description: "跳过编排，直接生成最终内容", icon: Sparkles },
+  { id: "plan", label: "仅规划", description: "先输出结构和执行计划", icon: Layers },
+];
+
+interface PromptChoicePopoverProps {
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  options: PromptChoice[];
+  selected: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (id: string) => void;
+}
+
+function PromptChoicePopover({
+  label,
+  hint,
+  icon: TriggerIcon,
+  options,
+  selected,
+  open,
+  onOpenChange,
+  onSelect,
+}: PromptChoicePopoverProps) {
+  return (
+    <Popover
+      mode="click"
+      open={open}
+      onOpenChange={onOpenChange}
+      side="top"
+      align="center"
+      sideOffset={10}
+      ariaLabel={label}
+      contentRole="menu"
+      contentClassName={styles.attachmentPopover}
+      hint={hint}
+      hintAlign="center"
+      preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
+      trigger={
+        <button
+          type="button"
+          className={styles.promptIconButton}
+          aria-label={label}
+          data-prompt-popover-trigger
+        >
+          <TriggerIcon size={14} />
+        </button>
+      }
+    >
+      {options.map((option) => {
+        const OptionIcon = option.icon;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            className={styles.attachmentOption}
+            role="menuitemradio"
+            aria-checked={selected === option.id}
+            onClick={() => onSelect(option.id)}
+          >
+            <span className={styles.attachmentOptionIcon}>
+              <OptionIcon size={15} />
+            </span>
+            <span>
+              <strong>{option.label}</strong>
+              <small>{option.description}</small>
+            </span>
+            {selected === option.id && <Check size={14} className={styles.choiceCheck} />}
+          </button>
+        );
+      })}
+    </Popover>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
-  const [prompt, setPrompt] = useState("");
+  const { theme } = useTheme();
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
+  const [attachmentComposerExpanded, setAttachmentComposerExpanded] = useState(false);
+  const [activePromptMenu, setActivePromptMenu] = useState<PromptMenu | null>(null);
+  const [selectedModel, setSelectedModel] = useState("auto");
+  const [selectedSkill, setSelectedSkill] = useState("auto");
+  const [selectedMode, setSelectedMode] = useState("workflow");
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptSubmitRef = useRef<HTMLButtonElement>(null);
+  const promptBarRef = useRef<HTMLDivElement>(null);
+  const attachmentExpandTimerRef = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (attachmentExpandTimerRef.current !== null) window.clearTimeout(attachmentExpandTimerRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (promptInputRef.current?.value.trim()) return;
+
+      const target = event.target;
+      if (!(target instanceof Node) || promptBarRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest(`.${styles.attachmentPopover}`)) return;
+
+      setAttachmentComposerExpanded(false);
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, []);
+
+  const handleAttachmentMenuOpenChange = (open: boolean) => {
+    if (attachmentExpandTimerRef.current !== null) {
+      window.clearTimeout(attachmentExpandTimerRef.current);
+      attachmentExpandTimerRef.current = null;
+    }
+
+    setAttachmentMenuOpen(open);
+    if (!open) {
+      return;
+    }
+
+    setActivePromptMenu(null);
+
+    if (promptInputRef.current?.value.trim() || document.activeElement === promptInputRef.current) {
+      setAttachmentComposerExpanded(true);
+      return;
+    }
+
+    attachmentExpandTimerRef.current = window.setTimeout(() => {
+      setAttachmentComposerExpanded(true);
+      attachmentExpandTimerRef.current = null;
+    }, 90);
+  };
+
+  const handlePromptMenuOpenChange = (menu: PromptMenu, open: boolean) => {
+    setActivePromptMenu((currentMenu) => {
+      if (open) return menu;
+      return currentMenu === menu ? null : currentMenu;
+    });
+
+    if (open) setAttachmentMenuOpen(false);
+  };
+
+  const openLocalAttachmentPicker = () => {
+    if (attachmentExpandTimerRef.current !== null) {
+      window.clearTimeout(attachmentExpandTimerRef.current);
+      attachmentExpandTimerRef.current = null;
+    }
+
+    setAttachmentMenuOpen(false);
+    setAttachmentComposerExpanded(true);
+
+    const input = attachmentInputRef.current;
+    if (input) {
+      input.value = "";
+      input.click();
+    }
+  };
 
   /* Hero 提交：带 prompt 进画布并自动唤起 Agent */
   const startAgent = () => {
-    const q = prompt.trim();
+    const q = promptInputRef.current?.value.trim() ?? "";
     if (q) {
       sessionStorage.setItem("weavl:agent-prompt", q);
       router.push("/canvas?agent=1");
@@ -80,25 +282,176 @@ export default function HomePage() {
       <div className={styles.container}>
         {/* ---- Hero：Agent 主入口 ---- */}
         <section className={styles.hero}>
+          <div className={styles.aeroLayer}>
+            <AeroShards
+              backgroundColor={theme === "dark" ? "#161618" : "#F5F1FF"}
+              shardColor={theme === "dark" ? "#696973" : "#5ED7E5"}
+              accentColor={theme === "dark" ? "#E4E4E7" : "#7C5CFC"}
+              placement="full"
+              flow="stream"
+              material="pearl"
+              detail="balanced"
+              effect="none"
+              scale={1}
+              spread={1}
+              depth={1}
+              speed={1}
+              spin={1}
+              interaction="repel"
+              density={1.5}
+              shardSize={1.1}
+              stretch={1}
+              turbulence={1}
+              glow={1}
+              edgeSoftness={2}
+              bloom={0.5}
+              grain={0.05}
+              chromaticAberration={0.0075}
+              transitionDuration={1}
+              interactionRadius={1.5}
+              interactionStrength={0.5}
+              rippleIntensity={1}
+              holdToGather
+              onError={undefined}
+            />
+          </div>
           <h1 className={styles.heroTitle}>你好，织光师</h1>
           <p className={styles.heroSub}>描述你想做的事，Agent 为你编排画布工作流</p>
-          <div className={styles.promptBar}>
-            <span className={styles.promptBotIcon}>
-              <Bot size={14} />
-            </span>
+          <div
+            ref={promptBarRef}
+            className={`${styles.promptBar} ${
+              attachmentComposerExpanded || activePromptMenu ? styles.promptBarActive : ""
+            }`}
+          >
             <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && startAgent()}
+              ref={attachmentInputRef}
+              className={styles.attachmentInput}
+              type="file"
+              multiple
+              onChange={() => setAttachmentComposerExpanded(true)}
+            />
+            <Popover
+              mode="click"
+              open={attachmentMenuOpen}
+              onOpenChange={handleAttachmentMenuOpenChange}
+              side="top"
+              align="start"
+              sideOffset={10}
+              ariaLabel="添加附件"
+              contentRole="menu"
+              contentClassName={styles.attachmentPopover}
+              hint="添加附件"
+              hintAlign="center"
+              preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
+              autoFocusOnOpen={false}
+              trigger={
+                <button
+                  type="button"
+                  className={`${styles.promptIconButton} ${styles.promptPlus}`}
+                  aria-label="添加附件"
+                  data-prompt-popover-trigger
+                  onMouseDown={(event) => event.preventDefault()}
+                >
+                  <Plus size={15} />
+                </button>
+              }
+            >
+              <button
+                type="button"
+                className={styles.attachmentOption}
+                role="menuitem"
+                onClick={openLocalAttachmentPicker}
+              >
+                <span className={styles.attachmentOptionIcon}>
+                  <Upload size={15} />
+                </span>
+                <span>
+                  <strong>从本地添加</strong>
+                  <small>从本地选择图片、视频或文档</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={styles.attachmentOption}
+                role="menuitem"
+                onClick={() => handleAttachmentMenuOpenChange(false)}
+              >
+                <span className={styles.attachmentOptionIcon}>
+                  <Images size={15} />
+                </span>
+                <span>
+                  <strong>从素材库添加</strong>
+                  <small>选择已保存到空间的素材</small>
+                </span>
+              </button>
+            </Popover>
+            <textarea
+              ref={promptInputRef}
+              rows={1}
+              onInput={(event) => {
+                const hasPrompt = Boolean(event.currentTarget.value.trim());
+                if (promptSubmitRef.current) promptSubmitRef.current.disabled = !hasPrompt;
+                promptBarRef.current?.toggleAttribute("data-has-value", hasPrompt);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  startAgent();
+                }
+              }}
               placeholder="帮我做一支古风穿搭种草视频，从脚本到成片…"
               className={styles.promptInput}
             />
-            <button className={styles.promptPlus} title="添加参考素材" aria-label="添加参考素材">
-              <Plus size={13} />
-            </button>
-            <button className={styles.promptGo} onClick={startAgent}>
-              开始创作
+            <div className={styles.promptOptions} aria-label="生成选项">
+              <PromptChoicePopover
+                label="选择模型"
+                hint="选择模型"
+                icon={Box}
+                options={MODEL_OPTIONS}
+                selected={selectedModel}
+                open={activePromptMenu === "model"}
+                onOpenChange={(open) => handlePromptMenuOpenChange("model", open)}
+                onSelect={(id) => {
+                  setSelectedModel(id);
+                  setActivePromptMenu(null);
+                }}
+              />
+              <PromptChoicePopover
+                label="选择 Skill"
+                hint="选择 Skill"
+                icon={Sparkles}
+                options={SKILL_OPTIONS}
+                selected={selectedSkill}
+                open={activePromptMenu === "skill"}
+                onOpenChange={(open) => handlePromptMenuOpenChange("skill", open)}
+                onSelect={(id) => {
+                  setSelectedSkill(id);
+                  setActivePromptMenu(null);
+                }}
+              />
+              <PromptChoicePopover
+                label="选择生成模式"
+                hint="选择生成模式"
+                icon={SlidersHorizontal}
+                options={MODE_OPTIONS}
+                selected={selectedMode}
+                open={activePromptMenu === "mode"}
+                onOpenChange={(open) => handlePromptMenuOpenChange("mode", open)}
+                onSelect={(id) => {
+                  setSelectedMode(id);
+                  setActivePromptMenu(null);
+                }}
+              />
+            </div>
+            <button
+              ref={promptSubmitRef}
+              type="button"
+              className={`${styles.promptIconButton} ${styles.promptGo}`}
+              aria-label="开始创作"
+              disabled
+              onClick={startAgent}
+            >
+              <ArrowUp size={15} />
             </button>
           </div>
           <div className={styles.hotTags}>
@@ -107,7 +460,10 @@ export default function HomePage() {
                 key={t}
                 className={styles.hotTag}
                 onClick={() => {
-                  setPrompt(`帮我做${t}相关内容`);
+                  if (promptInputRef.current) promptInputRef.current.value = `帮我做${t}相关内容`;
+                  if (promptSubmitRef.current) promptSubmitRef.current.disabled = false;
+                  promptBarRef.current?.setAttribute("data-has-value", "");
+                  setAttachmentComposerExpanded(true);
                 }}
               >
                 {t}
