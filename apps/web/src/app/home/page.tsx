@@ -191,6 +191,7 @@ export default function HomePage() {
   const [selectedMode, setSelectedMode] = useState("workflow");
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptBarRef = useRef<HTMLDivElement>(null);
   const attachmentExpandTimerRef = useRef<number | null>(null);
 
   useEffect(
@@ -199,6 +200,21 @@ export default function HomePage() {
     },
     [],
   );
+
+  useEffect(() => {
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (prompt.trim()) return;
+
+      const target = event.target;
+      if (!(target instanceof Node) || promptBarRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest(`.${styles.attachmentPopover}`)) return;
+
+      setAttachmentComposerExpanded(false);
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [prompt]);
 
   const handleAttachmentMenuOpenChange = (open: boolean) => {
     if (attachmentExpandTimerRef.current !== null) {
@@ -301,6 +317,7 @@ export default function HomePage() {
           <h1 className={styles.heroTitle}>你好，织光师</h1>
           <p className={styles.heroSub}>描述你想做的事，Agent 为你编排画布工作流</p>
           <div
+            ref={promptBarRef}
             className={`${styles.promptBar} ${
               prompt || attachmentComposerExpanded || activePromptMenu ? styles.promptBarActive : ""
             }`}
