@@ -55,7 +55,9 @@
   justify-content: space-between;
   margin: 4px 4px 8px;
   padding: 12px;
+  border: 1px solid var(--surface-border);
   border-radius: 12px;
+  background: var(--surface-hover);
 }
 
 .profileLeft {
