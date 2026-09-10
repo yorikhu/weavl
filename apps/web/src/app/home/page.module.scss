@@ -60,86 +60,259 @@
 }
 
 .promptBar {
+  --prompt-motion: 280ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  position: relative;
+  box-sizing: border-box;
   width: min(560px, 92%);
+  height: 42px;
   margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 6px 6px 13px;
-  background: var(--input);
+  padding: 10px 46px;
+  background: #ffffff;
   border: 1px solid var(--input-border);
   border-radius: 14px;
-  transition: border-color 0.2s;
+  box-shadow: 0 8px 30px rgba(49, 46, 129, 0.07);
+  text-align: left;
+  transition:
+    height var(--prompt-motion),
+    padding var(--prompt-motion),
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
 
   &:focus-within {
     border-color: rgba(127, 119, 221, 0.55);
+    box-shadow:
+      0 12px 38px rgba(79, 70, 229, 0.11),
+      0 0 0 3px rgba(94, 215, 229, 0.09);
   }
 }
 
-.promptBotIcon {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: rgba(83, 74, 183, 0.16);
-  color: #7f77dd;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.promptBar:focus-within,
+.promptBarActive {
+  height: 123px;
+  padding: 13px 13px 50px;
+
+  .promptInput {
+    height: 58px;
+  }
+
+  .promptPlus,
+  .promptGo {
+    top: calc(100% - 39px);
+    transform: translateY(0);
+  }
+
+  .promptOptions {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:global(.dark) .promptBar {
+  background: var(--input);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
 }
 
 .promptInput {
-  flex: 1;
-  min-width: 0;
+  display: block;
+  width: 100%;
+  height: 20px;
+  padding: 0;
+  resize: none;
+  overflow-y: auto;
   border: none;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
+  line-height: 20px;
   color: var(--foreground);
   outline: none;
+  transition: height var(--prompt-motion);
 
   &::placeholder {
     color: var(--faint-foreground);
   }
 }
 
-.promptPlus {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  border: 1px solid var(--input-border);
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
+.attachmentInput {
+  display: none;
+}
+
+.promptIconButton {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--muted-foreground);
+  cursor: pointer;
   transition:
-    color 0.15s,
-    border-color 0.15s;
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
 
   &:hover {
-    color: var(--foreground);
-    border-color: var(--surface-hover-border);
+    color: #6d5de7;
+    border-color: rgba(109, 93, 231, 0.4);
+    background: rgba(124, 92, 252, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(94, 215, 229, 0.65);
+    outline-offset: 2px;
   }
 }
 
+.promptPlus,
 .promptGo {
-  padding: 7px 16px;
-  border: none;
-  border-radius: 9px;
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  transform: translateY(-50%);
+  transition:
+    top var(--prompt-motion),
+    transform var(--prompt-motion),
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.promptPlus {
+  left: 9px;
+}
+
+.promptGo {
+  right: 9px;
+  border-color: transparent;
   background: var(--accent);
   color: var(--accent-foreground);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: filter 0.15s;
 
   &:hover {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--accent-foreground);
     filter: brightness(1.08);
+  }
+
+  &:disabled {
+    border-color: var(--input-border);
+    background: var(--surface-hover);
+    color: var(--faint-foreground);
+    cursor: not-allowed;
+    filter: none;
+  }
+}
+
+.promptOptions {
+  position: absolute;
+  bottom: 8px;
+  left: 47px;
+  display: flex;
+  gap: 6px;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 170ms ease,
+    transform var(--prompt-motion),
+    visibility 0s linear 280ms;
+}
+
+.attachmentPopover {
+  display: grid;
+  width: 248px;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(16px);
+}
+
+.attachmentOption {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(124, 92, 252, 0.09);
+    color: #6d5de7;
+    outline: none;
+  }
+
+  > span:nth-child(2) {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  strong {
+    font-size: 11.5px;
+    font-weight: 650;
+  }
+
+  small {
+    color: var(--muted-foreground);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+}
+
+.attachmentOptionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: #7c5cfc;
+}
+
+.choiceCheck {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: #7c5cfc;
+}
+
+.promptBar:focus-within .promptOptions,
+.promptBarActive .promptOptions {
+  transition-delay: 55ms, 0ms, 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promptBar,
+  .promptInput,
+  .promptPlus,
+  .promptGo,
+  .promptOptions,
+  .attachmentPopover {
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
   }
 }
 
