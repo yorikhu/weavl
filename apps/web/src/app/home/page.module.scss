@@ -44,6 +44,9 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  contain: paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .heroTitle {
@@ -89,6 +92,7 @@
 }
 
 .promptBar:focus-within,
+.promptBar[data-has-value],
 .promptBarActive {
   height: 123px;
   padding: 13px 13px 50px;

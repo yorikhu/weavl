@@ -1524,6 +1524,7 @@ export default function AeroShards({
     let gpu: Awaited<ReturnType<typeof init>> | undefined;
     let animationFrameId = 0;
     let timeoutId = 0;
+    let resizeDebounceId = 0;
     let unsubscribeResize: (() => void) | undefined;
     let unsubscribeGpuError: (() => void) | undefined;
     let resizeObserver: ResizeObserver | undefined;
@@ -1545,6 +1546,7 @@ export default function AeroShards({
       runtimeFailed = true;
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (timeoutId) window.clearTimeout(timeoutId);
+      if (resizeDebounceId) window.clearTimeout(resizeDebounceId);
       resizeObserver?.disconnect();
       visibilityObserver?.disconnect();
       unsubscribeResize?.();
@@ -1791,7 +1793,8 @@ export default function AeroShards({
             Math.max(1, Math.round(canvas.clientWidth * dpr)),
             Math.max(1, Math.round(canvas.clientHeight * dpr))
           ];
-          if (nextSize[0] !== output.size[0] || nextSize[1] !== output.size[1]) output.resize(nextSize);
+          if (nextSize[0] === output.size[0] && nextSize[1] === output.size[1]) return;
+          output.resize(nextSize);
           resizePostTargets();
         };
 
@@ -1801,8 +1804,13 @@ export default function AeroShards({
           wakeRenderer();
         });
         resizeObserver = new ResizeObserver(() => {
-          resizeOutput();
-          wakeRenderer();
+          boundsDirty = true;
+          if (resizeDebounceId) window.clearTimeout(resizeDebounceId);
+          resizeDebounceId = window.setTimeout(() => {
+            resizeDebounceId = 0;
+            resizeOutput();
+            wakeRenderer();
+          }, 100);
         });
         resizeObserver.observe(canvas);
 
@@ -2125,6 +2133,7 @@ export default function AeroShards({
       unsubscribeGpuError?.();
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (timeoutId) window.clearTimeout(timeoutId);
+      if (resizeDebounceId) window.clearTimeout(resizeDebounceId);
       wakeRef.current = () => {};
       gpu?.dispose();
     };

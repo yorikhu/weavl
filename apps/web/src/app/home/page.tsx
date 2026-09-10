@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -25,7 +25,7 @@ import { Popover } from "@/components/Popover";
 import { useTheme } from "@/provider/ThemeProvider";
 import styles from "./page.module.scss";
 
-const AeroShards = dynamic(() => import("@/components/AeroShards"), { ssr: false });
+const AeroShards = memo(dynamic(() => import("@/components/AeroShards"), { ssr: false }));
 
 /* 工作流模板（mock，后续接 templates API） */
 const TEMPLATES = [
@@ -183,7 +183,6 @@ function PromptChoicePopover({
 export default function HomePage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const [prompt, setPrompt] = useState("");
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [attachmentComposerExpanded, setAttachmentComposerExpanded] = useState(false);
   const [activePromptMenu, setActivePromptMenu] = useState<PromptMenu | null>(null);
@@ -192,6 +191,7 @@ export default function HomePage() {
   const [selectedMode, setSelectedMode] = useState("workflow");
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptSubmitRef = useRef<HTMLButtonElement>(null);
   const promptBarRef = useRef<HTMLDivElement>(null);
   const attachmentExpandTimerRef = useRef<number | null>(null);
 
@@ -204,7 +204,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleOutsidePointerDown = (event: PointerEvent) => {
-      if (prompt.trim()) return;
+      if (promptInputRef.current?.value.trim()) return;
 
       const target = event.target;
       if (!(target instanceof Node) || promptBarRef.current?.contains(target)) return;
@@ -215,7 +215,7 @@ export default function HomePage() {
 
     document.addEventListener("pointerdown", handleOutsidePointerDown);
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
-  }, [prompt]);
+  }, []);
 
   const handleAttachmentMenuOpenChange = (open: boolean) => {
     if (attachmentExpandTimerRef.current !== null) {
@@ -230,7 +230,7 @@ export default function HomePage() {
 
     setActivePromptMenu(null);
 
-    if (prompt || document.activeElement === promptInputRef.current) {
+    if (promptInputRef.current?.value.trim() || document.activeElement === promptInputRef.current) {
       setAttachmentComposerExpanded(true);
       return;
     }
@@ -268,7 +268,7 @@ export default function HomePage() {
 
   /* Hero 提交：带 prompt 进画布并自动唤起 Agent */
   const startAgent = () => {
-    const q = prompt.trim();
+    const q = promptInputRef.current?.value.trim() ?? "";
     if (q) {
       sessionStorage.setItem("weavl:agent-prompt", q);
       router.push("/canvas?agent=1");
@@ -320,7 +320,7 @@ export default function HomePage() {
           <div
             ref={promptBarRef}
             className={`${styles.promptBar} ${
-              prompt || attachmentComposerExpanded || activePromptMenu ? styles.promptBarActive : ""
+              attachmentComposerExpanded || activePromptMenu ? styles.promptBarActive : ""
             }`}
           >
             <input
@@ -388,8 +388,11 @@ export default function HomePage() {
             <textarea
               ref={promptInputRef}
               rows={1}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onInput={(event) => {
+                const hasPrompt = Boolean(event.currentTarget.value.trim());
+                if (promptSubmitRef.current) promptSubmitRef.current.disabled = !hasPrompt;
+                promptBarRef.current?.toggleAttribute("data-has-value", hasPrompt);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
@@ -441,10 +444,11 @@ export default function HomePage() {
               />
             </div>
             <button
+              ref={promptSubmitRef}
               type="button"
               className={`${styles.promptIconButton} ${styles.promptGo}`}
               aria-label="开始创作"
-              disabled={!prompt.trim()}
+              disabled
               onClick={startAgent}
             >
               <ArrowUp size={15} />
@@ -456,7 +460,10 @@ export default function HomePage() {
                 key={t}
                 className={styles.hotTag}
                 onClick={() => {
-                  setPrompt(`帮我做${t}相关内容`);
+                  if (promptInputRef.current) promptInputRef.current.value = `帮我做${t}相关内容`;
+                  if (promptSubmitRef.current) promptSubmitRef.current.disabled = false;
+                  promptBarRef.current?.setAttribute("data-has-value", "");
+                  setAttachmentComposerExpanded(true);
                 }}
               >
                 {t}
