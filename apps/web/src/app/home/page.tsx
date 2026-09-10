@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Bot, Clock, Layers, Plus, Workflow } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useTheme } from "@/provider/ThemeProvider";
 import styles from "./page.module.scss";
+
+const AeroShards = dynamic(() => import("@/components/AeroShards"), { ssr: false });
 
 /* 工作流模板（mock，后续接 templates API） */
 const TEMPLATES = [
@@ -62,6 +66,7 @@ const HOT_TAGS = ["古风视频", "电商主图", "小红书图文", "短剧分�
 
 export default function HomePage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [prompt, setPrompt] = useState("");
 
   /* Hero 提交：带 prompt 进画布并自动唤起 Agent */
@@ -80,6 +85,39 @@ export default function HomePage() {
       <div className={styles.container}>
         {/* ---- Hero：Agent 主入口 ---- */}
         <section className={styles.hero}>
+          <div className={styles.aeroLayer}>
+            <AeroShards
+              backgroundColor={theme === "dark" ? "#161618" : "#FFFFFF"}
+              shardColor={theme === "dark" ? "#696973" : "#C2C7D0"}
+              accentColor={theme === "dark" ? "#E4E4E7" : "#59606B"}
+              placement="full"
+              flow="stream"
+              material="pearl"
+              detail="balanced"
+              effect="none"
+              scale={1}
+              spread={1}
+              depth={1}
+              speed={1}
+              spin={1}
+              interaction="repel"
+              density={1.5}
+              shardSize={1.1}
+              stretch={1}
+              turbulence={1}
+              glow={1}
+              edgeSoftness={2}
+              bloom={0.5}
+              grain={0.05}
+              chromaticAberration={0.0075}
+              transitionDuration={1}
+              interactionRadius={1.5}
+              interactionStrength={0.5}
+              rippleIntensity={1}
+              holdToGather
+              onError={undefined}
+            />
+          </div>
           <h1 className={styles.heroTitle}>你好，织光师</h1>
           <p className={styles.heroSub}>描述你想做的事，Agent 为你编排画布工作流</p>
           <div className={styles.promptBar}>
