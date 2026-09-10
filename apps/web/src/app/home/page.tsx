@@ -7,7 +7,7 @@ import {
   ArrowRight,
   ArrowUp,
   Bot,
-  BrainCircuit,
+  Box,
   Check,
   Clock,
   Cpu,
@@ -403,7 +403,7 @@ export default function HomePage() {
               <PromptChoicePopover
                 label="选择模型"
                 hint="选择模型"
-                icon={BrainCircuit}
+                icon={Box}
                 options={MODEL_OPTIONS}
                 selected={selectedModel}
                 open={activePromptMenu === "model"}
