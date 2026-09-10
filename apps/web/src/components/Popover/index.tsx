@@ -26,6 +26,7 @@ interface PopoverProps {
   hint?: ReactNode;
   hintAlign?: Align;
   preserveOpenOnOutsideSelector?: string;
+  autoFocusOnOpen?: boolean;
 }
 
 const classes = (...names: Array<string | undefined>) => names.filter(Boolean).join(" ");
@@ -50,6 +51,7 @@ export function Popover({
   hint,
   hintAlign = align,
   preserveOpenOnOutsideSelector,
+  autoFocusOnOpen = true,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
 
@@ -126,6 +128,9 @@ export function Popover({
             collisionPadding={collisionPadding}
             aria-label={ariaLabel}
             role={contentRole}
+            onOpenAutoFocus={(event) => {
+              if (!autoFocusOnOpen) event.preventDefault();
+            }}
             onCloseAutoFocus={(event) => event.preventDefault()}
             onInteractOutside={(event) => {
               const target = event.detail.originalEvent.target;

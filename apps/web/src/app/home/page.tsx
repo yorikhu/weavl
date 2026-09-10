@@ -342,6 +342,7 @@ export default function HomePage() {
               hint="添加附件"
               hintAlign="center"
               preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
+              autoFocusOnOpen={false}
               trigger={
                 <button
                   type="button"
