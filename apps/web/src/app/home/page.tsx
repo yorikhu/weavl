@@ -80,6 +80,8 @@ const MY_AGENTS = [
 ] as const;
 
 const HOT_TAGS = ["古风视频", "电商主图", "小红书图文", "短剧分镜"] as const;
+const PROMPT_MIN_HEIGHT = 58;
+const PROMPT_MAX_HEIGHT = 118;
 
 interface PromptChoice {
   id: string;
@@ -250,6 +252,14 @@ export default function HomePage() {
     if (open) setAttachmentMenuOpen(false);
   };
 
+  const resizePromptInput = (input: HTMLTextAreaElement) => {
+    const nextHeight = Math.min(
+      PROMPT_MAX_HEIGHT,
+      Math.max(PROMPT_MIN_HEIGHT, input.getBoundingClientRect().height),
+    );
+    promptBarRef.current?.style.setProperty("--prompt-input-height", `${nextHeight}px`);
+  };
+
   const openLocalAttachmentPicker = () => {
     if (attachmentExpandTimerRef.current !== null) {
       window.clearTimeout(attachmentExpandTimerRef.current);
@@ -390,6 +400,7 @@ export default function HomePage() {
               rows={1}
               onInput={(event) => {
                 const hasPrompt = Boolean(event.currentTarget.value.trim());
+                resizePromptInput(event.currentTarget);
                 if (promptSubmitRef.current) promptSubmitRef.current.disabled = !hasPrompt;
                 promptBarRef.current?.toggleAttribute("data-has-value", hasPrompt);
               }}
@@ -460,7 +471,10 @@ export default function HomePage() {
                 key={t}
                 className={styles.hotTag}
                 onClick={() => {
-                  if (promptInputRef.current) promptInputRef.current.value = `帮我做${t}相关内容`;
+                  if (promptInputRef.current) {
+                    promptInputRef.current.value = `帮我做${t}相关内容`;
+                    resizePromptInput(promptInputRef.current);
+                  }
                   if (promptSubmitRef.current) promptSubmitRef.current.disabled = false;
                   promptBarRef.current?.setAttribute("data-has-value", "");
                   setAttachmentComposerExpanded(true);

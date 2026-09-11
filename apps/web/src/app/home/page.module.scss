@@ -64,6 +64,7 @@
 
 .promptBar {
   --prompt-motion: 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --prompt-input-height: 58px;
 
   position: relative;
   box-sizing: border-box;
@@ -94,11 +95,14 @@
 .promptBar:focus-within,
 .promptBar[data-has-value],
 .promptBarActive {
-  height: 123px;
-  padding: 13px 13px 50px;
+  height: calc(58px + var(--prompt-input-height));
+  padding: 13px 13px 40px;
 
   .promptInput {
-    height: 58px;
+    field-sizing: content;
+    height: auto;
+    min-height: 58px;
+    max-height: 118px;
   }
 
   .promptPlus,
@@ -135,7 +139,6 @@
   line-height: 20px;
   color: var(--foreground);
   outline: none;
-  transition: height var(--prompt-motion);
 
   &::placeholder {
     color: var(--faint-foreground);
