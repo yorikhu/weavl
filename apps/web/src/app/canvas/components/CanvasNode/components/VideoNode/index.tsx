@@ -4,9 +4,12 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from "rea
 import { createPortal } from "react-dom";
 import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import { ChevronDown, FileText, Film, ImagePlus, Layers, Maximize2, MonitorPlay, RefreshCw, Send, Share2, Sparkles, Tag, Type as TypeGlyph, User as UserIcon, Video as VideoIcon, Volume2, Zap } from "lucide-react";
-import { EnterEditContext } from "../../editContext";
-import type { VideoNodeData } from "../../types/nodes";
-import styles from "../../page.module.scss";
+import { EnterEditContext } from "../../../../editContext";
+import type { VideoNodeData } from "../../../../types/nodes";
+import sharedStyles from "../../index.module.scss";
+import localStyles from "./index.module.scss";
+
+const styles = { ...sharedStyles, ...localStyles };
 
 /**
  * 渲染视频节点在浏览态和编辑态共用的卡片主体。
@@ -67,7 +70,7 @@ function VideoCardStatic({
           <span>{displayTitle}</span>
         )}
       </div>
-      <div className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
+      <div data-canvas-node-surface className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有视频则显示视频预览，否则仅显示中性占位图标。 */}
         {url ? (
@@ -248,7 +251,7 @@ export function VideoEditPanel() {
       onClick={(e) => e.stopPropagation()}
     >
       {/* 顶部标签行：参考 / 标记 / 特效 / 角色库 / 运镜 */}
-      <div className={styles.imageEditPanelHead}>
+      <div className={styles.imageEditBarHead}>
         <div className={styles.imageEditBarTags}>
           <button className={styles.imageEditTag}>
             <ImagePlus size={11} />

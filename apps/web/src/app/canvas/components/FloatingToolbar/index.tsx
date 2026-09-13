@@ -2,8 +2,8 @@
 
 import { useContext } from "react";
 import { Minus, Pilcrow, RemoveFormatting } from "lucide-react";
-import { EnterEditContext } from "../editContext";
-import styles from "../page.module.scss";
+import { EnterEditContext } from "../../editContext";
+import styles from "./index.module.scss";
 
 /**
  * 渲染文本节点聚焦时使用的浮动富文本工具栏。

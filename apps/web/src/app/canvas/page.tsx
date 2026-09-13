@@ -28,7 +28,7 @@ import { X } from "lucide-react";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
 import { EnterEditContext } from "./editContext";
-import { ImageEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNodes";
+import { ImageEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNode";
 import { FloatingToolbar } from "./components/FloatingToolbar";
 import { CanvasViewportControls } from "./components/CanvasViewportControls";
 import { CanvasProjectHeader } from "./components/CanvasProjectHeader";

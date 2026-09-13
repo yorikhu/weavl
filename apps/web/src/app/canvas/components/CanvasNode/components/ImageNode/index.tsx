@@ -4,10 +4,13 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import { ChevronDown, Image as ImageIcon, ImagePlus, Maximize2, MonitorPlay, Palette, RefreshCw, Send, SlidersHorizontal, Sparkles, Tag, Upload, Zap } from "lucide-react";
-import { EnterEditContext } from "../../editContext";
-import { KIND_META } from "../../types/kindMeta";
-import type { ImageNodeData } from "../../types/nodes";
-import styles from "../../page.module.scss";
+import { EnterEditContext } from "../../../../editContext";
+import { KIND_META } from "../../../../types/kindMeta";
+import type { ImageNodeData } from "../../../../types/nodes";
+import sharedStyles from "../../index.module.scss";
+import localStyles from "./index.module.scss";
+
+const styles = { ...sharedStyles, ...localStyles };
 
 /**
  * 渲染图片节点在浏览态和编辑态共用的卡片主体。
@@ -68,7 +71,7 @@ function ImageCardStatic({
           <span>{displayTitle}</span>
         )}
       </div>
-      <div className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
+      <div data-canvas-node-surface className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有图则显示真图，否则占位渐变 */}
         {url ? (
@@ -266,7 +269,7 @@ export function ImageEditPanel() {
       onClick={(e) => e.stopPropagation()}
     >
       {/* 顶部标签行：参考 / 标记 / 风格 */}
-      <div className={styles.imageEditPanelHead}>
+      <div className={styles.imageEditBarHead}>
         <div className={styles.imageEditBarTags}>
           <button className={styles.imageEditTag} title="上传参考图（通过卡片左下角图生图）">
             <ImagePlus size={11} />

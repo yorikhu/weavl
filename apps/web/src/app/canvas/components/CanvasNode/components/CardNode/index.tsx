@@ -4,10 +4,13 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { CheckCircle2, Sparkles, X } from "lucide-react";
 import { toast } from "@/hooks/useToast";
-import { EnterEditContext } from "../../editContext";
-import { KIND_META } from "../../types/kindMeta";
-import type { CardNodeData } from "../../types/nodes";
-import styles from "../../page.module.scss";
+import { EnterEditContext } from "../../../../editContext";
+import { KIND_META } from "../../../../types/kindMeta";
+import type { CardNodeData } from "../../../../types/nodes";
+import sharedStyles from "../../index.module.scss";
+import localStyles from "./index.module.scss";
+
+const styles = { ...sharedStyles, ...localStyles };
 
 /**
  * 渲染卡片节点通用的 Markdown 文本编辑器。
@@ -96,7 +99,7 @@ function NodeEditor({
   );
 
   return (
-    <div className={styles.nodeEditor} onDoubleClick={(e) => e.stopPropagation()}>
+    <div data-canvas-node-surface className={styles.nodeEditor} onDoubleClick={(e) => e.stopPropagation()}>
       {/* 头部 */}
       <div className={styles.nodeEditorHead}>
         <span className={styles.nodeEditorCategory}>{categoryLabel}</span>
@@ -183,7 +186,7 @@ export function CardNode({ data, id }: NodeProps) {
   }
 
   return (
-    <div className={styles.card} onDoubleClick={() => edit.enterEdit(id)}>
+    <div data-canvas-node-surface className={styles.card} onDoubleClick={() => edit.enterEdit(id)}>
       <Handle type="target" position={Position.Left} className={styles.cardHandle} />
       <div className={styles.cardHead}>
         <span className={styles.cardCategory}>{d.category || meta.badge}</span>

@@ -3,9 +3,12 @@
 import { useCallback, useContext, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Type as TypeIcon } from "lucide-react";
-import { EnterEditContext } from "../../editContext";
-import type { TextNodeData } from "../../types/nodes";
-import styles from "../../page.module.scss";
+import { EnterEditContext } from "../../../../editContext";
+import type { TextNodeData } from "../../../../types/nodes";
+import sharedStyles from "../../index.module.scss";
+import localStyles from "./index.module.scss";
+
+const styles = { ...sharedStyles, ...localStyles };
 
 /**
  * 渲染 React Flow 文本节点，并根据编辑上下文切换展示状态。
@@ -23,6 +26,7 @@ export function TextNode({ data, id }: NodeProps) {
 
   return (
     <div
+      data-canvas-node-surface
       className={styles.textNode}
       style={
         d.width || d.height
@@ -107,6 +111,7 @@ function TextNodeEditor({ data }: { data: TextNodeData }) {
 
   return (
     <div
+      data-canvas-node-surface
       ref={containerRef}
       className={`${styles.textNode} ${styles.textNodeEditing} nowheel`}
       style={styleSize}

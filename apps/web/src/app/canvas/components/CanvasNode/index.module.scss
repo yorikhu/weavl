@@ -1,0 +1,585 @@
+/* 连接点：元素本身保持透明，::before 扩大命中区，::after 绘制可吸附的小圆点。 */
+.cardHandle {
+  width: 12px;
+  height: 12px;
+  background: transparent !important;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none !important;
+  opacity: 1;
+  cursor: crosshair;
+  z-index: 4;
+  pointer-events: all !important;
+  touch-action: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    cursor: crosshair;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    border: 2px solid #2d2d33;
+    border-radius: 50%;
+    background: var(--canvas-node-muted);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(calc(-50% + var(--handle-pull-x, 0px)), calc(-50% + var(--handle-pull-y, 0px)));
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+}
+
+/* 实际连接锚点留在卡片边界，只有视觉圆点外移，避免隐藏圆点后线根出现断口。 */
+.cardHandle:global(.react-flow__handle-left) {
+  /* 正式边锚点压进卡片，视觉圆点仍保持在边界外。 */
+  left: 6px;
+
+  &::after {
+    margin-left: -15px;
+  }
+
+  &::before {
+    margin-left: -15px;
+  }
+}
+
+.cardHandle:global(.react-flow__handle-right) {
+  right: 6px;
+
+  &::after {
+    margin-left: 15px;
+  }
+
+  &::before {
+    margin-left: 15px;
+  }
+}
+
+.handleMagnetActive::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 多个 handle 感应范围重叠时，只显示 JS 选出的最近圆点。 */
+.handleProximityActive .cardHandle::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.handleProximityActive .handleMagnetActive::after {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* 只让最近圆球获得覆盖完整磁吸半径的点击区，避免相邻 handle 抢事件。 */
+.handleMagnetActive::before {
+  width: var(--handle-hit-size, 80px);
+  height: var(--handle-hit-size, 80px);
+  border-radius: 50%;
+  pointer-events: all;
+}
+
+/* 默认不常显；选中节点、正在发起/接收连线时再显示。 */
+:global(.react-flow__node.selected) .cardHandle::after,
+.cardHandle:global(.connectingto)::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 在 React Flow 达到拖线阈值前就先隐藏，避免磁吸解除后圆球复位闪烁。 */
+.cardHandle:active::after {
+  opacity: 0 !important;
+  visibility: hidden;
+  transition: none !important;
+}
+
+/* 开始拖线后隐藏源端圆球，包括 selected / hover / 磁吸带来的显示状态。 */
+.cardHandle:global(.connectingfrom)::after {
+  opacity: 0 !important;
+  visibility: hidden;
+  transition: none !important;
+}
+
+/* onConnectStart 同步加到源节点，兜底覆盖 React Flow 状态类更新前的一帧。 */
+.connectionSourceActive .cardHandle::after {
+  opacity: 0 !important;
+  visibility: hidden;
+  transition: none !important;
+}
+
+.cardHandle:global(.valid)::after {
+  background: var(--canvas-node-foreground);
+  border-color: var(--canvas-node-background);
+}
+
+// =============== Image 节点（图像/视频） ===============
+.imageNodeWrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.imageNodeTitleAbove {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--canvas-node-muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  svg {
+    pointer-events: none;
+  }
+  span,
+  input {
+    pointer-events: auto;
+  }
+}
+
+/* v23：编辑态标题输入 —— 与静态标题视觉一致（透明无边框），focus 才露微弱底色 */
+.imageNodeTitleInput {
+  padding: 1px 4px;
+  margin: -1px -4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  min-width: 60px;
+  width: 12em;
+  &::placeholder {
+    color: #5e5e66;
+  }
+  &:focus {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+
+.imageNode {
+  position: relative;
+  padding: 0;
+  border-radius: 14px;
+  background: var(--canvas-node-background);
+  border: 0.5px solid var(--canvas-node-border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  cursor: default;
+  user-select: none;
+  font-family: inherit;
+  /* handle 需要伸到卡片外；实际媒体裁剪下沉到 .imagePreview。 */
+  overflow: visible;
+}
+
+.imagePreview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.emptyMediaPreview {
+  color: var(--canvas-node-muted);
+  background: linear-gradient(145deg, var(--canvas-node-subtle), transparent 70%);
+}
+
+.imagePlaceholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: var(--canvas-node-muted);
+  background: var(--canvas-node-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.imageCaption {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(20, 20, 22, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.imageCategory {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.imageTitle {
+  font-size: 11px;
+}
+
+/* 普通态已上传真图 */
+.imageReal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+// =============== ImageNode 默认态尝试区（v22：仅保留左下角 chips） ===============
+
+.imageTryChips {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.imageTryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--canvas-node-border);
+  background: color-mix(in srgb, var(--canvas-node-background) 92%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--canvas-node-foreground);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  svg {
+    color: var(--canvas-node-muted);
+    flex-shrink: 0;
+  }
+  &:hover {
+    border-color: var(--canvas-node-border-selected);
+    background: var(--canvas-node-background);
+    svg {
+      color: var(--canvas-node-foreground);
+    }
+  }
+}
+
+
+// =============== ImageNodeEditor（v22：原卡片不动 + 底部追加编辑栏） ===============
+.imageNodeEditWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: auto;
+  font-family: inherit;
+  /* v34：编辑栏已外置到屏底，这里只渲染卡片本体 */
+}
+
+/* v34.1：图片节点编辑栏 — 由 React Portal 挂到 document.body，position fixed + transform 跟手
+   transition 默认 none（拖动跟手）；编辑节点切换时由组件一次性 200ms 过渡 */
+.imageEditPanel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1100;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid #27272c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 拖动中不启用 transition（避免 200ms 粘滞）；切换编辑节点时由 JS 临时启用 200ms */
+  transition: none;
+  /* 启用 GPU 加速，translate3d 写入避免重排 */
+  will-change: transform;
+  font-family: inherit;
+}
+
+/* v34.2：视频版输入行（左侧视频附件占位 + 右侧输入框） */
+
+/* v36：图片版输入行（输入框 + 发送按钮同行） */
+
+
+/* v34.2：视频版发送按钮（白色 —— 与图片版橙色形成视觉区分） */
+
+/* 编辑态卡片列：完全复用默认态卡片尺寸，居中 */
+.imageNodeEditCardCol {
+  display: inline-flex;
+  flex-direction: column;
+  align-self: center;
+}
+
+/* v22：旧编辑卡样式已删除（卡片复用默认态组件） */
+
+/* v25：视频卡片左下角的「尝试」文字（与 chip 区分） */
+.imageTryRefreshInline {
+  font-size: 11px;
+  color: #6f6f76;
+  pointer-events: none;
+}
+
+// =============== 图片编辑指令栏（v22） ===============
+.imageEditBar {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: #161618;
+  border: 0.5px solid #27272c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.imageEditBarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.imageEditBarTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.imageEditTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  border: 0.5px solid #27272c;
+  background: #202023;
+  color: #e6e8ec;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover {
+    border-color: #3a3a41;
+    background: #1a1a1e;
+  }
+  svg {
+    color: #a8a8b2;
+  }
+}
+
+.imageEditTagIcon {
+  margin-left: 2px;
+  color: #7f77dd;
+}
+
+.imageEditExpand {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  color: #a8a8b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &:hover {
+    color: #e6e8ec;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #3a3a41;
+  }
+}
+
+.imageEditInputWrap {
+  border-radius: 10px;
+}
+
+.imageEditInput {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 0.5px solid #27272c;
+  background: #0d0d0f;
+  color: #e6e8ec;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  &::placeholder {
+    color: #5e5e66;
+  }
+  &:focus {
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+}
+
+.imageEditParams {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.imageEditModelWrap {
+  position: relative;
+}
+
+.imageEditModel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 11px;
+  cursor: pointer;
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  svg {
+    color: #d4537e;
+  }
+}
+
+.imageEditParamSep {
+  width: 0.5px;
+  height: 12px;
+  background: #27272c;
+}
+
+.imageEditRatioWrap {
+  position: relative;
+}
+
+.imageEditParam {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 11px;
+  cursor: pointer;
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  svg {
+    color: #a8a8b2;
+  }
+}
+
+.imageEditRatioMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 140px;
+  background: rgba(22, 22, 24, 0.97);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #2d2d33;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 40;
+}
+
+.imageEditRatioMenuHead {
+  font-size: 10px;
+  color: #5e5e66;
+  font-weight: 500;
+  padding: 4px 8px 2px;
+}
+
+.imageEditRatioItem {
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e6e8ec;
+  }
+}
+
+.imageEditRatioItemActive {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.imageEditParamIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #a8a8b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e6e8ec;
+  }
+}
+
+.imageEditCost {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #a8a8b2;
+  font-size: 11px;
+  svg {
+    color: #f59e0b;
+  }
+}

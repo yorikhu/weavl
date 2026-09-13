@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { useReactFlow, type Node } from "@xyflow/react";
 import type { EditCtx } from "../editContext";
 import type { AnyNodeData, CardField } from "../types/nodes";
-import styles from "../page.module.scss";
+import toolbarStyles from "../components/FloatingToolbar/index.module.scss";
+import nodeStyles from "../components/CanvasNode/index.module.scss";
+import textNodeStyles from "../components/CanvasNode/components/TextNode/index.module.scss";
 
 /** 节点编辑态及持久化写回，独立于页面菜单与连线交互。 */
 export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateAction<Node[]>>) {
@@ -217,13 +219,13 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       /** 点在文本编辑节点内部（含标题输入框、正文、resize 句柄）→ 不处理 */
-      if (target.closest(`.${styles.textNodeEditing}`)) return;
+      if (target.closest(`.${textNodeStyles.textNodeEditing}`)) return;
       /** 点在图片编辑节点内部（卡片 + 底部编辑栏）→ 不处理 */
-      if (target.closest(`.${styles.imageNodeEditWrap}`)) return;
+      if (target.closest(`.${nodeStyles.imageNodeEditWrap}`)) return;
       /** 图片/视频编辑栏（Portal 到 body 的 panel）→ 不处理 —— 这里有 prompt 输入框 */
-      if (target.closest(`.${styles.imageEditPanel}`)) return;
+      if (target.closest(`.${nodeStyles.imageEditPanel}`)) return;
       /** 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
-      if (target.closest(`.${styles.floatingToolbar}`)) return;
+      if (target.closest(`.${toolbarStyles.floatingToolbar}`)) return;
       e.preventDefault();
       e.stopPropagation();
       commitEdit();

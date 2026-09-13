@@ -3,6 +3,7 @@ import { useReactFlow, type Connection, type Edge, type Node } from "@xyflow/rea
 import type { BasicNodeKind } from "../types/nodes";
 import { createBasicNode } from "../utils/nodeFactory";
 import styles from "../page.module.scss";
+import nodeStyles from "../components/CanvasNode/index.module.scss";
 
 /** 连线、磁吸、目标预览与拖线到空白处新建节点的交互。 */
 export function useCanvasConnections(
@@ -12,7 +13,7 @@ export function useCanvasConnections(
   setEdges: Dispatch<SetStateAction<Edge[]>>,
 ) {
   const { screenToFlowPosition } = useReactFlow();
-  const connectionSourceActiveClass = styles.connectionSourceActive ?? "connection-source-active";
+  const connectionSourceActiveClass = nodeStyles.connectionSourceActive ?? "connection-source-active";
   /** 从 source handle 拖出连线时记录起始节点，松手时若在空白处 → 创建新节点 + 连线 */
   const connectStartRef = useRef<{ nodeId: string | null; clientX: number; clientY: number }>({
     nodeId: null,
@@ -110,8 +111,8 @@ export function useCanvasConnections(
   /** 鼠标靠近 handle 时，让最近的圆点显现并跟随指针。 */
   useEffect(() => {
     const board = document.querySelector(`.${styles.board}`);
-    const handleMagnetClass = styles.handleMagnetActive;
-    const handleProximityClass = styles.handleProximityActive;
+    const handleMagnetClass = nodeStyles.handleMagnetActive;
+    const handleProximityClass = nodeStyles.handleProximityActive;
     if (!board || !handleMagnetClass || !handleProximityClass) return;
     let activeHandle: HTMLElement | null = null;
     let animationFrameId: number | null = null;
@@ -127,7 +128,7 @@ export function useCanvasConnections(
 
     const updateNearestHandle = () => {
       animationFrameId = null;
-      const handles = board.querySelectorAll<HTMLElement>(`.${styles.cardHandle}`);
+      const handles = board.querySelectorAll<HTMLElement>(`.${nodeStyles.cardHandle}`);
       const selectedNodes = board.querySelectorAll(".react-flow__node.selected");
       const multiSelectionActive = selectedNodes.length > 1;
       let nearest: {

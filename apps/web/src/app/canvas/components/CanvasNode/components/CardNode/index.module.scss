@@ -1,0 +1,251 @@
+// =============== Card 节点（数据/逻辑） ===============
+.card {
+  position: relative;
+  width: 260px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--canvas-node-background);
+  border: 0.5px solid var(--canvas-node-border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  cursor: default;
+  user-select: none;
+  font-family: inherit;
+}
+
+.cardAccent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 3px;
+  border-top-left-radius: 14px;
+  // 颜色由 inline style 注入
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cardCategory {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--canvas-node-foreground);
+  background: var(--canvas-node-subtle);
+}
+
+.cardType {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 0.5px solid;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--canvas-node-muted);
+  background: transparent;
+  border-color: var(--canvas-node-border);
+}
+
+.cardFields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardField {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.cardFieldLabel {
+  color: var(--canvas-node-muted);
+  font-weight: 500;
+  text-align: right;
+  opacity: 0.8;
+}
+.cardFieldValue {
+  color: var(--canvas-node-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+// =============== 节点内编辑态（双击原地放大） ===============
+.nodeEditor {
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas-node-background);
+  border: 1px solid var(--canvas-node-border-selected);
+  border-radius: 16px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  animation: nodeGrow 0.18s ease;
+  z-index: 5;
+}
+
+@keyframes nodeGrow {
+  from {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.nodeEditorHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid #232326;
+}
+
+.nodeEditorCategory {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: var(--canvas-node-muted);
+  background: var(--canvas-node-subtle);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.nodeEditorTitle {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e6e8ec;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeEditorTitleInput {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0.5px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  &::placeholder {
+    color: #5e5e66;
+  }
+  &:focus {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.nodeEditorBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 0.5px solid #26262b;
+  background: transparent;
+  color: #8a8a92;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+  &:hover:not(:disabled) {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+  &:disabled {
+    color: #4a4a52;
+    cursor: not-allowed;
+    border-color: #1f1f23;
+  }
+}
+
+.nodeEditorArea {
+  min-height: 180px;
+  max-height: 320px;
+  padding: 14px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: vertical;
+  color: #e6e8ec;
+  font-size: 12px;
+  line-height: 1.8;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  &::placeholder {
+    color: #5e5e66;
+  }
+}
+
+.nodeEditorFoot {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-top: 0.5px solid #232326;
+  font-size: 10px;
+  color: #5e5e66;
+}
+
+
+.formatBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid #232326;
+  background: rgba(13, 13, 15, 0.4);
+  overflow-x: auto;
+}
+
+.formatBtn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    color 0.12s,
+    background 0.12s;
+  &:hover {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+}
+
+.formatSep {
+  width: 0.5px;
+  height: 16px;
+  background: #2d2d33;
+  margin: 0 6px;
+  flex-shrink: 0;
+}

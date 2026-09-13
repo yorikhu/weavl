@@ -1,0 +1,113 @@
+// =============== v7 聚焦编辑模式：顶部工具栏 + 左侧面板 ===============
+
+.floatingToolbar {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(20, 20, 22, 0.94);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #2d2d33;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  z-index: 30;
+  animation: toolbarDrop 0.22s ease;
+}
+
+@keyframes toolbarDrop {
+  from {
+    transform: translate(-50%, -10px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.tbSelect,
+.tbSelectNarrow {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 28px;
+  padding: 0 22px 0 10px;
+  border: 0.5px solid #2d2d33;
+  border-radius: 8px;
+  background: #232326;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M1 1 L4 4 L7 1' stroke='%238a8a92' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  &:hover {
+    border-color: #3a3a41;
+  }
+  &:focus {
+    outline: none;
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+}
+
+.tbSelectNarrow {
+  min-width: 56px;
+  padding: 0 22px 0 10px;
+}
+
+.tbSep {
+  width: 0.5px;
+  height: 18px;
+  background: #2d2d33;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.tbBtn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0.5px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #a8a8b2;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    color 0.12s,
+    background 0.12s,
+    border-color 0.12s;
+  &:hover {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+}
+
+.tbColor {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  &::-webkit-color-swatch {
+    border: 0.5px solid #3a3a41;
+    border-radius: 6px;
+  }
+}
+
+// （v10 移除左侧完成/取消面板 —— 点击编辑节点外部自动保存；样式块已删）
