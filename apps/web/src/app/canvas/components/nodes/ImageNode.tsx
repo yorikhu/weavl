@@ -8,7 +8,6 @@ import { EnterEditContext } from "../../editContext";
 import { KIND_META } from "../../types/kindMeta";
 import type { ImageNodeData } from "../../types/nodes";
 import styles from "../../page.module.scss";
-import { shallowEqual } from "./utils";
 
 /**
  * 渲染图片节点在浏览态和编辑态共用的卡片主体。
@@ -136,8 +135,6 @@ export function ImageNode({ data, id }: NodeProps) {
  */
 export function ImageEditPanel() {
   const edit = useContext(EnterEditContext);
-  const rf = useStore((s) => ({ tx: s.transform[0], ty: s.transform[1], zoom: s.transform[2] }), shallowEqual);
-
   /** 当前编辑的图片节点（editingId）—— 字段初值取自节点的 data */
   const editingId = edit.editingId;
   const node = useStore((s) => (editingId ? (s.nodes.find((n) => n.id === editingId) ?? null) : null));
@@ -204,6 +201,8 @@ export function ImageEditPanel() {
   const lastWidthRef = useRef(-1);
 
   useEffect(() => {
+    if (!isImage) return;
+
     const compute = () => {
       if (!node || typeof window === "undefined") return;
       const panelEl = panelRef.current;
@@ -243,7 +242,7 @@ export function ImageEditPanel() {
       window.removeEventListener("resize", onResize);
       window.cancelAnimationFrame(raf);
     };
-  }, [node, rf.tx, rf.ty, rf.zoom]);
+  }, [isImage, node]);
 
   /** 去掉飞入动画 —— 始终 opacity:1，compute() 失败也不影响可见性 */
   useEffect(() => {

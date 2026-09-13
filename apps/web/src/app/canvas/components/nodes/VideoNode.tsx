@@ -7,7 +7,6 @@ import { ChevronDown, FileText, Film, ImagePlus, Layers, Maximize2, MonitorPlay,
 import { EnterEditContext } from "../../editContext";
 import type { VideoNodeData } from "../../types/nodes";
 import styles from "../../page.module.scss";
-import { shallowEqual } from "./utils";
 
 /**
  * 渲染视频节点在浏览态和编辑态共用的卡片主体。
@@ -139,7 +138,6 @@ export function VideoNode({ data, id }: NodeProps) {
  */
 export function VideoEditPanel() {
   const edit = useContext(EnterEditContext);
-  const rf = useStore((s) => ({ tx: s.transform[0], ty: s.transform[1], zoom: s.transform[2] }), shallowEqual);
   const editingId = edit.editingId;
   const node = useStore((s) => (editingId ? (s.nodes.find((n) => n.id === editingId) ?? null) : null));
   const data = (node?.data as unknown as VideoNodeData | undefined) ?? null;
@@ -181,6 +179,8 @@ export function VideoEditPanel() {
   const lastTopRef = useRef(-1);
   const lastWidthRef = useRef(-1);
   useEffect(() => {
+    if (!isVideo) return;
+
     const compute = () => {
       if (!node || typeof window === "undefined") return;
       const panelEl = panelRef.current;
@@ -219,7 +219,7 @@ export function VideoEditPanel() {
       window.removeEventListener("resize", onResize);
       window.cancelAnimationFrame(raf);
     };
-  }, [node, rf.tx, rf.ty, rf.zoom]);
+  }, [isVideo, node]);
   /** 移除飞入动画 —— 挂载时透明，首次定位后立即显示（无位移过渡） */
   useEffect(() => {
     const el = panelRef.current;
