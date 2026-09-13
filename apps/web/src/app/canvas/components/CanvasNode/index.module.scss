@@ -33,9 +33,9 @@
     width: 12px;
     height: 12px;
     box-sizing: border-box;
-    border: 2px solid #2d2d33;
+    border: 2px solid var(--canvas-handle-border);
     border-radius: 50%;
-    background: var(--canvas-node-muted);
+    background: var(--canvas-handle-fill);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -125,7 +125,7 @@
 }
 
 .cardHandle:global(.valid)::after {
-  background: var(--canvas-node-foreground);
+  background: var(--canvas-handle-active-fill);
   border-color: var(--canvas-node-background);
 }
 
@@ -187,7 +187,7 @@
   border-radius: 14px;
   background: var(--canvas-node-background);
   border: 0.5px solid var(--canvas-node-border);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--canvas-node-shadow);
   cursor: default;
   user-select: none;
   font-family: inherit;

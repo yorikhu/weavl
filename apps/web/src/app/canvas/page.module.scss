@@ -118,6 +118,10 @@
   --canvas-node-foreground: #1e293b;
   --canvas-node-muted: #64748b;
   --canvas-node-subtle: rgba(30, 41, 59, 0.06);
+  --canvas-node-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --canvas-handle-fill: #cbd5e1;
+  --canvas-handle-border: #eef0f3;
+  --canvas-handle-active-fill: #aeb9c8;
   --canvas-node-target-background: #f1f3f6;
   --canvas-node-target-filter: brightness(0.94);
 }
@@ -132,6 +136,10 @@
   --canvas-node-foreground: #e6e8ec;
   --canvas-node-muted: #9a9aa3;
   --canvas-node-subtle: rgba(255, 255, 255, 0.06);
+  --canvas-node-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --canvas-handle-fill: #9a9aa3;
+  --canvas-handle-border: #2d2d33;
+  --canvas-handle-active-fill: #e6e8ec;
   --canvas-node-target-background: #232326;
   --canvas-node-target-filter: brightness(1.16);
 }

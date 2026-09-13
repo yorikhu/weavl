@@ -6,7 +6,7 @@
   border-radius: 14px;
   background: var(--canvas-node-background);
   border: 0.5px solid var(--canvas-node-border);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--canvas-node-shadow);
   cursor: default;
   user-select: none;
   font-family: inherit;
@@ -89,7 +89,7 @@
   background: var(--canvas-node-background);
   border: 1px solid var(--canvas-node-border-selected);
   border-radius: 16px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65);
+  box-shadow: var(--canvas-node-shadow);
   overflow: hidden;
   animation: nodeGrow 0.18s ease;
   z-index: 5;

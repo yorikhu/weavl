@@ -7,7 +7,7 @@
   border-radius: 14px;
   background: var(--canvas-node-background);
   border: 0.5px solid var(--canvas-node-border);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--canvas-node-shadow);
   cursor: default;
   user-select: none;
   font-family: inherit;
@@ -75,7 +75,7 @@
   /* v18：编辑态不做高亮变化，仅可编辑 */
   border-color: var(--canvas-node-border);
   border-width: 0.5px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--canvas-node-shadow);
   cursor: text;
   user-select: text;
   /* v9：宽高都可以拉；容器定高时正文区弹性填充 */
