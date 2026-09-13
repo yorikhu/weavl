@@ -1,0 +1,253 @@
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useReactFlow, type Node } from "@xyflow/react";
+import type { EditCtx } from "../editContext";
+import type { AnyNodeData, CardField } from "../types/nodes";
+import styles from "../page.module.scss";
+
+/** 节点编辑态及持久化写回，独立于页面菜单与连线交互。 */
+export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateAction<Node[]>>) {
+  const { setCenter } = useReactFlow();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBuffer, setEditBuffer] = useState<{ title: string; text: string }>({ title: "", text: "" });
+  /** contentEditable DOM 引用（让 commitEdit 能读到最新 innerText）+ IME composition 标志 */
+  const editorElRef = useRef<HTMLDivElement | null>(null);
+  const composingRef = useRef(false);
+  /** 进入编辑：初始化 buffer + 平移居中 + 稍微放大（退出时不再复位视口，所以无需保存） */
+  const enterEdit = useCallback(
+    (id: string) => {
+      const n = nodes.find((x) => x.id === id);
+      if (!n) return;
+      const d = n.data as Record<string, unknown>;
+      const title = typeof d.title === "string" ? d.title : d.kind === "card" ? "" : "文本";
+      const text =
+        typeof d.text === "string"
+          ? d.text
+          : typeof d.url === "string"
+            ? d.url
+            : d.kind === "card" && Array.isArray(d.fields)
+              ? (d.fields as Array<{ label: string; value: string }>).map((f) => `${f.label}：${f.value}`).join("\n")
+              : "";
+      setEditBuffer({ title, text });
+      // 节点居中 + 放大到 2.0（进入编辑时，参考 LibTV 200%）
+      // 用节点实际渲染尺寸计算中心，避免视觉偏移
+      const w = n.measured?.width ?? (typeof d.width === "number" ? d.width : 440);
+      const h = n.measured?.height ?? (typeof d.height === "number" ? d.height : 120);
+      void setCenter(n.position.x + w / 2, n.position.y + h / 2, { zoom: 2, duration: 320 });
+      setEditingId(id);
+    },
+    [nodes, setCenter],
+  );
+
+  /** 退出编辑：视口保持不动（位置和缩放都不变），只关编辑态 */
+  const exitEdit = useCallback(() => {
+    setEditingId(null);
+  }, []);
+
+  /** 写回节点 data（节点内编辑器走这条） */
+  const writeNodeData = useCallback(
+    (id: string, title: string, text: string, size?: { w: number; h: number }) => {
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id) return n;
+          const d = { ...(n.data as Record<string, unknown>) };
+          if (title.trim()) d.title = title.trim();
+          const kind = d.nodeKind;
+          if (kind === "text") {
+            d.text = text;
+            if (size && size.w > 0) d.width = Math.round(size.w);
+            if (size && size.h > 0) d.height = Math.round(size.h);
+          } else if (kind === "card") {
+            const fields: CardField[] = [];
+            for (const line of text.split("\n")) {
+              const m = line.match(/^(.*?)[:：]\s*(.*)$/);
+              if (m && m[1]) fields.push({ label: m[1], value: m[2] ?? "" });
+              else if (line.trim()) fields.push({ label: "·", value: line });
+            }
+            d.fields = fields;
+          } else {
+            const urlMatch = text.match(/https?:\/\/\S+/);
+            if (urlMatch) d.url = urlMatch[0];
+          }
+          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
+        }),
+      );
+    },
+    [setNodes],
+  );
+
+  /** 入口：传入 id/title/text 直接写回 */
+  const saveEdit = useCallback(
+    (id: string, title: string, text: string) => {
+      writeNodeData(id, title, text);
+      exitEdit();
+    },
+    [writeNodeData, exitEdit],
+  );
+
+  /** 图片编辑器实时状态 ref（编辑器组件每次状态变化时写入） */
+  const imageEditStateRef = useRef<EditCtx["imageEditStateRef"]["current"]>(null);
+
+  /** 图片节点编辑提交 —— prompt/参数/模型/图片写回节点 data */
+  const commitImageEdit = useCallback(
+    (
+      id: string,
+      payload: {
+        prompt?: string;
+        ratio?: string;
+        quality?: string;
+        count?: number;
+        model?: string;
+        url?: string;
+        title?: string;
+      },
+    ) => {
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id) return n;
+          const d = { ...(n.data as Record<string, unknown>) };
+          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
+          if (payload.prompt !== undefined) d.prompt = payload.prompt;
+          if (payload.ratio) d.ratio = payload.ratio;
+          if (payload.quality) d.quality = payload.quality;
+          if (typeof payload.count === "number") d.count = payload.count;
+          if (payload.model) d.model = payload.model;
+          if (payload.url !== undefined) d.url = payload.url;
+          /** 有 prompt 没有图 → 占位色改成生成中样式（后续接真生图 API 时替换） */
+          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
+        }),
+      );
+      exitEdit();
+    },
+    [setNodes, exitEdit],
+  );
+
+  /** 视频编辑器实时状态 ref（编辑器组件每次状态变化时写入） */
+  const videoEditStateRef = useRef<EditCtx["videoEditStateRef"]["current"]>(null);
+
+  /** 视频节点编辑提交 —— prompt/参数/视频写回节点 data */
+  const commitVideoEdit = useCallback(
+    (
+      id: string,
+      payload: {
+        prompt?: string;
+        ratio?: string;
+        quality?: string;
+        duration?: number;
+        count?: number;
+        model?: string;
+        url?: string;
+        title?: string;
+      },
+    ) => {
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id) return n;
+          const d = { ...(n.data as Record<string, unknown>) };
+          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
+          if (payload.prompt !== undefined) d.prompt = payload.prompt;
+          if (payload.ratio) d.ratio = payload.ratio;
+          if (payload.quality) d.quality = payload.quality;
+          if (typeof payload.duration === "number") d.duration = payload.duration;
+          if (typeof payload.count === "number") d.count = payload.count;
+          if (payload.model) d.model = payload.model;
+          if (payload.url !== undefined) d.url = payload.url;
+          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
+        }),
+      );
+      exitEdit();
+    },
+    [setNodes, exitEdit],
+  );
+
+  /** 入口：commitEdit 直接从 contentEditable DOM 读最新 innerText（避免 React state 异步导致保存过时）
+     图片节点编辑态时改走 commitImageEdit（用 imageEditStateRef 里的实时状态）
+     视频节点编辑态时改走 commitVideoEdit */
+  const commitEdit = useCallback(() => {
+    if (!editingId) return;
+    const editingNode = nodes.find((n) => n.id === editingId);
+    const editingKind = (editingNode?.data as Record<string, unknown> | undefined)?.nodeKind;
+    if (editingKind === "image") {
+      const payload = imageEditStateRef.current;
+      commitImageEdit(editingId, payload ?? {});
+      return;
+    }
+    if (editingKind === "video") {
+      const payload = videoEditStateRef.current;
+      commitVideoEdit(editingId, payload ?? {});
+      return;
+    }
+    const editor = editorElRef.current;
+    const liveText = editor?.innerText ?? "";
+    const finalText = composingRef.current ? editBuffer.text : liveText;
+    /** 节点容器尺寸（用户在编辑态拖出来的宽/高）一并保存 */
+    const container = editor?.parentElement;
+    const size =
+      container && container.offsetWidth > 0 && container.offsetHeight > 0
+        ? { w: container.offsetWidth, h: container.offsetHeight }
+        : undefined;
+    writeNodeData(editingId, editBuffer.title, finalText, size);
+    exitEdit();
+  }, [editingId, editBuffer, writeNodeData, exitEdit, nodes, commitImageEdit, commitVideoEdit]);
+
+  /** 工具栏格式化命令：作用于当前 contentEditable 焦点 */
+  const onApplyFormat = useCallback((cmd: string, value?: string) => {
+    try {
+      document.execCommand(cmd, false, value);
+    } catch {
+      /** 浏览器不支持时静默失败 */
+    }
+  }, []);
+
+  /** 编辑模式下，全局 ESC 退出（即使焦点不在节点内） */
+  useEffect(() => {
+    if (!editingId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        exitEdit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editingId, exitEdit]);
+
+  /** 编辑模式下，点击编辑节点外部（画布空白处 / 页面其它区域）自动保存退出 */
+  useEffect(() => {
+    if (!editingId) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      /** 点在文本编辑节点内部（含标题输入框、正文、resize 句柄）→ 不处理 */
+      if (target.closest(`.${styles.textNodeEditing}`)) return;
+      /** 点在图片编辑节点内部（卡片 + 底部编辑栏）→ 不处理 */
+      if (target.closest(`.${styles.imageNodeEditWrap}`)) return;
+      /** 图片/视频编辑栏（Portal 到 body 的 panel）→ 不处理 —— 这里有 prompt 输入框 */
+      if (target.closest(`.${styles.imageEditPanel}`)) return;
+      /** 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
+      if (target.closest(`.${styles.floatingToolbar}`)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      commitEdit();
+    };
+    /** 用 pointerdown 捕获阶段，抢在画布平移/节点选择之前 */
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
+  }, [editingId, commitEdit]);
+
+  return {
+    editingId,
+    setEditingId,
+    editBuffer,
+    setEditBuffer,
+    editorElRef,
+    composingRef,
+    enterEdit,
+    exitEdit,
+    saveEdit,
+    commitEdit,
+    commitImageEdit,
+    commitVideoEdit,
+    onApplyFormat,
+    imageEditStateRef,
+    videoEditStateRef,
+  };
+}

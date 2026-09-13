@@ -1,7 +1,30 @@
-import { Crop, Download, Film, Grid3x3, Layers, Music, RefreshCw, Sliders, Sparkles, Sun, Wand2 } from "lucide-react";
-import type { CardField, NodeKind } from "./types/nodes";
+import {
+  Crop,
+  Download,
+  Film,
+  Grid3x3,
+  Image,
+  Layers,
+  Music,
+  RefreshCw,
+  Sliders,
+  Sparkles,
+  Sun,
+  Type,
+  Video,
+  Wand2,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { BasicNodeKind, CardField, NodeKind } from "../types/nodes";
 
 export type { NodeKind };
+
+/** 基础节点入口统一配置，画布菜单、连线菜单与节点库复用。 */
+export const BASIC_NODE_CHOICES: { kind: BasicNodeKind; label: string; hint: string; icon: LucideIcon }[] = [
+  { kind: "text", label: "文本", hint: "记录想法 / 说明", icon: Type },
+  { kind: "image", label: "图片", hint: "上传或生成", icon: Image },
+  { kind: "video", label: "视频", hint: "上传或生成", icon: Video },
+];
 
 /** 节点库（4 个能力）— 右下角或工具栏点击展开 */
 export type NodeLibraryItem =
@@ -102,7 +125,3 @@ export const STAGE_TITLES: Record<string, string> = {
   check: "质量检查",
   package: "内容包",
 };
-
-/** 节点 ID 自增序号（避免 Date.now 冲突） */
-let idSeq = 0;
-export const nextNodeId = () => `n_${Date.now()}_${++idSeq}`;

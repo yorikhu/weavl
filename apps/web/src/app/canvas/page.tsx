@@ -2,15 +2,10 @@
 
 import React from "react";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { toast } from "@/hooks/useToast";
-import { Popover } from "@/components/Popover";
-import { StarburstLogo } from "@/components/StarburstLogo";
-import { UserMenu } from "@/components/UserMenu";
-import { HeaderCapsule } from "@/components/HeaderCapsule";
-import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
 import { useTheme } from "@/provider/ThemeProvider";
 import {
   ReactFlow,
@@ -19,61 +14,42 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
-  type Connection,
   type Edge,
   type Node,
   ReactFlowProvider,
   useReactFlow,
-  useViewport,
   useUpdateNodeInternals,
   ConnectionMode,
   SelectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { RunView } from "@weavl/shared";
-import {
-  RefreshCw,
-  X,
-  Plus,
-  Send,
-  Link2,
-  Layers,
-  Bot,
-  Image as ImageIcon,
-  Video as VideoIcon,
-  Music,
-  Sparkles,
-  Type as TypeIcon,
-  Film,
-  FileText,
-  ChevronDown,
-  Home,
-  Trash2,
-  Minus,
-  LocateFixed,
-} from "lucide-react";
+import { X } from "lucide-react";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
 import { EnterEditContext } from "./editContext";
-import type { EditCtx } from "./editContext";
-import {
-  ImageEditPanel,
-  VideoEditPanel,
-  nodeTypes,
-} from "./components/CanvasNodes";
+import { ImageEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNodes";
 import { FloatingToolbar } from "./components/FloatingToolbar";
-import { KIND_META } from "./types/kindMeta";
-import type {
-  AnyNodeData,
-  CardField,
-  ImageNodeData,
-  NodeKind,
-  TextNodeData,
-  VideoNodeData,
-} from "./types/nodes";
-import { NODE_LIBRARY, NODE_TOOLBAR, STAGE_TITLES, nextNodeId } from "./constants";
-
-const INITIAL_CANVAS_VIEWPORT = { x: 0, y: 0, zoom: 0.8 };
+import { CanvasViewportControls } from "./components/CanvasViewportControls";
+import { CanvasProjectHeader } from "./components/CanvasProjectHeader";
+import { CanvasAgentDrawer } from "./components/CanvasAgentDrawer";
+import { CanvasAddMenus } from "./components/CanvasAddMenus";
+import { CanvasNodeLibrary } from "./components/CanvasNodeLibrary";
+import { CanvasEmptyState } from "./components/CanvasEmptyState";
+import { CanvasNodeToolbar } from "./components/CanvasNodeToolbar";
+import { useCanvasEditing } from "./hooks/useCanvasEditing";
+import { useCanvasConnections } from "./hooks/useCanvasConnections";
+import type { BasicNodeKind } from "./types/nodes";
+import { NODE_LIBRARY } from "./constants";
+import {
+  CANVAS_CONNECTION_RADIUS,
+  CANVAS_MAX_ZOOM,
+  CANVAS_MIN_ZOOM,
+  INITIAL_CANVAS_VIEWPORT,
+} from "./constants/viewport";
+import { createBasicNode, createLibraryNode } from "./utils/nodeFactory";
+import { buildLatestRunGraph } from "./utils/latestRunGraph";
+import { getNodeToolbarKind, selectionIncludesRaisedTitle } from "./utils/nodeSelectors";
 
 /**
  * 协调 React Flow 状态、节点编辑、连线以及页面级浮层。
@@ -83,16 +59,12 @@ const INITIAL_CANVAS_VIEWPORT = { x: 0, y: 0, zoom: 0.8 };
 function CanvasInner() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { screenToFlowPosition, setCenter, zoomIn, zoomOut, zoomTo, fitView } = useReactFlow();
-  const { zoom } = useViewport();
+  const { screenToFlowPosition } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
-  const connectionSourceActiveClass = styles.connectionSourceActive ?? "connection-source-active";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [projectName, setProjectName] = useState("未命名项目");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
-  const [zoomDraft, setZoomDraft] = useState("80");
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
 
   /** handle 位置由 CSS 调整后，刷新 React Flow 缓存的正式边锚点。 */
@@ -113,24 +85,6 @@ function CanvasInner() {
     );
   }, [setEdges]);
 
-  const createProject = useCallback(() => {
-    setNodes([]);
-    setEdges([]);
-    setProjectName("未命名项目");
-    setSelectedNode(null);
-    setEditingId(null);
-    setProjectMenuOpen(false);
-    toast("已创建空白项目", "success");
-  }, [setEdges, setNodes]);
-
-  const deleteProject = useCallback(() => {
-    if (!window.confirm(`确定删除项目“${projectName}”吗？此操作无法撤销。`)) return;
-    setProjectMenuOpen(false);
-    setNodes([]);
-    setEdges([]);
-    toast("项目已删除", "success");
-    router.push("/projects");
-  }, [projectName, router, setEdges, setNodes]);
   const [showLibrary, setShowLibrary] = useState(false);
   /** Agent 抽屉（右上角头像展开）+ 气泡消息流 */
   const [agentOpen, setAgentOpen] = useState(false);
@@ -158,210 +112,59 @@ function CanvasInner() {
   const [chatModel] = useState("Weavl LLM");
   const [hasRun, setHasRun] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editBuffer, setEditBuffer] = useState<{ title: string; text: string }>({ title: "", text: "" });
-  /** contentEditable DOM 引用（让 commitEdit 能读到最新 innerText）+ IME composition 标志 */
-  const editorElRef = useRef<HTMLDivElement | null>(null);
-  const composingRef = useRef(false);
-  /** 从 source handle 拖出连线时记录起始节点，松手时若在空白处 → 创建新节点 + 连线 */
-  const connectStartRef = useRef<{ nodeId: string | null; clientX: number; clientY: number }>({
-    nodeId: null,
-    clientX: 0,
-    clientY: 0,
-  });
-  /** 标记当前这次拖线是否已由 React Flow 成功连接，防止 onConnectEnd 再按画布空白处理。 */
-  const connectSucceededRef = useRef(false);
+  const {
+    editingId,
+    setEditingId,
+    editBuffer,
+    setEditBuffer,
+    editorElRef,
+    composingRef,
+    enterEdit,
+    exitEdit,
+    saveEdit,
+    commitEdit,
+    commitImageEdit,
+    commitVideoEdit,
+    onApplyFormat,
+    imageEditStateRef,
+    videoEditStateRef,
+  } = useCanvasEditing(nodes, setNodes);
+  const {
+    connectMenu,
+    setConnectMenu,
+    pendingLineStart,
+    connectError,
+    isValidConnection,
+    onConnect,
+    onConnectStart,
+    onConnectEnd,
+    addNodeFromConnect,
+  } = useCanvasConnections(nodes, edges, setNodes, setEdges);
+
+  const createProject = useCallback(() => {
+    setNodes([]);
+    setEdges([]);
+    setProjectName("未命名项目");
+    setSelectedNode(null);
+    setEditingId(null);
+    setProjectMenuOpen(false);
+    toast("已创建空白项目", "success");
+  }, [setEdges, setNodes, setEditingId]);
+
+  const deleteProject = useCallback(() => {
+    if (!window.confirm(`确定删除项目“${projectName}”吗？此操作无法撤销。`)) return;
+    setProjectMenuOpen(false);
+    setNodes([]);
+    setEdges([]);
+    toast("项目已删除", "success");
+    router.push("/projects");
+  }, [projectName, router, setEdges, setNodes]);
+
   /** click-outside-to-close —— 给 Agent 抽屉 / 节点库提供 ref，
      在 useClickOutside 里统一判断「pointerdown 在白名单外则关闭」。 */
   const agentDrawerRef = useRef<HTMLDivElement | null>(null);
   const agentBtnRef = useRef<HTMLButtonElement | null>(null);
   const libraryRef = useRef<HTMLDivElement | null>(null);
-
-  /** 进入编辑：初始化 buffer + 平移居中 + 稍微放大（退出时不再复位视口，所以无需保存） */
-  const enterEdit = useCallback(
-    (id: string) => {
-      const n = nodes.find((x) => x.id === id);
-      if (!n) return;
-      const d = n.data as Record<string, unknown>;
-      const title = typeof d.title === "string" ? d.title : d.kind === "card" ? "" : "文本";
-      const text =
-        typeof d.text === "string"
-          ? d.text
-          : typeof d.url === "string"
-            ? d.url
-            : d.kind === "card" && Array.isArray(d.fields)
-              ? (d.fields as Array<{ label: string; value: string }>).map((f) => `${f.label}：${f.value}`).join("\n")
-              : "";
-      setEditBuffer({ title, text });
-      // 节点居中 + 放大到 2.0（进入编辑时，参考 LibTV 200%）
-      // 用节点实际渲染尺寸计算中心，避免视觉偏移
-      const w = n.measured?.width ?? (typeof d.width === "number" ? d.width : 440);
-      const h = n.measured?.height ?? (typeof d.height === "number" ? d.height : 120);
-      void setCenter(n.position.x + w / 2, n.position.y + h / 2, { zoom: 2, duration: 320 });
-      setEditingId(id);
-    },
-    [nodes, setCenter],
-  );
-
-  /** 退出编辑：视口保持不动（位置和缩放都不变），只关编辑态 */
-  const exitEdit = useCallback(() => {
-    setEditingId(null);
-  }, []);
-
-  /** 写回节点 data（节点内编辑器走这条） */
-  const writeNodeData = useCallback(
-    (id: string, title: string, text: string, size?: { w: number; h: number }) => {
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (n.id !== id) return n;
-          const d = { ...(n.data as Record<string, unknown>) };
-          if (title.trim()) d.title = title.trim();
-          const kind = d.nodeKind;
-          if (kind === "text") {
-            d.text = text;
-            if (size && size.w > 0) d.width = Math.round(size.w);
-            if (size && size.h > 0) d.height = Math.round(size.h);
-          } else if (kind === "card") {
-            const fields: CardField[] = [];
-            for (const line of text.split("\n")) {
-              const m = line.match(/^(.*?)[:：]\s*(.*)$/);
-              if (m && m[1]) fields.push({ label: m[1], value: m[2] ?? "" });
-              else if (line.trim()) fields.push({ label: "·", value: line });
-            }
-            d.fields = fields;
-          } else {
-            const urlMatch = text.match(/https?:\/\/\S+/);
-            if (urlMatch) d.url = urlMatch[0];
-          }
-          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
-        }),
-      );
-    },
-    [setNodes],
-  );
-
-  /** 入口：传入 id/title/text 直接写回 */
-  const saveEdit = useCallback(
-    (id: string, title: string, text: string) => {
-      writeNodeData(id, title, text);
-      exitEdit();
-    },
-    [writeNodeData, exitEdit],
-  );
-
-  /** 图片编辑器实时状态 ref（编辑器组件每次状态变化时写入） */
-  const imageEditStateRef = useRef<EditCtx["imageEditStateRef"]["current"]>(null);
-
-  /** 图片节点编辑提交 —— prompt/参数/模型/图片写回节点 data */
-  const commitImageEdit = useCallback(
-    (
-      id: string,
-      payload: {
-        prompt?: string;
-        ratio?: string;
-        quality?: string;
-        count?: number;
-        model?: string;
-        url?: string;
-        title?: string;
-      },
-    ) => {
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (n.id !== id) return n;
-          const d = { ...(n.data as Record<string, unknown>) };
-          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
-          if (payload.prompt !== undefined) d.prompt = payload.prompt;
-          if (payload.ratio) d.ratio = payload.ratio;
-          if (payload.quality) d.quality = payload.quality;
-          if (typeof payload.count === "number") d.count = payload.count;
-          if (payload.model) d.model = payload.model;
-          if (payload.url !== undefined) d.url = payload.url;
-          /** 有 prompt 没有图 → 占位色改成生成中样式（后续接真生图 API 时替换） */
-          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
-        }),
-      );
-      exitEdit();
-    },
-    [setNodes, exitEdit],
-  );
-
-  /** 视频编辑器实时状态 ref（编辑器组件每次状态变化时写入） */
-  const videoEditStateRef = useRef<EditCtx["videoEditStateRef"]["current"]>(null);
-
-  /** 视频节点编辑提交 —— prompt/参数/视频写回节点 data */
-  const commitVideoEdit = useCallback(
-    (
-      id: string,
-      payload: {
-        prompt?: string;
-        ratio?: string;
-        quality?: string;
-        duration?: number;
-        count?: number;
-        model?: string;
-        url?: string;
-        title?: string;
-      },
-    ) => {
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (n.id !== id) return n;
-          const d = { ...(n.data as Record<string, unknown>) };
-          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
-          if (payload.prompt !== undefined) d.prompt = payload.prompt;
-          if (payload.ratio) d.ratio = payload.ratio;
-          if (payload.quality) d.quality = payload.quality;
-          if (typeof payload.duration === "number") d.duration = payload.duration;
-          if (typeof payload.count === "number") d.count = payload.count;
-          if (payload.model) d.model = payload.model;
-          if (payload.url !== undefined) d.url = payload.url;
-          return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
-        }),
-      );
-      exitEdit();
-    },
-    [setNodes, exitEdit],
-  );
-
-  /** 入口：commitEdit 直接从 contentEditable DOM 读最新 innerText（避免 React state 异步导致保存过时）
-     图片节点编辑态时改走 commitImageEdit（用 imageEditStateRef 里的实时状态）
-     视频节点编辑态时改走 commitVideoEdit */
-  const commitEdit = useCallback(() => {
-    if (!editingId) return;
-    const editingNode = nodes.find((n) => n.id === editingId);
-    const editingKind = (editingNode?.data as Record<string, unknown> | undefined)?.nodeKind;
-    if (editingKind === "image") {
-      const payload = imageEditStateRef.current;
-      commitImageEdit(editingId, payload ?? {});
-      return;
-    }
-    if (editingKind === "video") {
-      const payload = videoEditStateRef.current;
-      commitVideoEdit(editingId, payload ?? {});
-      return;
-    }
-    const editor = editorElRef.current;
-    const liveText = editor?.innerText ?? "";
-    const finalText = composingRef.current ? editBuffer.text : liveText;
-    /** 节点容器尺寸（用户在编辑态拖出来的宽/高）一并保存 */
-    const container = editor?.parentElement;
-    const size =
-      container && container.offsetWidth > 0 && container.offsetHeight > 0
-        ? { w: container.offsetWidth, h: container.offsetHeight }
-        : undefined;
-    writeNodeData(editingId, editBuffer.title, finalText, size);
-    exitEdit();
-  }, [editingId, editBuffer, writeNodeData, exitEdit, nodes, commitImageEdit, commitVideoEdit]);
-
-  /** 工具栏格式化命令：作用于当前 contentEditable 焦点 */
-  const onApplyFormat = useCallback((cmd: string, value?: string) => {
-    try {
-      document.execCommand(cmd, false, value);
-    } catch {
-      /** 浏览器不支持时静默失败 */
-    }
-  }, []);
 
   /** 选中节点时同步 selectedNode（用于顶部 NodeToolbar 浮出） */
   const onSelectionChange = useCallback(({ nodes: sel }: { nodes: Node[] }) => {
@@ -374,79 +177,9 @@ function CanvasInner() {
       const res = await fetch(`${API}/runs/latest/_pick`);
       if (!res.ok) return;
       const data: RunView = await res.json();
-      const gateSteps = new Set((data.decisions ?? []).map((d) => d.gate));
-      const stepIds = ["topics", "copywriting", "cover-concept", "cover", "check", "package"];
-      const layout: Node[] = stepIds.map((sid, i) => {
-        const isGate = gateSteps.has(sid);
-        const isCover = sid === "cover" || sid === "cover-concept";
-        const isPackage = sid === "package";
-        if (isCover) {
-          return {
-            id: `s_${sid}`,
-            type: "image",
-            position: { x: 80, y: 80 + i * 200 },
-            data: {
-              nodeKind: "image",
-              kind: "image",
-              title: STAGE_TITLES[sid],
-              category: isGate ? "确认门 · 封面" : "封面",
-              tint: "rgba(212, 83, 126, 0.18)",
-              size: { w: 200, h: 260 },
-            },
-          };
-        }
-        if (isPackage && data.contentPackage) {
-          return {
-            id: `s_${sid}`,
-            type: "card",
-            position: { x: 80, y: 80 + i * 200 },
-            data: {
-              nodeKind: "card",
-              kind: "output",
-              title: "内容包",
-              category: "产物",
-              fields: [
-                { label: "标题", value: data.contentPackage.fields[0]?.value?.slice(0, 28) ?? "—" },
-                { label: "正文", value: data.contentPackage.fields[1]?.value?.slice(0, 28) ?? "—" },
-                { label: "封面", value: data.contentPackage.fields[2]?.value?.slice(0, 28) ?? "—" },
-                { label: "话题", value: data.contentPackage.fields[3]?.value?.slice(0, 28) ?? "—" },
-              ],
-            },
-          };
-        }
-        // 文字节点
-        return {
-          id: `s_${sid}`,
-          type: "card",
-          position: { x: 80, y: 80 + i * 200 },
-          data: {
-            nodeKind: "card",
-            kind: "llm",
-            title: STAGE_TITLES[sid],
-            category: isGate ? `确认门 · ${STAGE_TITLES[sid]}` : STAGE_TITLES[sid],
-            isGate,
-            fields: [
-              { label: "类型", value: "测评/故事/清单" },
-              { label: "候选", value: "3 个" },
-              ...(isGate ? [{ label: "状态", value: "等待确认" }] : [{ label: "状态", value: "已确认" }]),
-            ],
-          },
-        };
-      });
-      const layoutEdges: Edge[] = stepIds.slice(0, -1).map((sid, i) => ({
-        id: `e_${sid}`,
-        source: `s_${sid}`,
-        target: `s_${stepIds[i + 1]}`,
-        type: "smoothstep",
-        style: { stroke: "#5e5e66", strokeWidth: 1.2 },
-        label: i % 2 === 0 ? "点击按钮，可替换上传" : undefined,
-        labelStyle: { fill: "#a8a8b2", fontSize: 10 },
-        labelBgStyle: { fill: "rgba(20, 20, 22, 0.92)", stroke: "#232326" },
-        labelBgPadding: [6, 4] as [number, number],
-        labelBgBorderRadius: 8,
-      }));
-      setNodes(layout);
-      setEdges(layoutEdges);
+      const graph = buildLatestRunGraph(data);
+      setNodes(graph.nodes);
+      setEdges(graph.edges);
       setHasRun(true);
     } catch {
       /** API 未启时保持空态 */
@@ -459,95 +192,15 @@ function CanvasInner() {
       .catch(() => {});
   }, []);
 
-  /** 编辑模式下，全局 ESC 退出（即使焦点不在节点内） */
-  useEffect(() => {
-    if (!editingId) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        exitEdit();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [editingId, exitEdit]);
-
-  /** 编辑模式下，点击编辑节点外部（画布空白处 / 页面其它区域）自动保存退出 */
-  useEffect(() => {
-    if (!editingId) return;
-    const onPointerDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      /** 点在文本编辑节点内部（含标题输入框、正文、resize 句柄）→ 不处理 */
-      if (target.closest(`.${styles.textNodeEditing}`)) return;
-      /** 点在图片编辑节点内部（卡片 + 底部编辑栏）→ 不处理 */
-      if (target.closest(`.${styles.imageNodeEditWrap}`)) return;
-      /** 图片/视频编辑栏（Portal 到 body 的 panel）→ 不处理 —— 这里有 prompt 输入框 */
-      if (target.closest(`.${styles.imageEditPanel}`)) return;
-      /** 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
-      if (target.closest(`.${styles.floatingToolbar}`)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      commitEdit();
-    };
-    /** 用 pointerdown 捕获阶段，抢在画布平移/节点选择之前 */
-    window.addEventListener("pointerdown", onPointerDown, true);
-    return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [editingId, commitEdit]);
-
   /** click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
   useClickOutside(agentOpen, [agentDrawerRef, agentBtnRef], () => setAgentOpen(false));
   useClickOutside(showLibrary, [libraryRef], () => setShowLibrary(false));
 
   /** 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
-    (kind: "text" | "image" | "video", position?: { x: number; y: number }) => {
+    (kind: BasicNodeKind, position?: { x: number; y: number }) => {
       const pos = position ?? { x: 400 + Math.random() * 80, y: 320 + Math.random() * 80 };
-      setNodes((ns) => {
-        if (kind === "text") {
-          return [
-            ...ns,
-            {
-              id: nextNodeId(),
-              type: "text",
-              position: pos,
-              data: { nodeKind: "text", title: "文本", text: "" } satisfies TextNodeData,
-            },
-          ];
-        }
-        if (kind === "image") {
-          return [
-            ...ns,
-            {
-              id: nextNodeId(),
-              type: "image",
-              position: pos,
-              data: {
-                nodeKind: "image",
-                kind: "image",
-                title: "图片",
-                category: "图片",
-                tint: "rgba(212, 83, 126, 0.18)",
-                size: { w: 300, h: 200 },
-              } satisfies ImageNodeData,
-            },
-          ];
-        }
-        return [
-          ...ns,
-          {
-            id: nextNodeId(),
-            type: "video",
-            position: pos,
-            data: {
-              nodeKind: "video",
-              title: "视频",
-              category: "视频",
-              tint: "rgba(55, 138, 221, 0.20)",
-              size: { w: 300, h: 200 },
-            } satisfies VideoNodeData,
-          },
-        ];
-      });
+      setNodes((ns) => [...ns, createBasicNode(kind, pos)]);
       setContextMenu(null);
     },
     [setNodes],
@@ -568,7 +221,7 @@ function CanvasInner() {
       });
       setConnectMenu(null);
     },
-    [screenToFlowPosition],
+    [screenToFlowPosition, setConnectMenu],
   );
   const onPaneContextMenu = useCallback(
     (e: React.MouseEvent | MouseEvent) => {
@@ -595,28 +248,6 @@ function CanvasInner() {
     [openCanvasAddMenu],
   );
 
-  const applyZoomPercent = useCallback(
-    (percent: number, closeMenu = false) => {
-      const clamped = Math.min(250, Math.max(30, percent));
-      setZoomDraft(String(Math.round(clamped)));
-      void zoomTo(clamped / 100, { duration: 180 });
-      if (closeMenu) setZoomMenuOpen(false);
-    },
-    [zoomTo],
-  );
-
-  const commitZoomDraft = useCallback(
-    (closeMenu = false) => {
-      const parsed = Number.parseFloat(zoomDraft);
-      if (!Number.isFinite(parsed)) {
-        setZoomDraft(String(Math.round(zoom * 100)));
-        return;
-      }
-      applyZoomPercent(parsed, closeMenu);
-    },
-    [applyZoomPercent, zoom, zoomDraft],
-  );
-
   /** 节点库添加（业务能力） */
   const addFromLibrary = useCallback(
     (idx: number) => {
@@ -624,491 +255,10 @@ function CanvasInner() {
       if (!lib) return;
       const baseX = 400 + Math.random() * 80;
       const baseY = 320 + Math.random() * 80;
-      if (lib.nodeKind === "image") {
-        setNodes((ns) => [
-          ...ns,
-          {
-            id: nextNodeId(),
-            type: "image",
-            position: { x: baseX, y: baseY },
-            data: {
-              nodeKind: "image",
-              kind: lib.kind,
-              title: lib.title,
-              category: lib.category,
-              tint: lib.tint,
-              size: lib.size ?? { w: 240, h: 180 },
-            },
-          },
-        ]);
-      } else {
-        setNodes((ns) => [
-          ...ns,
-          {
-            id: nextNodeId(),
-            type: "card",
-            position: { x: baseX, y: baseY },
-            data: {
-              nodeKind: "card",
-              kind: lib.kind,
-              title: lib.title,
-              category: lib.category,
-              fields: lib.fields,
-            },
-          },
-        ]);
-      }
+      setNodes((ns) => [...ns, createLibraryNode(lib, { x: baseX, y: baseY })]);
       setShowLibrary(false);
     },
     [setNodes],
-  );
-
-  /** 连接已存在节点 —— source handle 拖到 target handle 直接建边
-     校验必须落在 target handle 上才建边（避免松手在任意节点上误连） */
-  const isValidConnection = useCallback(
-    (connection: {
-      source?: string | null;
-      target?: string | null;
-      sourceHandle?: string | null;
-      targetHandle?: string | null;
-    }) => Boolean(connection.target && connection.source && connection.target !== connection.source),
-    [],
-  );
-  /** 连接 helper —— 先移除同节点对的旧边（含隐形残留），再添加带 success 动画的新边 */
-  const addEdgeDedup = useCallback(
-    (source: string, target: string) => {
-      const newEdgeId = `e_${Date.now()}`;
-      setEdges((es) => [
-        /** 去掉同节点对（含反向）旧边 —— 修复 时代 type:"bezier" 隐形边残留 */
-        ...es.filter(
-          (e) => !((e.source === source && e.target === target) || (e.source === target && e.target === source)),
-        ),
-        {
-          id: newEdgeId,
-          source,
-          target,
-          type: "default",
-          className: "success-draw",
-          style: { stroke: "#b5d4f4", strokeWidth: 1.8 },
-        } as Edge,
-      ]);
-      /** 动画 320ms 结束后移除 success-draw className，避免 dasharray 残留 */
-      window.setTimeout(() => {
-        setEdges((es) =>
-          es.map((e) =>
-            e.id === newEdgeId ? { ...e, className: "", style: { stroke: "#9a9aa3", strokeWidth: 1.8 } } : e,
-          ),
-        );
-      }, 360);
-      return newEdgeId;
-    },
-    [setEdges],
-  );
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      if (!connection.source || !connection.target || connection.source === connection.target) return;
-      connectSucceededRef.current = true;
-      setConnectMenu(null);
-      addEdgeDedup(connection.source, connection.target);
-    },
-    [addEdgeDedup],
-  );
-
-  /** 从 source handle 开始拖线 —— 记录起始节点 + 起始坐标 */
-  const onConnectStart = useCallback(
-    (_: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
-      if (params.handleType !== "source") return;
-      connectStartRef.current = { nodeId: params.nodeId, clientX: 0, clientY: 0 };
-      connectSucceededRef.current = false;
-      if (params.nodeId) {
-        document
-          .querySelector<HTMLElement>(`.react-flow__node[data-id="${params.nodeId}"]`)
-          ?.classList.add(connectionSourceActiveClass);
-      }
-      /** 开始拖线，重置 hover/preview/error 状态 */
-      setHoverTargetId(null);
-      setPreviewState(null);
-      setConnectError(null);
-    },
-    [connectionSourceActiveClass],
-  );
-
-  /** 拖线连接状态 —— 三态预览 + 成功动效 + 失败 toast */
-  const [connectMenu, setConnectMenu] = useState<{
-    sourceNodeId: string;
-    flowPos: { x: number; y: number };
-    clientPos: { x: number; y: number };
-  } | null>(null);
-  const [pendingLineStart, setPendingLineStart] = useState<{ x: number; y: number } | null>(null);
-  /** 拖线中悬停的目标节点（用来高亮） */
-  const [hoverTargetId, setHoverTargetId] = useState<string | null>(null);
-  /** 拖线中是否在合法位置上 —— true: 可连 / false: 不可连 / null: 拖到 pane */
-  const [previewState, setPreviewState] = useState<"connectable" | "blocked" | null>(null);
-  /** 连接失败 toast */
-  const [connectError, setConnectError] = useState<string | null>(null);
-  const connectErrorTimerRef = useRef<number | null>(null);
-
-  /** 鼠标靠近 handle 时，让最近的圆点显现并跟随指针。 */
-  useEffect(() => {
-    const board = document.querySelector(`.${styles.board}`);
-    const handleMagnetClass = styles.handleMagnetActive;
-    const handleProximityClass = styles.handleProximityActive;
-    if (!board || !handleMagnetClass || !handleProximityClass) return;
-    let activeHandle: HTMLElement | null = null;
-    let animationFrameId: number | null = null;
-    let pointerX = 0;
-    let pointerY = 0;
-
-    const resetHandle = (handle: HTMLElement) => {
-      handle.classList.remove(handleMagnetClass);
-      handle.style.removeProperty("--handle-pull-x");
-      handle.style.removeProperty("--handle-pull-y");
-      handle.style.removeProperty("--handle-hit-size");
-    };
-
-    const updateNearestHandle = () => {
-      animationFrameId = null;
-      const handles = board.querySelectorAll<HTMLElement>(`.${styles.cardHandle}`);
-      const selectedNodes = board.querySelectorAll(".react-flow__node.selected");
-      const multiSelectionActive = selectedNodes.length > 1;
-      let nearest: {
-        handle: HTMLElement;
-        pullX: number;
-        pullY: number;
-        hitSize: number;
-        distanceSq: number;
-      } | null = null;
-
-      /* 先集中读取布局，避免在循环里交替读写样式导致强制同步布局。 */
-      for (const handle of handles) {
-        if (multiSelectionActive && handle.closest(".react-flow__node.selected")) continue;
-        /* 拖线开始后源节点不再参与磁吸，避免位移复位时圆球短暂闪回锚点。 */
-        if (
-          handle.classList.contains("connectingfrom") ||
-          handle.closest(`.${connectionSourceActiveClass}`)
-        ) {
-          continue;
-        }
-        const rect = handle.getBoundingClientRect();
-        /* rect 是屏幕坐标，而伪元素位移处于会被 React Flow 缩放的画布坐标系。 */
-        const scale = handle.offsetWidth > 0 ? rect.width / handle.offsetWidth : 1;
-        const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-        const visualOffsetX =
-          (handle.classList.contains("react-flow__handle-left") ? -15 : 15) * safeScale;
-        const screenDx = pointerX - (rect.left + rect.width / 2 + visualOffsetX);
-        const screenDy = pointerY - (rect.top + rect.height / 2);
-        const distanceSq = screenDx * screenDx + screenDy * screenDy;
-        if (distanceSq <= 40 * 40 && (!nearest || distanceSq < nearest.distanceSq)) {
-          nearest = {
-            handle,
-            pullX: screenDx / safeScale,
-            pullY: screenDy / safeScale,
-            /* 反算画布缩放，使 80px 热区和屏幕坐标下 40px 的吸附半径严格一致。 */
-            hitSize: 80 / safeScale,
-            distanceSq,
-          };
-        }
-      }
-
-      if (activeHandle !== nearest?.handle) {
-        if (activeHandle) resetHandle(activeHandle);
-        activeHandle = nearest?.handle ?? null;
-        activeHandle?.classList.add(handleMagnetClass);
-      }
-      if (!nearest) {
-        board.classList.remove(handleProximityClass);
-        return;
-      }
-      board.classList.add(handleProximityClass);
-      /* 换算回画布坐标，保证任意缩放比例下圆心都落在鼠标正下方。 */
-      nearest.handle.style.setProperty("--handle-pull-x", `${nearest.pullX}px`);
-      nearest.handle.style.setProperty("--handle-pull-y", `${nearest.pullY}px`);
-      nearest.handle.style.setProperty("--handle-hit-size", `${nearest.hitSize}px`);
-    };
-
-    const onPointerMove = (event: Event) => {
-      const pointer = event as PointerEvent;
-      pointerX = pointer.clientX;
-      pointerY = pointer.clientY;
-      if (animationFrameId === null) {
-        animationFrameId = window.requestAnimationFrame(updateNearestHandle);
-      }
-    };
-    const onPointerLeave = () => {
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-      }
-      if (activeHandle) {
-        resetHandle(activeHandle);
-        activeHandle = null;
-      }
-      board.classList.remove(handleProximityClass);
-    };
-    board.addEventListener("pointermove", onPointerMove);
-    board.addEventListener("pointerleave", onPointerLeave);
-    return () => {
-      board.removeEventListener("pointermove", onPointerMove);
-      board.removeEventListener("pointerleave", onPointerLeave);
-      onPointerLeave();
-    };
-  }, [connectionSourceActiveClass]);
-
-  /** 菜单出现后计算源节点右侧 handle，临时连线从这里接到菜单左边缘。 */
-  useLayoutEffect(() => {
-    if (!connectMenu) {
-      setPendingLineStart(null);
-      return;
-    }
-    const board = document.querySelector(`.${styles.board}`) as HTMLElement | null;
-    const sourceNode = document.querySelector(
-      `.react-flow__node[data-id="${connectMenu.sourceNodeId}"]`,
-    ) as HTMLElement | null;
-    const sourceHandle = sourceNode?.querySelector(".react-flow__handle-right") as HTMLElement | null;
-    if (!board || !sourceNode || !sourceHandle) return;
-    const boardRect = board.getBoundingClientRect();
-    const nodeRect = sourceNode.getBoundingClientRect();
-    const handleRect = sourceHandle.getBoundingClientRect();
-    setPendingLineStart({
-      /* 临时虚线从卡片外轮廓起笔，不复用压进卡片内部的正式边锚点。 */
-      x: nodeRect.right - boardRect.left,
-      y: handleRect.top + handleRect.height / 2 - boardRect.top,
-    });
-  }, [connectMenu, nodes]);
-
-  /** 判断某节点是否可作为连线目标（用于 hover 状态判定） */
-  const isValidTarget = useCallback(
-    (targetId: string): { ok: boolean; reason?: string } => {
-      const sourceId = connectStartRef.current.nodeId;
-      if (!sourceId) return { ok: false, reason: "未在拖线状态" };
-      if (targetId === sourceId) return { ok: false, reason: "不能连到自身" };
-      /** 重复边校验 */
-      const dup = edges.some(
-        (e) => (e.source === sourceId && e.target === targetId) || (e.source === targetId && e.target === sourceId),
-      );
-      if (dup) return { ok: false, reason: "已存在连线" };
-      return { ok: true };
-    },
-    [edges],
-  );
-
-  /** 节点 hover 同步 + pane 兜底：通过 mouseover/mouseout 监听 board */
-  useEffect(() => {
-    const board = document.querySelector(`.${styles.board}`);
-    if (!board) return;
-    const onMouseOver: EventListener = (e) => {
-      if (!connectStartRef.current.nodeId) return;
-      const t = e.target as HTMLElement | null;
-      if (!t) return;
-      const nodeEl = t.closest(".react-flow__node") as HTMLElement | null;
-      if (nodeEl?.dataset?.id) {
-        const targetId = nodeEl.dataset.id;
-        setHoverTargetId(targetId);
-        const v = isValidTarget(targetId);
-        setPreviewState(v.ok ? "connectable" : "blocked");
-        if (!v.ok) {
-          setConnectError(v.reason ?? null);
-        } else {
-          setConnectError(null);
-        }
-      } else {
-        setHoverTargetId(null);
-        setPreviewState(null);
-        setConnectError(null);
-      }
-    };
-    const onMouseOut: EventListener = (e) => {
-      if (!connectStartRef.current.nodeId) return;
-      const me = e as MouseEvent;
-      const related = me.relatedTarget as HTMLElement | null;
-      const stillInNode = related?.closest(".react-flow__node");
-      if (!stillInNode) {
-        setHoverTargetId(null);
-        setPreviewState(null);
-        setConnectError(null);
-      }
-    };
-    board.addEventListener("mouseover", onMouseOver);
-    board.addEventListener("mouseout", onMouseOut);
-    return () => {
-      board.removeEventListener("mouseover", onMouseOver);
-      board.removeEventListener("mouseout", onMouseOut);
-    };
-  }, [isValidTarget]);
-
-  /** 连接失败时短暂显示 toast */
-  const showConnectError = useCallback((msg: string) => {
-    setConnectError(msg);
-    if (connectErrorTimerRef.current) window.clearTimeout(connectErrorTimerRef.current);
-    connectErrorTimerRef.current = window.setTimeout(() => setConnectError(null), 1800);
-  }, []);
-
-  /** 根据 previewState 给目标节点加 .connectable-target / .blocked-target class */
-  useEffect(() => {
-    if (hoverTargetId) {
-      const el = document.querySelector(`.react-flow__node[data-id="${hoverTargetId}"]`) as HTMLElement | null;
-      if (!el) return;
-      const cls = previewState === "blocked" ? "blocked-target" : "connectable-target";
-      el.classList.add(cls);
-      return () => el.classList.remove(cls);
-    }
-  }, [hoverTargetId, previewState]);
-
-  const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent) => {
-      const start = connectStartRef.current;
-      const didConnect = connectSucceededRef.current;
-      if (start.nodeId) {
-        document
-          .querySelector<HTMLElement>(`.react-flow__node[data-id="${start.nodeId}"]`)
-          ?.classList.remove(connectionSourceActiveClass);
-      }
-      connectStartRef.current = { nodeId: null, clientX: 0, clientY: 0 };
-      connectSucceededRef.current = false;
-      const wasHoverId = hoverTargetId;
-      const wasPreview = previewState;
-      const wasError = connectError;
-      /** 拖线结束，重置 hover/preview/error 状态 */
-      setHoverTargetId(null);
-      setPreviewState(null);
-      setConnectError(null);
-      /* onConnect 已经完成本次连接时，不能再根据松手 DOM 位置弹出创建菜单。 */
-      if (!start.nodeId || didConnect) return;
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-      const isTouch = "touches" in event;
-      const clientX = isTouch ? (event.changedTouches?.[0]?.clientX ?? 0) : (event as MouseEvent).clientX;
-      const clientY = isTouch ? (event.changedTouches?.[0]?.clientY ?? 0) : (event as MouseEvent).clientY;
-
-      /** 根据 previewState 决定行为 */
-      if (wasPreview === "blocked" && wasHoverId) {
-        /** 不可连：— 若只是"已存在连线"（多半是隐形旧边），直接替换修复；其他原因弹 toast */
-        if (wasHoverId && wasError === "已存在连线") {
-          addEdgeDedup(start.nodeId!, wasHoverId);
-          return;
-        }
-        showConnectError(wasError ?? "无法连接到该节点");
-        return;
-      }
-      if (wasPreview === "connectable" && wasHoverId) {
-        /** 可连：直接连接并保留线条绘制动画。 */
-        addEdgeDedup(start.nodeId!, wasHoverId);
-        return;
-      }
-
-      /** 检测松手点是否压到任意节点 —— 通过 :hover 取得 React Flow 已缓存的命中节点 */
-      const hovered = document.querySelectorAll(".react-flow__node:hover");
-      let targetNodeId: string | null = null;
-      hovered.forEach((el) => {
-        const nodeEl = el as HTMLElement;
-        /** 排除源节点本身 */
-        if (!nodeEl.dataset?.id) return;
-        if (nodeEl.dataset.id === start.nodeId) return;
-        targetNodeId = nodeEl.dataset.id;
-      });
-      /** 兜底：如果 :hover 没拿到，用 document.elementFromPoint 找 */
-      if (!targetNodeId) {
-        const underEl = document.elementFromPoint(clientX, clientY);
-        if (underEl) {
-          const nodeEl = underEl.closest(".react-flow__node") as HTMLElement | null;
-          if (nodeEl?.dataset?.id && nodeEl.dataset.id !== start.nodeId) {
-            targetNodeId = nodeEl.dataset.id;
-          }
-        }
-      }
-
-      if (targetNodeId) {
-        /** 落在已有节点上 → 直接连（绕开 strict + connectionRadius 的 18px 限制；dedup 修复隐形旧边） */
-        addEdgeDedup(start.nodeId!, targetNodeId);
-        return;
-      }
-
-      /** 落在 pane 上 → 弹菜单让用户挑新建节点类型 */
-      const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
-      const boardRect = (
-        target.closest(`.${styles.board}`) ?? document.querySelector(`.${styles.board}`)
-      )?.getBoundingClientRect();
-      const localX = clientX - (boardRect?.left ?? 0);
-      const localY = clientY - (boardRect?.top ?? 0);
-      setConnectMenu({
-        sourceNodeId: start.nodeId,
-        flowPos,
-        clientPos: {
-          x: Math.max(8, Math.min(localX + 14, (boardRect?.width ?? localX + 242) - 228)),
-          y: Math.max(8, Math.min(localY - 20, (boardRect?.height ?? localY + 360) - 352)),
-        },
-      });
-    },
-    [
-      screenToFlowPosition,
-      hoverTargetId,
-      previewState,
-      connectError,
-      showConnectError,
-      addEdgeDedup,
-      connectionSourceActiveClass,
-    ],
-  );
-
-  /** 从「引用该节点生成」菜单中挑一个类型创建节点并连线 */
-  const addNodeFromConnect = useCallback(
-    (kind: "text" | "image" | "video") => {
-      if (!connectMenu) return;
-      const newId = nextNodeId();
-      const { flowPos, sourceNodeId } = connectMenu;
-      const meta = (() => {
-        if (kind === "text")
-          return {
-            type: "text",
-            data: { nodeKind: "text", title: "新文本节点", text: "双击编辑内容…" } satisfies TextNodeData,
-          };
-        if (kind === "image")
-          return {
-            type: "image",
-            data: {
-              nodeKind: "image",
-              kind: "image",
-              title: "图片节点",
-              category: "图片",
-              tint: "rgba(212, 83, 126, 0.18)",
-              size: { w: 300, h: 200 },
-            } satisfies ImageNodeData,
-          };
-        return {
-          type: "video",
-          data: {
-            nodeKind: "video",
-            title: "视频节点",
-            category: "视频",
-            tint: "rgba(55, 138, 221, 0.20)",
-            size: { w: 300, h: 200 },
-          } satisfies VideoNodeData,
-        };
-      })();
-      setNodes((ns) => [
-        ...ns,
-        {
-          id: newId,
-          type: meta.type,
-          /** 新节点左边缘对齐线尾（松手点），节点出现在连线末端右侧 */
-          position: { x: flowPos.x, y: flowPos.y - 60 },
-          data: meta.data,
-        },
-      ]);
-      setEdges((es) => [
-        ...es,
-        {
-          id: `e_${Date.now()}`,
-          source: sourceNodeId,
-          target: newId,
-          type: "default",
-          style: { stroke: "#7f7f86", strokeWidth: 1.6 },
-        },
-      ]);
-      setConnectMenu(null);
-    },
-    [connectMenu, setNodes, setEdges],
   );
 
   /** Agent 抽屉提交 —— 追加用户气泡 + Agent 占位回复（后续接真 API） */
@@ -1133,15 +283,9 @@ function CanvasInner() {
   }, []);
 
   /** 顶部 NodeToolbar：根据选中节点的 kind 决定工具胶囊列表（text 基础节点给编辑类工具） */
-  const selData = selectedNode?.data as AnyNodeData | undefined;
-  const selectedKind: NodeKind = selData && "kind" in selData && selData.kind ? selData.kind : "llm";
-  const toolbarItems: { label: string; icon: React.ReactNode }[] = NODE_TOOLBAR[selectedKind] ?? NODE_TOOLBAR.llm ?? [];
+  const selectedKind = getNodeToolbarKind(selectedNode);
   const selectedNodeCount = nodes.reduce((count, node) => count + (node.selected ? 1 : 0), 0);
-  const selectionHasRaisedTitle = nodes.some((node) => {
-    if (!node.selected) return false;
-    const nodeKind = (node.data as { nodeKind?: string }).nodeKind;
-    return nodeKind === "text" || nodeKind === "image" || nodeKind === "video";
-  });
+  const selectionHasRaisedTitle = selectionIncludesRaisedTitle(nodes);
 
   return (
     <EnterEditContext.Provider
@@ -1168,196 +312,34 @@ function CanvasInner() {
       }}
     >
       <div className={`${styles.shell} ${theme === "light" ? styles.shellLight : ""}`}>
-        {/* 顶部栏：左侧项目操作，右侧账户与 Agent。 */}
-        <div className={styles.topbar}>
-          <div className={styles.topbarLeft}>
-            <div className={styles.projectIdentity}>
-            <Popover
-              mode="click"
-              open={projectMenuOpen}
-              onOpenChange={setProjectMenuOpen}
-              side="bottom"
-              align="start"
-              sideOffset={8}
-              showArrow={false}
-              ariaLabel="项目操作"
-              contentRole="menu"
-              contentClassName={`${styles.projectPopover} glass-strong`}
-              trigger={
-                <button
-                  type="button"
-                  className={`${styles.projectMenuTrigger} ${projectMenuOpen ? styles.projectMenuTriggerOpen : ""}`}
-                  aria-label="打开项目菜单"
-                  aria-expanded={projectMenuOpen}
-                >
-                  <StarburstLogo size={19} />
-                  <ChevronDown
-                    size={13}
-                    className={`${styles.projectMenuChevron} ${projectMenuOpen ? styles.projectMenuChevronOpen : ""}`}
-                  />
-                </button>
-              }
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.projectMenuItem}
-                onClick={() => {
-                  setProjectMenuOpen(false);
-                  router.push("/home");
-                }}
-              >
-                <Home size={14} />
-                回到主页
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.projectMenuItem}
-                onClick={() => {
-                  setProjectMenuOpen(false);
-                  router.push("/projects");
-                }}
-              >
-                <Layers size={14} />
-                全部项目
-              </button>
-              <button type="button" role="menuitem" className={styles.projectMenuItem} onClick={createProject}>
-                <Plus size={14} />
-                创建项目
-              </button>
-              <div className={styles.projectMenuSeparator} role="separator" />
-              <button
-                type="button"
-                role="menuitem"
-                className={`${styles.projectMenuItem} ${styles.projectMenuItemDanger}`}
-                onClick={deleteProject}
-              >
-                <Trash2 size={14} />
-                删除项目
-              </button>
-            </Popover>
-
-            <input
-              className={styles.projectNameInput}
-              value={projectName}
-              onChange={(event) => setProjectName(event.target.value)}
-              onBlur={() => setProjectName((name) => name.trim() || "未命名项目")}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-              }}
-              aria-label="项目名称"
-              spellCheck={false}
-            />
-            </div>
-          </div>
-          <div className={styles.topbarRight}>
-            <UserMenu
-              trigger={
-                <AccountHeaderCapsule
-                  amount={100}
-                  plan="Plus"
-                  className={styles.canvasHeaderCapsule}
-                  aria-label="用户菜单"
-                />
-              }
-            />
-            <HeaderCapsule
-              ref={agentBtnRef}
-              className={styles.canvasHeaderCapsule}
-              active={agentOpen}
-              title="织光 Agent"
-              aria-label="织光 Agent"
-              onClick={() => setAgentOpen((v) => !v)}
-            >
-              <Bot size={15} />
-              <span>Agent</span>
-            </HeaderCapsule>
-          </div>
-        </div>
-
-        {/* Agent 右侧抽屉 —— 气泡式对话 */}
+        <CanvasProjectHeader
+          projectName={projectName}
+          onProjectNameChange={setProjectName}
+          projectMenuOpen={projectMenuOpen}
+          onProjectMenuOpenChange={setProjectMenuOpen}
+          onHome={() => router.push("/home")}
+          onProjects={() => router.push("/projects")}
+          onCreateProject={createProject}
+          onDeleteProject={deleteProject}
+          agentOpen={agentOpen}
+          onToggleAgent={() => setAgentOpen((open) => !open)}
+          agentButtonRef={agentBtnRef}
+        />
         {agentOpen && (
-          <div ref={agentDrawerRef} className={styles.agentDrawer}>
-            <div className={styles.agentDrawerHead}>
-              <div className={styles.agentDrawerHeadLeft}>
-                <div className={styles.agentDrawerAvatar}>
-                  <Bot size={13} />
-                </div>
-                <div className={styles.agentDrawerTitle}>
-                  <span className={styles.agentDrawerName}>织光 Agent</span>
-                  <span className={styles.agentDrawerModel}>✦ {chatModel}</span>
-                </div>
-              </div>
-              <button className={styles.agentDrawerClose} onClick={() => setAgentOpen(false)} aria-label="收起">
-                <X size={13} />
-              </button>
-            </div>
-            <div className={styles.agentDrawerMessages}>
-              {agentMessages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`${styles.agentBubbleRow} ${m.role === "user" ? styles.agentBubbleRowUser : ""}`}
-                >
-                  {m.thumb && <img src={m.thumb} alt="参考图" className={styles.agentBubbleThumb} />}
-                  <div className={`${styles.agentBubble} ${m.role === "user" ? styles.agentBubbleUser : ""}`}>
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className={styles.agentDrawerInputRow}>
-              <label className={styles.chatPlus} title="添加参考图">
-                <Plus size={14} />
-                <input type="file" accept="image/*" hidden onChange={handleThumb} />
-              </label>
-              {chatThumb && (
-                <div className={styles.chatThumb}>
-                  <img src={chatThumb} alt="参考图" />
-                  <button className={styles.chatThumbClose} onClick={() => setChatThumb(null)} aria-label="移除">
-                    <X size={10} />
-                  </button>
-                </div>
-              )}
-              <input
-                className={styles.agentDrawerInput}
-                placeholder="告诉 Agent 想做什么…"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    submitChat();
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setAgentOpen(false);
-                  }
-                }}
-              />
-              <button
-                className={`${styles.chatSend} ${chatInput.trim() || chatThumb ? styles.chatSendActive : ""}`}
-                onClick={submitChat}
-                disabled={!chatInput.trim() && !chatThumb}
-                title="发送"
-              >
-                <Send size={13} />
-              </button>
-            </div>
-          </div>
+          <CanvasAgentDrawer
+            drawerRef={agentDrawerRef}
+            messages={agentMessages}
+            model={chatModel}
+            input={chatInput}
+            thumb={chatThumb}
+            onInputChange={setChatInput}
+            onThumbChange={handleThumb}
+            onRemoveThumb={() => setChatThumb(null)}
+            onSubmit={submitChat}
+            onClose={() => setAgentOpen(false)}
+          />
         )}
-
-        {/* 选中节点的浮出工具胶囊（按 LibTV 模式） */}
-        {selectedNode && !editingId && (
-          <div className={styles.nodeToolbar}>
-            {toolbarItems.map((t) => (
-              <button key={t.label} className={styles.nodeToolbarItem}>
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {selectedNode && !editingId && <CanvasNodeToolbar kind={selectedKind} />}
 
         {/* 聚焦编辑浮层（顶部格式化工具栏；移除左侧完成/取消面板 —— 点击外部自动保存） */}
         <FloatingToolbar />
@@ -1391,7 +373,7 @@ function CanvasInner() {
             isValidConnection={isValidConnection}
             /** strict 模式 —— 只在松手落在明确的 handle 上才算连接（否则默认按就近 handle 误连） */
             connectionMode={ConnectionMode.Strict}
-            connectionRadius={55}
+            connectionRadius={CANVAS_CONNECTION_RADIUS}
             nodeTypes={nodeTypes}
             /** 默认箭头框选；按住空格才允许鼠标拖动画布。 */
             panOnDrag={false}
@@ -1401,8 +383,8 @@ function CanvasInner() {
             selectionMode={SelectionMode.Partial}
             multiSelectionKeyCode="Shift"
             defaultViewport={INITIAL_CANVAS_VIEWPORT}
-            minZoom={0.3}
-            maxZoom={2.5}
+            minZoom={CANVAS_MIN_ZOOM}
+            maxZoom={CANVAS_MAX_ZOOM}
             /** Mac 触控板原生手势 —— 双指滚动=平移画布，捏合(ctrl+wheel)=缩放；
              编辑器容器加 nowheel 后，在节点内滚动不再带动画布 */
             panOnScroll
@@ -1417,82 +399,7 @@ function CanvasInner() {
             <MiniMap pannable zoomable className={styles.minimap} maskColor="rgba(13, 13, 15, 0.7)" />
           </ReactFlow>
 
-          <div className={styles.viewportControls} aria-label="画布缩放控制">
-            <button type="button" onClick={() => void zoomIn({ duration: 180 })} aria-label="放大画布" title="放大">
-              <Plus size={14} />
-            </button>
-            <button type="button" onClick={() => void zoomOut({ duration: 180 })} aria-label="缩小画布" title="缩小">
-              <Minus size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => void fitView({ padding: 0.2, maxZoom: 1, duration: 260 })}
-              aria-label="定位全部节点"
-              title="定位全部节点"
-            >
-              <LocateFixed size={14} />
-            </button>
-            <span className={styles.viewportControlsDivider} aria-hidden="true" />
-            <Popover
-              mode="click"
-              open={zoomMenuOpen}
-              onOpenChange={(open) => {
-                setZoomMenuOpen(open);
-                if (open) setZoomDraft(String(Math.round(zoom * 100)));
-              }}
-              side="top"
-              align="end"
-              sideOffset={8}
-              showArrow={false}
-              ariaLabel="设置画布缩放比例"
-              contentClassName={styles.zoomPopover}
-              trigger={
-                <button
-                  type="button"
-                  className={`${styles.zoomTrigger} ${zoomMenuOpen ? styles.zoomTriggerOpen : ""}`}
-                  aria-label={`当前画布比例 ${Math.round(zoom * 100)}%`}
-                  aria-expanded={zoomMenuOpen}
-                >
-                  {Math.round(zoom * 100)}%
-                </button>
-              }
-            >
-              <label className={styles.zoomInputRow}>
-                <span>缩放比例</span>
-                <span className={styles.zoomInputWrap}>
-                  <input
-                    type="number"
-                    min={30}
-                    max={250}
-                    step={5}
-                    value={zoomDraft}
-                    onChange={(event) => setZoomDraft(event.target.value)}
-                    onBlur={() => commitZoomDraft()}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        commitZoomDraft(true);
-                      }
-                    }}
-                    aria-label="画布缩放百分比"
-                  />
-                  <span>%</span>
-                </span>
-              </label>
-              <button type="button" className={styles.zoomPreset} onClick={() => applyZoomPercent(50, true)}>
-                <span>适合概览</span>
-                <strong>50%</strong>
-              </button>
-              <button type="button" className={styles.zoomPreset} onClick={() => applyZoomPercent(100, true)}>
-                <span>实际大小</span>
-                <strong>100%</strong>
-              </button>
-              <button type="button" className={styles.zoomPreset} onClick={() => applyZoomPercent(200, true)}>
-                <span>细节查看</span>
-                <strong>200%</strong>
-              </button>
-            </Popover>
-          </div>
+          <CanvasViewportControls />
 
           {/* 连线失败 toast */}
           {connectError && (
@@ -1502,228 +409,36 @@ function CanvasInner() {
             </div>
           )}
 
-          {/* 右键菜单：3 类基础节点 */}
-          {contextMenu && (
-            <div className={styles.contextMenu} style={{ left: contextMenu.x, top: contextMenu.y }}>
-              <div className={styles.contextMenuHead}>添加节点</div>
-              <button className={styles.contextMenuItem} onClick={() => addBasicNode("text", contextMenu.flowPos)}>
-                <TypeIcon size={13} />
-                文本
-              </button>
-              <button className={styles.contextMenuItem} onClick={() => addBasicNode("image", contextMenu.flowPos)}>
-                <ImageIcon size={13} />
-                图片
-              </button>
-              <button className={styles.contextMenuItem} onClick={() => addBasicNode("video", contextMenu.flowPos)}>
-                <VideoIcon size={13} />
-                视频
-              </button>
-              <div className={styles.contextMenuSep} />
-              <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                  setContextMenu(null);
-                  setShowLibrary(true);
-                }}
-              >
-                <Sparkles size={13} />
-                业务能力…
-              </button>
-            </div>
-          )}
-
-          {/* 从节点拖线到空白处 → 弹「引用该节点生成」菜单 */}
-          {connectMenu && (
-            <>
-              {pendingLineStart && (
-                <svg className={styles.pendingConnection} aria-hidden="true">
-                  <path
-                    className={styles.pendingConnectionPath}
-                    d={`M ${pendingLineStart.x} ${pendingLineStart.y} C ${pendingLineStart.x + 72} ${pendingLineStart.y}, ${connectMenu.clientPos.x - 72} ${connectMenu.clientPos.y + 20}, ${connectMenu.clientPos.x} ${connectMenu.clientPos.y + 20}`}
-                  />
-                  <circle
-                    className={styles.pendingConnectionDot}
-                    cx={connectMenu.clientPos.x}
-                    cy={connectMenu.clientPos.y + 20}
-                    r="3"
-                  />
-                </svg>
-              )}
-              <div
-                className={styles.contextMenu}
-                style={{ left: connectMenu.clientPos.x, top: connectMenu.clientPos.y, minWidth: 220 }}
-              >
-                <div className={styles.contextMenuHead}>引用该节点生成</div>
-                <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("text")}>
-                  <TypeIcon size={13} />
-                  文本
-                </button>
-                <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("image")}>
-                  <ImageIcon size={13} />
-                  图片
-                </button>
-                <button className={styles.contextMenuItem} onClick={() => addNodeFromConnect("video")}>
-                  <VideoIcon size={13} />
-                  视频
-                </button>
-                <div className={styles.contextMenuSep} />
-                <button className={styles.contextMenuItem} disabled title="即将上线">
-                  <Sparkles size={13} />
-                  智能剪辑
-                  <span className={styles.contextMenuBadge}>Beta</span>
-                </button>
-                <button className={styles.contextMenuItem} disabled title="即将上线">
-                  <Film size={13} />
-                  导演台
-                  <span className={`${styles.contextMenuBadge} ${styles.contextMenuBadgeNew}`}>NEW</span>
-                </button>
-                <button className={styles.contextMenuItem} disabled title="即将上线">
-                  <Layers size={13} />
-                  逐帧拉片
-                  <span className={styles.contextMenuBadge}>SD 2.5</span>
-                </button>
-                <div className={styles.contextMenuSep} />
-                <button className={styles.contextMenuItem} disabled title="即将上线">
-                  <Music size={13} />
-                  音频
-                </button>
-                <button className={styles.contextMenuItem} disabled title="即将上线">
-                  <FileText size={13} />
-                  脚本
-                </button>
-                <button className={styles.contextMenuItem} disabled title="即将上线">
-                  <Link2 size={13} />
-                  参考节点
-                </button>
-              </div>
-            </>
-          )}
-
+          <CanvasAddMenus
+            addMenu={contextMenu}
+            connectMenu={connectMenu}
+            pendingLineStart={pendingLineStart}
+            onAddBasic={addBasicNode}
+            onAddConnected={addNodeFromConnect}
+            onOpenLibrary={() => {
+              setContextMenu(null);
+              setShowLibrary(true);
+            }}
+          />
           {nodes.length === 0 && (
-            <div className={styles.guide}>
-              <div className={styles.guideCard}>
-                <button
-                  type="button"
-                  className={styles.guideIcon}
-                  aria-label="添加节点"
-                  title="添加节点"
-                  onClick={(event) => openCanvasAddMenu(event.clientX, event.clientY)}
-                >
-                  <Plus size={18} />
-                </button>
-                <div className={styles.guideCopy}>
-                  <div className={styles.guideTitle}>双击画布，添加第一个节点</div>
-                  <div className={styles.guideSub}>支持文本、图片与视频，创建后可从两侧连接点继续编排</div>
-                </div>
-                {hasRun && (
-                  <button className={styles.guideLoad} onClick={() => void loadFromLatest()}>
-                    <RefreshCw size={14} />
-                    从最近任务加载
-                  </button>
-                )}
-              </div>
-            </div>
+            <CanvasEmptyState
+              hasRecentRun={hasRun}
+              onAdd={openCanvasAddMenu}
+              onLoadRecent={() => void loadFromLatest()}
+            />
           )}
         </div>
 
-        {/* 节点库弹层（基础节点 + 业务能力双区） */}
         {showLibrary && (
-          <div className={styles.libraryBackdrop} onClick={() => setShowLibrary(false)}>
-            <div ref={libraryRef} className={styles.library} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.libraryHead}>
-                <span>节点库</span>
-                <button onClick={() => setShowLibrary(false)} aria-label="关闭">
-                  <X size={14} />
-                </button>
-              </div>
-
-              {/* 基础节点区 */}
-              <div className={styles.librarySectionLabel}>基础节点</div>
-              <div className={styles.basicGrid}>
-                <button
-                  className={styles.basicItem}
-                  onClick={() => {
-                    addBasicNode("text");
-                    setShowLibrary(false);
-                  }}
-                >
-                  <div className={styles.basicIcon}>
-                    <TypeIcon size={16} />
-                  </div>
-                  <span>文本</span>
-                  <span className={styles.basicHint}>记录想法 / 说明</span>
-                </button>
-                <button
-                  className={styles.basicItem}
-                  onClick={() => {
-                    addBasicNode("image");
-                    setShowLibrary(false);
-                  }}
-                >
-                  <div className={`${styles.basicIcon} ${styles.basicImage}`}>
-                    <ImageIcon size={16} />
-                  </div>
-                  <span>图片</span>
-                  <span className={styles.basicHint}>上传或生成</span>
-                </button>
-                <button
-                  className={styles.basicItem}
-                  onClick={() => {
-                    addBasicNode("video");
-                    setShowLibrary(false);
-                  }}
-                >
-                  <div className={`${styles.basicIcon} ${styles.basicVideo}`}>
-                    <VideoIcon size={16} />
-                  </div>
-                  <span>视频</span>
-                  <span className={styles.basicHint}>上传或生成</span>
-                </button>
-              </div>
-
-              <div className={styles.librarySectionLabel} style={{ marginTop: 14 }}>
-                业务能力
-              </div>
-              <div className={styles.libraryGrid}>
-                {NODE_LIBRARY.map((lib, i) => {
-                  const meta = KIND_META[lib.kind];
-                  return (
-                    <button
-                      key={i}
-                      className={styles.libraryItem}
-                      onClick={() => addFromLibrary(i)}
-                      style={{ borderColor: meta.color.stroke, background: meta.color.bg }}
-                    >
-                      <div className={styles.libraryTop}>
-                        <span
-                          className={styles.libraryCategory}
-                          style={{ color: meta.color.text, background: meta.color.stroke + "33" }}
-                        >
-                          {lib.category}
-                        </span>
-                        <span className={styles.libraryType} style={{ color: meta.color.text }}>
-                          {lib.title}
-                        </span>
-                      </div>
-                      <span className={styles.libraryMeta} style={{ color: meta.color.soft }}>
-                        {lib.meta}
-                      </span>
-                      {lib.nodeKind === "card" && (
-                        <div className={styles.libraryFields}>
-                          {lib.fields.slice(0, 3).map((f, j) => (
-                            <div key={j} className={styles.libraryField}>
-                              <span className={styles.libraryFieldLabel}>{f.label}</span>
-                              <span className={styles.libraryFieldValue}>{f.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <CanvasNodeLibrary
+            libraryRef={libraryRef}
+            onClose={() => setShowLibrary(false)}
+            onAddBasic={(kind) => {
+              addBasicNode(kind);
+              setShowLibrary(false);
+            }}
+            onAddFromLibrary={addFromLibrary}
+          />
         )}
       </div>
       );
