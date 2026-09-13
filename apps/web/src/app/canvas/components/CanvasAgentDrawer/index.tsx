@@ -4,7 +4,7 @@
 
 import type { ChangeEvent, RefObject } from "react";
 import { Bot, Plus, Send, X } from "lucide-react";
-import styles from "../page.module.scss";
+import styles from "./index.module.scss";
 
 export interface AgentMessage {
   role: "user" | "agent";

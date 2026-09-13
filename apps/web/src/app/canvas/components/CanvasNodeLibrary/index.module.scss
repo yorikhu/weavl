@@ -1,0 +1,198 @@
+// =============== 节点库基础区 ===============
+.librarySectionLabel {
+  font-size: 11px;
+  color: #5e5e66;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.basicGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.basicItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px 10px;
+  border-radius: 12px;
+  border: 0.5px solid #26262b;
+  background: #161618;
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  &:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: #1a1a1e;
+  }
+}
+
+.basicIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(217, 75, 75, 0.12);
+  color: #f7c1c1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.basicImage {
+  background: rgba(212, 83, 126, 0.12);
+  color: #f4c0d1;
+}
+
+.basicVideo {
+  background: rgba(55, 138, 221, 0.12);
+  color: #b5d4f4;
+}
+
+.basicHint {
+  font-size: 9px;
+  font-weight: 400;
+  color: #5e5e66;
+}
+
+// =============== 节点库弹层 ===============
+.libraryBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fade 0.15s ease;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.library {
+  background: #161618;
+  border: 0.5px solid #232326;
+  border-radius: 16px;
+  padding: 18px;
+  width: 540px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.libraryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e6e8ec;
+  button {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    color: #8a8a92;
+    cursor: pointer;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    &:hover {
+      background: #1a1a1e;
+      color: #e6e8ec;
+    }
+  }
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.libraryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 0.5px solid;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition:
+    transform 0.1s,
+    box-shadow 0.15s;
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.libraryTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.libraryCategory {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.libraryType {
+  font-size: 12px;
+  font-weight: 500;
+}
+.libraryMeta {
+  font-size: 10px;
+}
+
+.libraryFields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.libraryField {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 6px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.libraryFieldLabel {
+  color: #f59e0b;
+  opacity: 0.7;
+  text-align: right;
+}
+.libraryFieldValue {
+  color: #8a8a92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

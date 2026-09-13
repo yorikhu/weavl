@@ -7,7 +7,7 @@ import { StarburstLogo } from "@/components/StarburstLogo";
 import { UserMenu } from "@/components/UserMenu";
 import { HeaderCapsule } from "@/components/HeaderCapsule";
 import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
-import styles from "../page.module.scss";
+import styles from "./index.module.scss";
 
 interface CanvasProjectHeaderProps {
   projectName: string;

@@ -1,8 +1,8 @@
 "use client";
 
-import type { NodeKind } from "../types/nodes";
-import { NODE_TOOLBAR } from "../constants";
-import styles from "../page.module.scss";
+import type { NodeKind } from "../../types/nodes";
+import { NODE_TOOLBAR } from "../../constants";
+import styles from "./index.module.scss";
 
 interface CanvasNodeToolbarProps {
   kind: NodeKind;

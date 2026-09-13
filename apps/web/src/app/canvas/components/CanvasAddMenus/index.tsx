@@ -1,10 +1,10 @@
 "use client";
 
 import { FileText, Film, Layers, Link2, Music, Sparkles } from "lucide-react";
-import { BASIC_NODE_CHOICES } from "../constants";
-import type { BasicNodeKind } from "../types/nodes";
-import type { FlowPosition } from "../utils/nodeFactory";
-import styles from "../page.module.scss";
+import { BASIC_NODE_CHOICES } from "../../constants";
+import type { BasicNodeKind } from "../../types/nodes";
+import type { FlowPosition } from "../../utils/nodeFactory";
+import styles from "./index.module.scss";
 
 export interface CanvasAddMenuPosition {
   x: number;

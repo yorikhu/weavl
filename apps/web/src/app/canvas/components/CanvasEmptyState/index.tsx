@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, RefreshCw } from "lucide-react";
-import styles from "../page.module.scss";
+import styles from "./index.module.scss";
 
 interface CanvasEmptyStateProps {
   hasRecentRun: boolean;

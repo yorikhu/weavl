@@ -1,0 +1,134 @@
+// =============== 空态引导 ===============
+.guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.guideCard {
+  width: min(420px, calc(100vw - 48px));
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  background: rgba(27, 27, 30, 0.86);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(18px);
+}
+
+.guideIcon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e6e8ec;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.guideCopy {
+  min-width: 0;
+}
+
+.guideTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e6e8ec;
+  margin-bottom: 5px;
+  letter-spacing: 0.01em;
+}
+.guideSub {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #9a9aa3;
+}
+
+.guideLoad {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  margin-top: 2px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e6e8ec;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+
+:global(html:not(.dark)) .guideCard {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+:global(html:not(.dark)) .guideIcon {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+
+  &:hover {
+    border-color: rgba(15, 23, 42, 0.22);
+    background: rgba(15, 23, 42, 0.1);
+  }
+}
+
+:global(html:not(.dark)) .guideTitle {
+  color: #0f172a;
+}
+
+:global(html:not(.dark)) .guideSub {
+  color: #64748b;
+}
+
+:global(html:not(.dark)) .guideLoad {
+  border-color: rgba(15, 23, 42, 0.13);
+  background: rgba(15, 23, 42, 0.055);
+  color: #1e293b;
+
+  &:hover {
+    border-color: rgba(15, 23, 42, 0.21);
+    background: rgba(15, 23, 42, 0.09);
+  }
+}

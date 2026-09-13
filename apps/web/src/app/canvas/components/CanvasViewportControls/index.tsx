@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { LocateFixed, Minus, Plus } from "lucide-react";
 import { Popover } from "@/components/Popover";
-import styles from "../page.module.scss";
+import styles from "./index.module.scss";
 
 /** 视口变化只重渲染控件，不重渲染画布节点树。 */
 export function CanvasViewportControls() {

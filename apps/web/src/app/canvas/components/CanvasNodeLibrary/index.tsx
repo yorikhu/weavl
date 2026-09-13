@@ -2,10 +2,10 @@
 
 import type { RefObject } from "react";
 import { X } from "lucide-react";
-import { BASIC_NODE_CHOICES, NODE_LIBRARY } from "../constants";
-import { KIND_META } from "../types/kindMeta";
-import type { BasicNodeKind } from "../types/nodes";
-import styles from "../page.module.scss";
+import { BASIC_NODE_CHOICES, NODE_LIBRARY } from "../../constants";
+import { KIND_META } from "../../types/kindMeta";
+import type { BasicNodeKind } from "../../types/nodes";
+import styles from "./index.module.scss";
 
 interface CanvasNodeLibraryProps {
   libraryRef: RefObject<HTMLDivElement | null>;

@@ -34,6 +34,7 @@ import { CanvasViewportControls } from "./components/CanvasViewportControls";
 import { CanvasProjectHeader } from "./components/CanvasProjectHeader";
 import { CanvasAgentDrawer } from "./components/CanvasAgentDrawer";
 import { CanvasAddMenus } from "./components/CanvasAddMenus";
+import addMenuStyles from "./components/CanvasAddMenus/index.module.scss";
 import { CanvasNodeLibrary } from "./components/CanvasNodeLibrary";
 import { CanvasEmptyState } from "./components/CanvasEmptyState";
 import { CanvasNodeToolbar } from "./components/CanvasNodeToolbar";
@@ -237,7 +238,7 @@ function CanvasInner() {
         target.closest(
           ".react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, button, input, textarea, [contenteditable='true']",
         ) ||
-        target.closest(`.${styles.contextMenu}`)
+        target.closest(`.${addMenuStyles.contextMenu}`)
       ) {
         return;
       }
