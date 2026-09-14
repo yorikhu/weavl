@@ -12,6 +12,7 @@ import type {
   WorkflowStage,
 } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
+import { Form } from "@/components/Form";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { useAuth } from "@/provider/AuthProvider";
 import ui from "@/styles/studio.module.scss";
@@ -318,10 +319,9 @@ export default function WorkflowsWorkspace() {
                             )}
                             {stage.status === "waiting" && run.status === "awaiting_review" && (
                               <div className={styles.review}>
-                                <textarea
-                                  className={ui.textarea}
+                                <Form.Textarea
                                   value={reviewText}
-                                  onChange={(event) => setReviewText(event.target.value)}
+                                  onValueChange={setReviewText}
                                   placeholder="可选：编辑这版产物后采纳；留空则直接采纳"
                                 />
                                 <div className={ui.row}>
@@ -432,25 +432,13 @@ export default function WorkflowsWorkspace() {
                 </button>
               </div>
               <p className={ui.cardText}>{active.description}</p>
-              <div className={styles.formFields}>
+              <Form className={styles.formFields} values={inputs} onValuesChange={setInputs} onFinish={startRun}>
                 {active.fields.map((field) => (
-                  <label key={field.id}>
-                    <span className={ui.label}>
-                      {field.label}
-                      {field.required ? " *" : ""}
-                    </span>
+                  <div key={field.id}>
                     {field.type === "textarea" ? (
-                      <textarea
-                        className={ui.textarea}
-                        value={inputs[field.id] || ""}
-                        onChange={(event) => setInputs({ ...inputs, [field.id]: event.target.value })}
-                      />
+                      <Form.Textarea name={field.id} label={field.label} required={field.required} />
                     ) : field.type === "select" || field.type === "asset" ? (
-                      <select
-                        className={ui.select}
-                        value={inputs[field.id] || ""}
-                        onChange={(event) => setInputs({ ...inputs, [field.id]: event.target.value })}
-                      >
+                      <Form.Select name={field.id} label={field.label} required={field.required}>
                         <option value="">请选择</option>
                         {field.type === "asset"
                           ? assets.map((asset) => (
@@ -463,39 +451,36 @@ export default function WorkflowsWorkspace() {
                                 {option}
                               </option>
                             ))}
-                      </select>
+                      </Form.Select>
                     ) : (
-                      <input
-                        className={ui.input}
+                      <Form.Input
+                        name={field.id}
+                        label={field.label}
+                        required={field.required}
                         type={field.type === "number" ? "number" : "text"}
-                        value={inputs[field.id] || ""}
-                        onChange={(event) => setInputs({ ...inputs, [field.id]: event.target.value })}
                       />
                     )}
-                  </label>
+                  </div>
                 ))}
-                <label>
-                  <span className={ui.label}>结果加入项目（可选）</span>
-                  <select
-                    className={ui.select}
-                    value={projectId}
-                    onChange={(event) => setProjectId(event.target.value)}
-                  >
-                    <option value="">暂不关联项目</option>
-                    {projects.map((project) => (
-                      <option value={project.id} key={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className={ui.rowBetween}>
-                <span className={ui.meta}>当前为模拟运行 · 关键阶段可审核与重试</span>
-                <button className={ui.button} disabled={busy} onClick={() => void startRun()}>
-                  开始运行 <ArrowRight size={14} />
-                </button>
-              </div>
+                <Form.Select
+                  label="结果加入项目（可选）"
+                  value={projectId}
+                  onChange={(event) => setProjectId(event.target.value)}
+                >
+                  <option value="">暂不关联项目</option>
+                  {projects.map((project) => (
+                    <option value={project.id} key={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </Form.Select>
+                <div className={ui.rowBetween}>
+                  <span className={ui.meta}>当前为模拟运行 · 关键阶段可审核与重试</span>
+                  <button className={ui.button} type="submit" disabled={busy}>
+                    开始运行 <ArrowRight size={14} />
+                  </button>
+                </div>
+              </Form>
             </section>
           </div>
         )}
@@ -511,42 +496,25 @@ export default function WorkflowsWorkspace() {
                   <X size={18} />
                 </button>
               </div>
-              <div className={styles.formFields}>
-                <label>
-                  <span className={ui.label}>名称</span>
-                  <input
-                    className={ui.input}
-                    value={form.title}
-                    onChange={(event) => setForm({ ...form, title: event.target.value })}
-                  />
-                </label>
-                <label>
-                  <span className={ui.label}>说明</span>
-                  <textarea
-                    className={ui.textarea}
-                    value={form.description}
-                    onChange={(event) => setForm({ ...form, description: event.target.value })}
-                  />
-                </label>
-                <label>
-                  <span className={ui.label}>分类</span>
-                  <input
-                    className={ui.input}
-                    value={form.category}
-                    onChange={(event) => setForm({ ...form, category: event.target.value })}
-                  />
-                </label>
+              <Form
+                className={styles.formFields}
+                values={{ title: form.title, description: form.description, category: form.category }}
+                onValuesChange={(values) => setForm((current) => ({ ...current, ...values }))}
+                onFinish={saveDefinition}
+              >
+                <Form.Input name="title" label="名称" required />
+                <Form.Textarea name="description" label="说明" />
+                <Form.Input name="category" label="分类" required />
                 <div className={ui.rowBetween}>
                   <strong>表单字段</strong>
-                  <button className={ui.buttonQuiet} onClick={addField}>
+                  <button type="button" className={ui.buttonQuiet} onClick={addField}>
                     <Plus size={12} />
                     字段
                   </button>
                 </div>
                 {form.fields.map((field, index) => (
                   <div className={styles.inlineForm} key={index}>
-                    <input
-                      className={ui.input}
+                    <Form.Input
                       value={field.id}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -558,8 +526,7 @@ export default function WorkflowsWorkspace() {
                       }
                       placeholder="字段 ID"
                     />
-                    <input
-                      className={ui.input}
+                    <Form.Input
                       value={field.label}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -571,8 +538,7 @@ export default function WorkflowsWorkspace() {
                       }
                       placeholder="标签"
                     />
-                    <select
-                      className={ui.select}
+                    <Form.Select
                       value={field.type}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -588,7 +554,7 @@ export default function WorkflowsWorkspace() {
                       <option value="number">数字</option>
                       <option value="select">选择</option>
                       <option value="asset">资产</option>
-                    </select>
+                    </Form.Select>
                     <button
                       type="button"
                       className={ui.buttonDanger}
@@ -599,8 +565,7 @@ export default function WorkflowsWorkspace() {
                       移除
                     </button>
                     {field.type === "select" && (
-                      <input
-                        className={ui.input}
+                      <Form.Input
                         value={field.options?.join("、") || ""}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -625,7 +590,7 @@ export default function WorkflowsWorkspace() {
                 ))}
                 <div className={ui.rowBetween}>
                   <strong>运行阶段</strong>
-                  <button className={ui.buttonQuiet} onClick={addStage}>
+                  <button type="button" className={ui.buttonQuiet} onClick={addStage}>
                     <Plus size={12} />
                     阶段
                   </button>
@@ -633,8 +598,7 @@ export default function WorkflowsWorkspace() {
                 {form.stages.map((stage, index) => (
                   <div className={styles.stageForm} key={index}>
                     <div className={styles.inlineForm}>
-                      <input
-                        className={ui.input}
+                      <Form.Input
                         value={stage.id}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -646,8 +610,7 @@ export default function WorkflowsWorkspace() {
                         }
                         placeholder="阶段 ID"
                       />
-                      <input
-                        className={ui.input}
+                      <Form.Input
                         value={stage.title}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -659,8 +622,7 @@ export default function WorkflowsWorkspace() {
                         }
                         placeholder="阶段名称"
                       />
-                      <select
-                        className={ui.select}
+                      <Form.Select
                         value={stage.visibility}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -677,9 +639,8 @@ export default function WorkflowsWorkspace() {
                         <option value="summary">摘要</option>
                         <option value="preview">预览</option>
                         <option value="review">审核</option>
-                      </select>
-                      <select
-                        className={ui.select}
+                      </Form.Select>
+                      <Form.Select
                         value={stage.outputKind}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -700,7 +661,7 @@ export default function WorkflowsWorkspace() {
                         <option value="word">Word</option>
                         <option value="ppt">PPT</option>
                         <option value="file">文件</option>
-                      </select>
+                      </Form.Select>
                       <button
                         type="button"
                         className={ui.buttonDanger}
@@ -712,8 +673,7 @@ export default function WorkflowsWorkspace() {
                         移除
                       </button>
                     </div>
-                    <input
-                      className={ui.input}
+                    <Form.Input
                       value={stage.instruction}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -727,10 +687,10 @@ export default function WorkflowsWorkspace() {
                     />
                   </div>
                 ))}
-              </div>
-              <button className={ui.button} onClick={() => void saveDefinition()}>
-                创建并发布
-              </button>
+                <button className={ui.button} type="submit">
+                  创建并发布
+                </button>
+              </Form>
             </section>
           </div>
         )}

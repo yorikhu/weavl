@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, Plus, Search, Wrench, X } from "lucide-react";
 import type { MarketEntry } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
+import { Form } from "@/components/Form";
 import { useAuth } from "@/provider/AuthProvider";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import ui from "@/styles/studio.module.scss";
@@ -161,7 +162,9 @@ export default function MarketPage() {
           {visible.map((entry) => (
             <article key={entry.id} className={`${ui.card} ${styles.entry}`}>
               <div className={styles.entryTop}>
-                <span className={styles.symbol}><Wrench size={20} strokeWidth={1.4} /></span>
+                <span className={styles.symbol}>
+                  <Wrench size={20} strokeWidth={1.4} />
+                </span>
                 <span className={ui.badge}>
                   Skill · {entry.visibility === "official" ? "官方精选" : "我的私有"} · v{entry.version}
                 </span>
@@ -206,49 +209,23 @@ export default function MarketPage() {
                   <X size={18} />
                 </button>
               </div>
-              <div className={styles.fields}>
-                <label>
-                  <span className={ui.label}>名称</span>
-                  <input
-                    className={ui.input}
-                    value={form.title}
-                    onChange={(event) => setForm({ ...form, title: event.target.value })}
-                    placeholder="清楚说明适用任务"
-                  />
-                </label>
-                <label>
-                  <span className={ui.label}>简介</span>
-                  <input
-                    className={ui.input}
-                    value={form.description}
-                    onChange={(event) => setForm({ ...form, description: event.target.value })}
-                    placeholder="用户将得到什么结果"
-                  />
-                </label>
-                <label>
-                  <span className={ui.label}>所需输入</span>
-                  <input
-                    className={ui.input}
-                    value={form.inputHint}
-                    onChange={(event) => setForm({ ...form, inputHint: event.target.value })}
-                  />
-                </label>
-                <label>
-                  <span className={ui.label}>Skill 方法说明</span>
-                  <textarea
-                    className={ui.textarea}
-                    value={form.content}
-                    onChange={(event) => setForm({ ...form, content: event.target.value })}
-                    placeholder="说明步骤、输入输出与注意事项"
-                  />
-                </label>
-              </div>
-              <div className={ui.rowBetween}>
-                <span className={ui.meta}>私有保存 · 可在 Agent 中使用 · 每次修改保留版本号</span>
-                <button className={ui.button} onClick={() => void save()}>
-                  保存 Skill
-                </button>
-              </div>
+              <Form className={styles.fields} values={form} onValuesChange={setForm} onFinish={save}>
+                <Form.Input name="title" label="名称" placeholder="清楚说明适用任务" required />
+                <Form.Input name="description" label="简介" placeholder="用户将得到什么结果" required />
+                <Form.Input name="inputHint" label="所需输入" required />
+                <Form.Textarea
+                  name="content"
+                  label="Skill 方法说明"
+                  placeholder="说明步骤、输入输出与注意事项"
+                  required
+                />
+                <div className={ui.rowBetween}>
+                  <span className={ui.meta}>私有保存 · 可在 Agent 中使用 · 每次修改保留版本号</span>
+                  <button className={ui.button} type="submit">
+                    保存 Skill
+                  </button>
+                </div>
+              </Form>
             </section>
           </div>
         )}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowUpRight, LayoutGrid, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { CanvasProject } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
+import { Form } from "@/components/Form";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { canvasHref, openCanvasAfter } from "@/utils/openCanvas";
 import ui from "@/styles/studio.module.scss";
@@ -97,25 +98,21 @@ export default function ProjectsPage() {
           </button>
         </header>
         {creating && (
-          <div className={`${ui.card} ${styles.createBox}`}>
+          <Form
+            className={`${ui.card} ${styles.createBox}`}
+            values={{ name }}
+            onValuesChange={(values) => setName(values.name)}
+            onFinish={createProject}
+          >
             <div>
               <h2 className={ui.cardTitle}>从一张空白画布开始</h2>
               <p className={ui.cardText}>后续可以在同一项目中继续添加画布。</p>
             </div>
-            <input
-              className={ui.input}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="输入项目名称"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void createProject();
-              }}
-              autoFocus
-            />
-            <button className={ui.button} onClick={() => void createProject()}>
+            <Form.Input className={ui.input} name="name" placeholder="输入项目名称" aria-label="项目名称" autoFocus />
+            <button className={ui.button} type="submit">
               创建并打开 <ArrowUpRight size={14} />
             </button>
-          </div>
+          </Form>
         )}
         {error && <p className={ui.error}>{error}</p>}
         {projects.length === 0 ? (
