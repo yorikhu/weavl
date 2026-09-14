@@ -102,7 +102,7 @@ function NodeEditor({
     <div data-canvas-node-surface className={styles.nodeEditor} onDoubleClick={(e) => e.stopPropagation()}>
       {/* 头部 */}
       <div className={styles.nodeEditorHead}>
-        <span className={styles.nodeEditorCategory}>{categoryLabel}</span>
+        <span className={styles.cardCategory}>{categoryLabel}</span>
         <input
           className={styles.nodeEditorTitleInput}
           value={title}

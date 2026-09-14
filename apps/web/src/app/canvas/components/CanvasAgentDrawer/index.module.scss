@@ -288,3 +288,80 @@
     border-color: rgba(83, 74, 183, 0.6);
   }
 }
+
+:global(html:not(.dark)) .agentDrawer {
+  background: rgba(255, 255, 255, 0.97);
+  border-color: rgba(15, 23, 42, 0.16);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+:global(html:not(.dark)) .agentDrawerHead,
+:global(html:not(.dark)) .agentDrawerInputRow {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+:global(html:not(.dark)) .agentDrawerName {
+  color: #0f172a;
+}
+
+:global(html:not(.dark)) .agentDrawerModel {
+  color: #64748b;
+}
+
+:global(html:not(.dark)) .agentDrawerClose {
+  color: #64748b;
+
+  &:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.07);
+  }
+}
+
+:global(html:not(.dark)) .agentBubble {
+  background: #f1f3f6;
+  color: #1e293b;
+}
+
+:global(html:not(.dark)) .agentBubbleUser {
+  background: #e8edf3;
+}
+
+:global(html:not(.dark)) .agentBubbleThumb,
+:global(html:not(.dark)) .chatThumb {
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+:global(html:not(.dark)) .chatPlus {
+  border-color: rgba(15, 23, 42, 0.17);
+  color: #475569;
+
+  &:hover {
+    border-color: rgba(15, 23, 42, 0.3);
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.05);
+  }
+}
+
+:global(html:not(.dark)) .agentDrawerInput {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.17);
+  color: #0f172a;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+
+  &:focus {
+    border-color: rgba(15, 23, 42, 0.36);
+  }
+}
+
+:global(html:not(.dark)) .chatSend {
+  border-color: rgba(15, 23, 42, 0.17);
+  color: #94a3b8;
+}
+
+:global(html:not(.dark)) .chatSendActive {
+  border-color: transparent;
+  color: #1a1205;
+}

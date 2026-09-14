@@ -5,7 +5,7 @@
   padding: 12px 14px;
   border-radius: 14px;
   background: var(--canvas-node-background);
-  border: 0.5px solid var(--canvas-node-border);
+  border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   box-shadow: var(--canvas-node-shadow);
   cursor: default;
   user-select: none;
@@ -114,21 +114,11 @@
   border-bottom: 0.5px solid #232326;
 }
 
-.nodeEditorCategory {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 6px;
-  color: var(--canvas-node-muted);
-  background: var(--canvas-node-subtle);
-  font-size: 10px;
-  font-weight: 600;
-}
-
 .nodeEditorTitle {
   flex: 1;
   font-size: 12px;
   font-weight: 500;
-  color: #e6e8ec;
+  color: var(--canvas-node-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -141,7 +131,7 @@
   border: 0.5px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: #e6e8ec;
+  color: var(--canvas-node-muted);
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
@@ -150,7 +140,7 @@
     border-color 0.15s,
     background 0.15s;
   &::placeholder {
-    color: #5e5e66;
+    color: var(--canvas-node-muted);
   }
   &:focus {
     border-color: rgba(245, 158, 11, 0.45);
@@ -192,7 +182,7 @@
   border: none;
   outline: none;
   resize: vertical;
-  color: #e6e8ec;
+  color: var(--canvas-node-foreground);
   font-size: 12px;
   line-height: 1.8;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -248,4 +238,53 @@
   background: #2d2d33;
   margin: 0 6px;
   flex-shrink: 0;
+}
+
+/* 编辑区沿用卡片主题变量；仅补齐工具控件在亮色模式的表面与对比度。 */
+:global(html:not(.dark)) .nodeEditorHead,
+:global(html:not(.dark)) .nodeEditorFoot,
+:global(html:not(.dark)) .formatBar {
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+:global(html:not(.dark)) .nodeEditorTitleInput:focus {
+  border-color: rgba(15, 23, 42, 0.24);
+  background: rgba(15, 23, 42, 0.035);
+}
+
+:global(html:not(.dark)) .nodeEditorBtn {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #64748b;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(15, 23, 42, 0.25);
+    color: #0f172a;
+  }
+
+  &:disabled {
+    border-color: rgba(15, 23, 42, 0.08);
+    color: #94a3b8;
+  }
+}
+
+:global(html:not(.dark)) .nodeEditorArea::placeholder,
+:global(html:not(.dark)) .nodeEditorFoot {
+  color: #64748b;
+}
+
+:global(html:not(.dark)) .formatBar {
+  background: rgba(15, 23, 42, 0.035);
+}
+
+:global(html:not(.dark)) .formatBtn {
+  color: #475569;
+
+  &:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.08);
+  }
+}
+
+:global(html:not(.dark)) .formatSep {
+  background: rgba(15, 23, 42, 0.14);
 }

@@ -51,3 +51,18 @@
     background: rgba(255, 255, 255, 0.05);
   }
 }
+
+:global(html:not(.dark)) .nodeToolbar {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(15, 23, 42, 0.15);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+}
+
+:global(html:not(.dark)) .nodeToolbarItem {
+  color: #475569;
+
+  &:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.07);
+  }
+}

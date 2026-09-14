@@ -113,15 +113,16 @@
   --canvas-selection-fill: rgba(30, 41, 59, 0.045);
   --canvas-selection-halo: rgba(255, 255, 255, 0.55);
   --canvas-node-background: #ffffff;
+  --canvas-node-border-width: 0.5px;
   --canvas-node-border: rgba(30, 41, 59, 0.18);
   --canvas-node-border-selected: rgba(15, 23, 42, 0.88);
   --canvas-node-foreground: #1e293b;
   --canvas-node-muted: #64748b;
   --canvas-node-subtle: rgba(30, 41, 59, 0.06);
   --canvas-node-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-  --canvas-handle-fill: #cbd5e1;
-  --canvas-handle-border: #eef0f3;
-  --canvas-handle-active-fill: #aeb9c8;
+  --canvas-handle-fill: #bdc8d5;
+  --canvas-handle-border: #96a3b2;
+  --canvas-handle-active-fill: #a6b2c1;
   --canvas-node-target-background: #f1f3f6;
   --canvas-node-target-filter: brightness(0.94);
 }
@@ -131,21 +132,22 @@
   --canvas-selection-fill: rgba(230, 232, 236, 0.045);
   --canvas-selection-halo: rgba(255, 255, 255, 0.08);
   --canvas-node-background: #161618;
-  --canvas-node-border: rgba(230, 232, 236, 0.16);
+  --canvas-node-border-width: 1px;
+  --canvas-node-border: rgba(230, 232, 236, 0.3);
   --canvas-node-border-selected: rgba(255, 255, 255, 0.88);
   --canvas-node-foreground: #e6e8ec;
   --canvas-node-muted: #9a9aa3;
   --canvas-node-subtle: rgba(255, 255, 255, 0.06);
   --canvas-node-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   --canvas-handle-fill: #9a9aa3;
-  --canvas-handle-border: #2d2d33;
+  --canvas-handle-border: #b6b8c2;
   --canvas-handle-active-fill: #e6e8ec;
   --canvas-node-target-background: #232326;
   --canvas-node-target-filter: brightness(1.16);
 }
 
 /* 所有基础卡片统一为低饱和黑白灰；选中态仅提高边框对比度。 */
-:global([data-canvas-node-surface]) {
+.flowRoot :global([data-canvas-node-surface]) {
   background: var(--canvas-node-background);
   border-color: var(--canvas-node-border);
 }

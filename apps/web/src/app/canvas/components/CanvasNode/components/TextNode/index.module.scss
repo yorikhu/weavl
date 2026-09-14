@@ -6,7 +6,7 @@
   padding: 12px 14px;
   border-radius: 14px;
   background: var(--canvas-node-background);
-  border: 0.5px solid var(--canvas-node-border);
+  border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   box-shadow: var(--canvas-node-shadow);
   cursor: default;
   user-select: none;
@@ -74,7 +74,7 @@
 .textNodeEditing {
   /* v18：编辑态不做高亮变化，仅可编辑 */
   border-color: var(--canvas-node-border);
-  border-width: 0.5px;
+  border-width: var(--canvas-node-border-width);
   box-shadow: var(--canvas-node-shadow);
   cursor: text;
   user-select: text;
@@ -103,9 +103,9 @@
 }
 
 .textNodeBodyEdit {
-  font-size: 13px;
-  line-height: 1.7;
-  color: #e6e8ec;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--canvas-node-foreground);
   min-height: 60px;
   flex: 1; /* 容器被拉高时正文区跟随变高 */
   outline: none;
@@ -126,6 +126,6 @@
   }
   &:empty::before {
     content: "输入内容…（⌘+Enter 保存，ESC 取消）";
-    color: #5e5e66;
+    color: var(--canvas-node-foreground);
   }
 }

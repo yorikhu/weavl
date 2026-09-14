@@ -46,3 +46,24 @@
     filter: brightness(1.05);
   }
 }
+
+:global(html:not(.dark)) .videoEditAttatchment {
+  background: #f3f5f7;
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #475569;
+
+  &:hover {
+    background: #e9edf1;
+    border-color: rgba(15, 23, 42, 0.27);
+    color: #0f172a;
+  }
+
+  svg {
+    color: #64748b;
+  }
+}
+
+:global(html:not(.dark)) .videoEditSend {
+  background: #334155;
+  color: #ffffff;
+}

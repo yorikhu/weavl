@@ -126,7 +126,7 @@
 
 .cardHandle:global(.valid)::after {
   background: var(--canvas-handle-active-fill);
-  border-color: var(--canvas-node-background);
+  border-color: var(--canvas-handle-border);
 }
 
 // =============== Image 节点（图像/视频） ===============
@@ -164,7 +164,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #e6e8ec;
+  color: var(--canvas-node-muted);
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
@@ -173,7 +173,7 @@
   min-width: 60px;
   width: 12em;
   &::placeholder {
-    color: #5e5e66;
+    color: var(--canvas-node-muted);
   }
   &:focus {
     background: rgba(255, 255, 255, 0.06);
@@ -186,7 +186,7 @@
   padding: 0;
   border-radius: 14px;
   background: var(--canvas-node-background);
-  border: 0.5px solid var(--canvas-node-border);
+  border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   box-shadow: var(--canvas-node-shadow);
   cursor: default;
   user-select: none;
@@ -278,7 +278,7 @@
   gap: 5px;
   padding: 4px 10px;
   border-radius: 8px;
-  border: 0.5px solid var(--canvas-node-border);
+  border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   background: color-mix(in srgb, var(--canvas-node-background) 92%, transparent);
   backdrop-filter: blur(8px);
   color: var(--canvas-node-foreground);
@@ -582,4 +582,103 @@
   svg {
     color: #f59e0b;
   }
+}
+
+/* 图片、视频编辑栏通过 Portal 挂在 body，不能继承 .flowRoot 的主题变量。 */
+:global(html:not(.dark)) .imageNodeTitleInput:focus {
+  background: rgba(15, 23, 42, 0.055);
+}
+
+:global(html:not(.dark)) .imageEditPanel,
+:global(html:not(.dark)) .imageEditBar {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(15, 23, 42, 0.16);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  color: #1e293b;
+}
+
+:global(html:not(.dark)) .imageEditTag {
+  background: #f3f5f7;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #334155;
+
+  &:hover {
+    background: #e9edf1;
+    border-color: rgba(15, 23, 42, 0.2);
+  }
+
+  svg {
+    color: #64748b;
+  }
+}
+
+:global(html:not(.dark)) .imageEditTagIcon {
+  color: #64748b;
+}
+
+:global(html:not(.dark)) .imageEditExpand,
+:global(html:not(.dark)) .imageEditParamIcon {
+  color: #64748b;
+
+  &:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.07);
+    border-color: rgba(15, 23, 42, 0.14);
+  }
+}
+
+:global(html:not(.dark)) .imageEditInput {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.17);
+  color: #0f172a;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+
+  &:focus {
+    border-color: rgba(15, 23, 42, 0.36);
+  }
+}
+
+:global(html:not(.dark)) .imageEditModel,
+:global(html:not(.dark)) .imageEditParam {
+  color: #334155;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.06);
+  }
+
+  svg {
+    color: #64748b;
+  }
+}
+
+:global(html:not(.dark)) .imageEditParamSep {
+  background: rgba(15, 23, 42, 0.13);
+}
+
+:global(html:not(.dark)) .imageEditRatioMenu {
+  background: rgba(255, 255, 255, 0.99);
+  border-color: rgba(15, 23, 42, 0.16);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+:global(html:not(.dark)) .imageEditRatioMenuHead,
+:global(html:not(.dark)) .imageEditCost {
+  color: #64748b;
+}
+
+:global(html:not(.dark)) .imageEditRatioItem {
+  color: #475569;
+
+  &:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.06);
+  }
+}
+
+:global(html:not(.dark)) .imageEditRatioItemActive {
+  color: #0f172a;
+  background: #e9edf2;
 }
