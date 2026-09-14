@@ -12,6 +12,7 @@ import type {
   AssetSource,
   CanvasProject,
   Folder,
+  ProjectFolder,
   MarketEntry,
   StudioUser,
   WorkflowDefinition,
@@ -33,6 +34,7 @@ export interface StudioState {
   folders: Folder[];
   assets: Asset[];
   projects: CanvasProject[];
+  projectFolders: ProjectFolder[];
   conversations: AgentConversation[];
   market: MarketEntry[];
   workflows: WorkflowDefinition[];
@@ -224,6 +226,7 @@ export class StudioStore {
         folders: [],
         assets: [],
         projects: [],
+        projectFolders: [],
         conversations: [],
         market: seedMarket(),
         workflows: seedWorkflows(),
@@ -236,6 +239,10 @@ export class StudioStore {
       this.state.accounts = this.state.users.map((user) =>
         welcomeAccount(user.id, user.email === (process.env.WEAVL_DEMO_EMAIL || "demo@weavl.local") ? 45 : 20),
       );
+      this.save();
+    }
+    if (!this.state.projectFolders) {
+      this.state.projectFolders = [];
       this.save();
     }
     // 旧版市场条目保留内容和 ID，仅统一归入 Skill。

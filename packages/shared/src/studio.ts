@@ -83,9 +83,19 @@ export interface CanvasProject {
   id: string;
   ownerId: string;
   name: string;
+  folderId?: string | null;
+  coverUrl?: string | null;
+  deletedAt?: string;
   canvases: CanvasDocument[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProjectFolder {
+  id: string;
+  ownerId: string;
+  name: string;
+  createdAt: string;
 }
 
 export interface AgentMessage {
