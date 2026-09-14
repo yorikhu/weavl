@@ -16,9 +16,12 @@
   padding: 12px;
   border-right: 1px solid var(--sider-border);
   background: var(--sider);
-  transition: width 0.3s ease;
   overflow: hidden;
   user-select: none;
+
+  &.siderReady {
+    transition: width 0.3s ease;
+  }
 
   &.collapsed {
     width: 64px;
@@ -40,11 +43,7 @@
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   flex: 1;
-  min-width: 0;
   cursor: pointer;
   border-radius: 10px;
   padding: 4px 6px;
@@ -53,26 +52,6 @@
   &:hover {
     background: var(--nav-hover);
   }
-}
-
-.brandText {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.brandName {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.brandSub {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--foreground);
 }
 
 // 常显收起按钮（展开态显示）
@@ -108,15 +87,32 @@
   justify-content: center;
   width: 100%;
   height: 52px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
   color: var(--foreground);
   cursor: pointer;
-  transition: background 0.2s;
+  box-sizing: border-box;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     background: var(--nav-hover);
+    border-color: var(--sider-border);
+    outline: none;
+  }
+
+  &:hover .logoLayer,
+  &:focus-visible .logoLayer {
+    opacity: 0;
+  }
+
+  &:hover .expandLayer,
+  &:focus-visible .expandLayer {
+    opacity: 1;
+    transform: scale(1.08);
   }
 }
 
@@ -137,21 +133,34 @@
   opacity: 0;
 }
 
+// 收起后的两秒内显示展开提示，之后再回到品牌图标。
+.logoSlot .logoLayer {
+  animation: brandAfterHint 2s linear;
+}
+
+.logoSlot .expandLayer {
+  animation: expandHint 2s linear;
+}
+
+@keyframes brandAfterHint {
+  from,
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes expandHint {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+
 .logoSlotRoot {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  &:hover .logoLayer {
-    opacity: 0;
-  }
-
-  &:hover .expandLayer {
-    opacity: 1;
-    color: var(--foreground);
-    transform: scale(1.08);
-  }
 }
 
 // ---- 主导航 ----
@@ -160,6 +169,12 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.navDivider {
+  height: 1px;
+  margin: 8px;
+  background: var(--sider-border);
 }
 
 .navItem {
@@ -219,100 +234,18 @@
   text-overflow: ellipsis;
 }
 
-// ---- 我的空间 ----
-.spaceSection {
-  margin-top: 24px;
-}
-
-.spaceTitle {
-  margin: 0 0 8px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--foreground);
-}
-
-.spaceItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 36px;
-  width: 100%;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  font-size: 13px;
+.navPopover {
+  padding: 7px 10px;
+  background: var(--surface);
+  font-size: 12px;
   font-weight: 500;
-  color: var(--foreground);
-  cursor: pointer;
-  transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease;
-
-  svg {
-    opacity: 0.72;
-    transition: opacity 0.16s ease;
-  }
-
-  &:hover {
-    background: var(--nav-hover);
-    border-color: var(--sider-border);
-    color: var(--foreground);
-
-    svg {
-      opacity: 1;
-    }
-  }
-
-  & > span {
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
+  white-space: nowrap;
 }
 
-// ---- 底部帮助 ----
+// ---- 侧栏底部入口 ----
 .siderBottom {
-  padding: 0;
-}
-
-.helpBtn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 40px;
-  width: 100%;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--foreground);
-  cursor: pointer;
-  transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease;
-
-  &:hover {
-    background: var(--nav-hover);
-    border-color: var(--sider-border);
-    color: var(--foreground);
-  }
-
-  & > span {
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .collapsed & {
-    justify-content: center;
-    padding: 0;
-  }
+  padding-top: 12px;
+  border-top: 1px solid var(--sider-border);
 }
 
 // ============ 右侧 ============
@@ -323,63 +256,14 @@
   min-width: 0;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  flex-shrink: 0;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--header-border);
-  z-index: 50;
-}
-
-.pageTitle {
-  display: none;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-
-// 头像
-.avatarWrap {
-  position: relative;
-  cursor: pointer;
-}
-
-.avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: linear-gradient(to top right, var(--pill-inactive-hover), var(--pill));
-  color: #fff;
-  transition: box-shadow 0.2s;
-}
-
-.avatarWrap:hover .avatar {
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
-}
-
-.avatarDot {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--success);
-  border: 2px solid var(--background);
-}
-
 .main {
   flex: 1;
   overflow-y: auto;
   padding: 24px 28px;
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 16px;
+  }
 }

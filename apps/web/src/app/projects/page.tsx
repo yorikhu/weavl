@@ -1,56 +1,416 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Clock, Layers, Plus, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Folder, FolderPlus, Layers, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import type { CanvasProject, ProjectFolder } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
+import { ActionPopover } from "@/components/ActionPopover";
+import { Form } from "@/components/Form";
+import { jsonBody, studioApi } from "@/lib/studioApi";
+import { canvasHref, openCanvasAfter } from "@/utils/openCanvas";
+import { ProjectCard, type ProjectAction } from "./components/ProjectCard";
+import ui from "@/styles/studio.module.scss";
 import styles from "./page.module.scss";
 
-const PROJECTS = [
-  { name: "电商主图批量流水线", nodes: 12, updated: "2 小时前" },
-  { name: "法式服装短视频织法", nodes: 8, updated: "昨天" },
-  { name: "品牌视觉灵感画布", nodes: 15, updated: "3 天前" },
-  { name: "国风水墨分镜工作台", nodes: 6, updated: "上周" },
-  { name: "新品发布全链路编排", nodes: 21, updated: "上周" },
-  { name: "个人风格 LoRA 试验田", nodes: 4, updated: "2 周前" },
-] as const;
+type View = "all" | "unfiled" | "trash" | `folder:${string}`;
+type Dialog = {
+  kind: "create" | "folder" | "renameFolder" | "move";
+  project?: CanvasProject;
+  folder?: ProjectFolder;
+};
 
 export default function ProjectsPage() {
-  const router = useRouter();
+  const [projects, setProjects] = useState<CanvasProject[]>([]);
+  const [trash, setTrash] = useState<CanvasProject[]>([]);
+  const [folders, setFolders] = useState<ProjectFolder[]>([]);
+  const [view, setView] = useState<View>("all");
+  const [query, setQuery] = useState("");
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [dialogValue, setDialogValue] = useState("");
+  const [folderMenuOpen, setFolderMenuOpen] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const coverTargetRef = useRef<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [active, deleted, projectFolders] = await Promise.all([
+        studioApi<CanvasProject[]>("/studio/projects"),
+        studioApi<CanvasProject[]>("/studio/projects?trash=1"),
+        studioApi<ProjectFolder[]>("/studio/projects/folders"),
+      ]);
+      setProjects(active);
+      setTrash(deleted);
+      setFolders(projectFolders);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const visible = useMemo(() => {
+    const search = query.trim().toLocaleLowerCase();
+    return (view === "trash" ? trash : projects).filter((project) => {
+      if (view === "unfiled" && project.folderId) return false;
+      if (view.startsWith("folder:") && project.folderId !== view.slice(7)) return false;
+      return !search || project.name.toLocaleLowerCase().includes(search);
+    });
+  }, [projects, trash, query, view]);
+
+  function openDialog(kind: Dialog["kind"], project?: CanvasProject, folder?: ProjectFolder) {
+    setError("");
+    setNotice("");
+    setDialog({ kind, project, folder });
+    setDialogValue(kind === "move" ? project?.folderId || "" : kind === "renameFolder" ? folder?.name || "" : "");
+  }
+
+  async function submitDialog() {
+    if (!dialog) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (dialog.kind === "create") {
+        await openCanvasAfter(async () => {
+          const project = await studioApi<CanvasProject>("/studio/projects", {
+            method: "POST",
+            body: jsonBody({
+              name: dialogValue.trim() || "未命名项目",
+              folderId: view.startsWith("folder:") ? view.slice(7) : null,
+            }),
+          });
+          return { projectId: project.id, canvasId: project.canvases[0]!.id };
+        });
+        if (view === "trash") setView("all");
+      } else if (dialog.kind === "folder") {
+        const folder = await studioApi<ProjectFolder>("/studio/projects/folders", {
+          method: "POST",
+          body: jsonBody({ name: dialogValue.trim() }),
+        });
+        setView(`folder:${folder.id}`);
+        setNotice("文件夹已创建。");
+      } else if (dialog.kind === "renameFolder" && dialog.folder) {
+        await studioApi(`/studio/projects/folders/${dialog.folder.id}`, {
+          method: "PATCH",
+          body: jsonBody({ name: dialogValue.trim() }),
+        });
+        setNotice("文件夹名称已更新。");
+      } else if (dialog.project) {
+        await studioApi(`/studio/projects/${dialog.project.id}`, {
+          method: "PATCH",
+          body: jsonBody({ folderId: dialogValue || null }),
+        });
+        setNotice("项目已移动。");
+      }
+      setDialog(null);
+      await refresh();
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function renameProject(project: CanvasProject, name: string) {
+    setError("");
+    await studioApi(`/studio/projects/${project.id}`, { method: "PATCH", body: jsonBody({ name }) });
+    await refresh();
+    setNotice("项目名称已更新。");
+  }
+
+  async function removeFolder(folder: ProjectFolder) {
+    setFolderMenuOpen(null);
+    if (!window.confirm(`删除文件夹「${folder.name}」？其中的项目会移至未分类。`)) return;
+    setError("");
+    try {
+      await studioApi(`/studio/projects/folders/${folder.id}`, { method: "DELETE" });
+      if (view === `folder:${folder.id}`) setView("unfiled");
+      await refresh();
+      setNotice("文件夹已删除，项目已移至未分类。");
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  async function updateCover(file: File | undefined) {
+    const targetId = coverTargetRef.current;
+    if (!file || !targetId) return;
+    coverTargetRef.current = null;
+    if (coverInputRef.current) coverInputRef.current.value = "";
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 2_000_000) {
+      setError("封面仅支持 2 MB 以内的 PNG、JPEG 或 WebP 图片。");
+      return;
+    }
+    setError("");
+    try {
+      const coverUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("读取封面失败"));
+        reader.readAsDataURL(file);
+      });
+      await studioApi(`/studio/projects/${targetId}`, { method: "PATCH", body: jsonBody({ coverUrl }) });
+      await refresh();
+      setNotice("项目封面已更新。");
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  async function handleAction(action: ProjectAction, project: CanvasProject) {
+    setError("");
+    setNotice("");
+    if (action === "open") {
+      const canvas = project.canvases[0];
+      if (canvas)
+        window.open(canvasHref({ projectId: project.id, canvasId: canvas.id }), "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (action === "move") {
+      openDialog("move", project);
+      return;
+    }
+    if (action === "cover") {
+      coverTargetRef.current = project.id;
+      coverInputRef.current?.click();
+      return;
+    }
+    if (action === "permanent" && !window.confirm(`彻底删除「${project.name}」？此操作无法撤销。`)) return;
+    try {
+      if (action === "duplicate") {
+        await studioApi(`/studio/projects/${project.id}/duplicate`, { method: "POST" });
+        setNotice("项目副本已创建。");
+      } else if (action === "clearCover") {
+        await studioApi(`/studio/projects/${project.id}`, { method: "PATCH", body: jsonBody({ coverUrl: null }) });
+      } else if (action === "delete") {
+        await studioApi(`/studio/projects/${project.id}`, { method: "DELETE" });
+        setNotice("项目已移入回收站。");
+      } else if (action === "restore") {
+        await studioApi(`/studio/projects/${project.id}/restore`, { method: "POST" });
+        setNotice("项目已恢复。");
+      } else if (action === "permanent") {
+        await studioApi(`/studio/projects/${project.id}/permanent`, { method: "DELETE" });
+        setNotice("项目已彻底删除。");
+      }
+      await refresh();
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  const viewTitle =
+    view === "trash"
+      ? "回收站"
+      : view === "all"
+        ? "全部项目"
+        : view === "unfiled"
+          ? "未分类"
+          : folders.find((folder) => `folder:${folder.id}` === view)?.name || "项目";
 
   return (
     <AppShell>
-      <div className={styles.container}>
-        <div className={styles.head}>
+      <div className={ui.page}>
+        <header className={ui.header}>
           <div>
-            <h2 className={styles.title}>
-              <Layers size={18} />
-              项目
-            </h2>
-            <p className={styles.sub}>点击项目进入画布编排，节点式工作流创作</p>
+            <span className={ui.eyebrow}>YOUR WORKSPACE</span>
+            <h1 className={ui.title}>项目</h1>
+            <p className={ui.description}>在这里整理每一次创作。打开项目后，再进入画布继续工作。</p>
           </div>
-          <button className={styles.newBtn} onClick={() => router.push("/canvas")}>
-            <Plus size={14} />
+          <button className={ui.button} onClick={() => openDialog("create")}>
+            <Plus size={15} />
             新建项目
           </button>
-        </div>
-
-        <div className={styles.grid}>
-          {PROJECTS.map((p) => (
-            <div key={p.name} className={styles.card} onClick={() => router.push("/canvas")}>
-              <div className={styles.cardCover}>
-                <Sparkles size={20} />
+        </header>
+        <div className={styles.workspace}>
+          <aside className={styles.sidebar} aria-label="项目分类">
+            <button
+              className={`${styles.sideItem} ${view === "all" ? styles.sideActive : ""}`}
+              onClick={() => setView("all")}
+            >
+              <Layers size={16} />
+              <span>全部项目</span>
+              <small>{projects.length}</small>
+            </button>
+            <button
+              className={`${styles.sideItem} ${view === "unfiled" ? styles.sideActive : ""}`}
+              onClick={() => setView("unfiled")}
+            >
+              <Folder size={16} />
+              <span>未分类</span>
+            </button>
+            <div className={styles.folderHeader}>
+              <span>文件夹</span>
+              <button type="button" onClick={() => openDialog("folder")} aria-label="新建文件夹" title="新建文件夹">
+                <FolderPlus size={16} />
+              </button>
+            </div>
+            {folders.map((folder) => (
+              <div key={folder.id} className={styles.folderRow}>
+                <button
+                  className={`${styles.sideItem} ${view === `folder:${folder.id}` ? styles.sideActive : ""}`}
+                  onClick={() => setView(`folder:${folder.id}`)}
+                >
+                  <Folder size={16} />
+                  <span title={folder.name}>{folder.name}</span>
+                  <small>{projects.filter((project) => project.folderId === folder.id).length}</small>
+                </button>
+                <ActionPopover
+                  mode="click"
+                  side="right"
+                  align="start"
+                  open={folderMenuOpen === folder.id}
+                  onOpenChange={(open) => setFolderMenuOpen(open ? folder.id : null)}
+                  contentClassName={styles.folderMenu}
+                  trigger={
+                    <button type="button" className={styles.folderMore} aria-label={`${folder.name}文件夹操作`}>
+                      <MoreHorizontal size={15} />
+                    </button>
+                  }
+                >
+                  <div className={styles.menuItems}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFolderMenuOpen(null);
+                        openDialog("renameFolder", undefined, folder);
+                      }}
+                    >
+                      <Pencil size={15} />
+                      重命名
+                    </button>
+                    <button type="button" className={styles.dangerItem} onClick={() => void removeFolder(folder)}>
+                      <Trash2 size={15} />
+                      删除文件夹
+                    </button>
+                  </div>
+                </ActionPopover>
               </div>
-              <h4 className={styles.cardTitle}>{p.name}</h4>
-              <div className={styles.cardMeta}>
-                <span>{p.nodes} 个节点</span>
-                <span className={styles.cardTime}>
-                  <Clock size={11} />
-                  {p.updated}
-                </span>
+            ))}
+            <div className={styles.sideDivider} />
+            <button
+              className={`${styles.sideItem} ${view === "trash" ? styles.sideActive : ""}`}
+              onClick={() => setView("trash")}
+            >
+              <Trash2 size={16} />
+              <span>回收站</span>
+              <small>{trash.length}</small>
+            </button>
+          </aside>
+          <section className={styles.content} aria-label={viewTitle}>
+            <div className={styles.toolbar}>
+              <div>
+                <h2>{viewTitle}</h2>
+                <p>{visible.length} 个项目</p>
+              </div>
+              <div className={styles.search}>
+                <Search size={16} />
+                <Form.Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="搜索项目"
+                  aria-label="搜索项目"
+                />
               </div>
             </div>
-          ))}
+            {error && <p className={ui.error}>{error}</p>}
+            {notice && <p className={styles.notice}>{notice}</p>}
+            {loading ? (
+              <div className={styles.empty}>正在加载项目…</div>
+            ) : visible.length ? (
+              <div className={styles.grid}>
+                {visible.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    trash={view === "trash"}
+                    onAction={(action, item) => void handleAction(action, item)}
+                    onRename={renameProject}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={styles.empty}>
+                {query.trim()
+                  ? "没有找到匹配的项目。"
+                  : view === "trash"
+                    ? "回收站是空的。"
+                    : "这里还没有项目，开始一次新的创作吧。"}
+              </div>
+            )}
+          </section>
         </div>
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          hidden
+          onChange={(event) => void updateCover(event.target.files?.[0])}
+        />
+        {dialog && (
+          <div className={styles.overlay} onClick={() => !busy && setDialog(null)}>
+            <section className={styles.dialog} onClick={(event) => event.stopPropagation()}>
+              <div className={styles.dialogHead}>
+                <div>
+                  <span className={ui.eyebrow}>PROJECTS</span>
+                  <h2>
+                    {dialog.kind === "create"
+                      ? "新建项目"
+                      : dialog.kind === "folder"
+                        ? "新建文件夹"
+                        : dialog.kind === "renameFolder"
+                          ? "重命名文件夹"
+                          : "移动项目"}
+                  </h2>
+                </div>
+                <button type="button" onClick={() => setDialog(null)} aria-label="关闭" disabled={busy}>
+                  <X size={18} />
+                </button>
+              </div>
+              <Form
+                values={{ value: dialogValue }}
+                onValuesChange={(values) => setDialogValue(values.value)}
+                onFinish={submitDialog}
+                className={styles.dialogForm}
+              >
+                {dialog.kind === "move" ? (
+                  <Form.Select name="value" label="目标文件夹">
+                    <option value="">未分类</option>
+                    {folders.map((folder) => (
+                      <option key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                ) : (
+                  <Form.Input
+                    name="value"
+                    label={dialog.kind === "folder" || dialog.kind === "renameFolder" ? "文件夹名称" : "项目名称"}
+                    placeholder={dialog.kind === "create" ? "为项目起一个名字" : undefined}
+                    maxLength={80}
+                    required={dialog.kind !== "create"}
+                    autoFocus
+                  />
+                )}
+                {error && <p className={ui.error}>{error}</p>}
+                <div className={styles.dialogActions}>
+                  <button type="button" className={ui.buttonQuiet} onClick={() => setDialog(null)} disabled={busy}>
+                    取消
+                  </button>
+                  <button type="submit" className={ui.button} disabled={busy}>
+                    {busy ? "处理中…" : dialog.kind === "create" ? "创建并打开" : "确认"}
+                  </button>
+                </div>
+              </Form>
+            </section>
+          </div>
+        )}
       </div>
     </AppShell>
   );

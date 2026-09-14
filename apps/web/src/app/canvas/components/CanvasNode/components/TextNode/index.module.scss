@@ -1,0 +1,131 @@
+// =============== TextNode（基础文本） ===============
+.textNode {
+  position: relative;
+  width: 220px; /* v35：默认宽度减半（原 440） */
+  height: 200px; /* 与图片、视频节点默认高度一致；节点内联尺寸仍可覆盖 */
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--canvas-node-background);
+  border: var(--canvas-node-border-width) solid var(--canvas-node-border);
+  box-shadow: var(--canvas-node-shadow);
+  cursor: default;
+  user-select: none;
+  font-family: inherit;
+  /* v9：退出编辑后框大小与编辑态一致 —— 同样 flex 列布局 + 定高时正文填充 */
+  display: flex;
+  flex-direction: column;
+  /* 正文自身负责滚动/截断，这里放开以显示卡片外侧连接点。 */
+  overflow: visible;
+}
+
+.textNodeHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f7c1c1;
+  margin-bottom: 8px;
+  cursor: grab; /* 编辑态拖节点时小手 */
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.textNodeTitleInput {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  margin: -2px 0;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f7c1c1;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+  &:focus {
+    border-color: color-mix(in srgb, var(--foreground) 40%, transparent);
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.textNodeBody {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--canvas-node-foreground);
+  white-space: pre-wrap;
+  min-height: 40px;
+  max-height: 120px; /* 默认紧凑态最大高度 */
+  flex: 1; /* 容器定高时正文填充 */
+  overflow: hidden; /* v12：默认紧凑态，文本过长截断 */
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  &:empty::before {
+    content: "输入文本内容…";
+    color: #5e5e66;
+  }
+}
+
+.textNodeEditing {
+  /* v18：编辑态不做高亮变化，仅可编辑 */
+  border-color: var(--canvas-node-border);
+  border-width: var(--canvas-node-border-width);
+  box-shadow: var(--canvas-node-shadow);
+  cursor: text;
+  user-select: text;
+  /* v9：宽高都可以拉；容器定高时正文区弹性填充 */
+  display: flex;
+  flex-direction: column;
+  resize: both;
+  min-width: 300px;
+  max-width: 720px;
+  min-height: 120px;
+  max-height: 560px;
+  overflow: hidden;
+  /* 右下角 resize handle：琥珀色双斜杠风格 */
+  &::-webkit-resizer {
+    background: linear-gradient(
+      135deg,
+      transparent 0 54%,
+      rgba(245, 158, 11, 0.65) 54% 60%,
+      transparent 60% 72%,
+      rgba(245, 158, 11, 0.65) 72% 78%,
+      transparent 78% 100%
+    );
+    border-radius: 0 0 12px 0;
+    cursor: nwse-resize;
+  }
+}
+
+.textNodeBodyEdit {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--canvas-node-foreground);
+  min-height: 60px;
+  flex: 1; /* 容器被拉高时正文区跟随变高 */
+  outline: none;
+  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  overflow-x: hidden;
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
+  }
+  &:empty::before {
+    content: "输入内容…（⌘+Enter 保存，ESC 取消）";
+    color: var(--canvas-node-foreground);
+  }
+}

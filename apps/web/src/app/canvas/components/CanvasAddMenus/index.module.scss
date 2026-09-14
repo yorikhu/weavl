@@ -1,0 +1,126 @@
+/* 松手到空白处后，保留一条接到“新建节点”菜单边缘的临时连线。 */
+.pendingConnection {
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pendingConnectionPath {
+  fill: none;
+  stroke: #b5d4f4;
+  stroke-width: 1.8;
+  stroke-dasharray: 5 4;
+  filter: drop-shadow(0 0 4px rgba(181, 212, 244, 0.45));
+  animation: pendingDash 0.7s linear infinite;
+}
+
+.pendingConnectionDot {
+  fill: #b5d4f4;
+  filter: drop-shadow(0 0 5px rgba(181, 212, 244, 0.8));
+}
+
+@keyframes pendingDash {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+
+// =============== 右键菜单 & 添加弹层 ===============
+.contextMenu {
+  position: absolute;
+  z-index: 30;
+  min-width: 140px;
+  padding: 4px;
+  background: rgba(20, 20, 22, 0.96);
+  backdrop-filter: blur(12px);
+  border: 0.5px solid #232326;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: fade 0.12s ease;
+}
+
+.contextMenuHead {
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #5e5e66;
+  letter-spacing: 0.3px;
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #a8a8b2;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.12s,
+    color 0.12s;
+  &:hover:not(:disabled) {
+    background: var(--accent-soft);
+    color: var(--foreground);
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.contextMenuSep {
+  height: 0.5px;
+  background: #232326;
+  margin: 4px 6px;
+}
+
+.contextMenuBadge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: rgba(127, 119, 221, 0.18);
+  color: #7f77dd;
+}
+
+.contextMenuBadgeNew {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+
+:global(html:not(.dark)) .contextMenu {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+
+:global(html:not(.dark)) .contextMenuHead {
+  color: #64748b;
+}
+
+:global(html:not(.dark)) .contextMenuItem {
+  color: #475569;
+}
+
+:global(html:not(.dark)) .contextMenuSep {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

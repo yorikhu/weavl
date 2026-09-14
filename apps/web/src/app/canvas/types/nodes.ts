@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 
 export type NodeKind = "llm" | "image" | "video" | "output";
+export type BasicNodeKind = "text" | "image" | "video";
 
 export interface NodeKindMeta {
   badge: string;

@@ -389,12 +389,6 @@ export function LLMInspector({ config, onChange }: Props) {
             <button className={styles.inspectorGroupBtn} title="循环引用">
               <Wand2 size={11} />
             </button>
-            <button className={styles.inspectorGroupBtn} title="提交到提示词库">
-              <LogIn size={11} />
-            </button>
-            <button className={styles.inspectorGroupBtn} title="从提示词库选择">
-              <Sparkles size={11} />
-            </button>
             <button className={styles.inspectorGroupBtn} title="全屏编辑">
               <Maximize2 size={11} />
             </button>

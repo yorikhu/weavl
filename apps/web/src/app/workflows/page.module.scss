@@ -1,0 +1,205 @@
+.workflowGrid {
+  margin-top: 22px;
+}
+.workflowCard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 235px;
+}
+.workflowStages {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  border-top: 1px solid var(--surface-border);
+  padding-top: 14px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.workflowStages span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.textButton {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.textButton:hover {
+  color: var(--foreground);
+}
+.runLayout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 22px;
+  align-items: start;
+}
+.runList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.runItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 8px;
+  padding: 14px;
+}
+.runItem strong {
+  font-size: 12px;
+}
+.runItem small {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.runActive {
+  border-color: var(--foreground);
+}
+.runDetail {
+  min-height: 430px;
+}
+.detailTitle {
+  margin: 6px 0 0;
+  font-size: 22px;
+  font-weight: 610;
+  letter-spacing: -0.035em;
+}
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 25px;
+}
+.stage {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  padding-bottom: 25px;
+}
+.stageNo {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--subcard);
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.stageContent {
+  border-left: 1px solid var(--surface-border);
+  padding-left: 19px;
+  min-width: 0;
+}
+.stageContent strong {
+  font-size: 13px;
+}
+.stageContent p {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.output {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--subcard);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 12px;
+  max-height: 290px;
+  overflow: auto;
+  line-height: 1.6;
+  font-size: 11px;
+}
+.stageActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.stageActions button:hover,
+.retryLink:hover {
+  color: var(--foreground);
+}
+.review {
+  border-top: 1px solid var(--surface-border);
+  padding-top: 13px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.retryLink {
+  margin-top: 10px;
+  color: var(--faint-foreground);
+  font-size: 10px;
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.modal {
+  width: min(700px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.formFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.formFields strong {
+  font-size: 12px;
+}
+.inlineForm {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) minmax(130px, 1.4fr) 110px 110px auto;
+  gap: 8px;
+}
+.inlineForm > :last-child:is(input) {
+  grid-column: 1 / -1;
+}
+.stageForm {
+  border: 1px solid var(--surface-border);
+  border-radius: 11px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (max-width: 800px) {
+  .runLayout {
+    grid-template-columns: 1fr;
+  }
+  .runList {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .runItem {
+    min-width: 210px;
+  }
+  .inlineForm {
+    grid-template-columns: 1fr;
+  }
+}
