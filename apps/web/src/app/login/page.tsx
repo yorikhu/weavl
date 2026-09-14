@@ -53,13 +53,13 @@ export default function LoginPage() {
           scale={1}
           spread={1}
           depth={1}
-          speed={0.7}
-          spin={0.8}
+          speed={0.0875}
+          spin={0.0875}
           interaction="repel"
           density={0.78}
           shardSize={1.1}
           stretch={1}
-          turbulence={1}
+          turbulence={0.45}
           glow={0.65}
           edgeSoftness={2}
           bloom={0.3}
@@ -67,8 +67,8 @@ export default function LoginPage() {
           chromaticAberration={0}
           transitionDuration={1}
           interactionRadius={1.5}
-          interactionStrength={0.5}
-          rippleIntensity={1}
+          interactionStrength={0.25}
+          rippleIntensity={0.5}
           holdToGather
         />
       </div>

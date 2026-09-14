@@ -303,11 +303,11 @@ export default function HomePage() {
               shardColor={theme === "dark" ? "#696973" : "#C2C7D0"}
               accentColor={theme === "dark" ? "#E4E4E7" : "#59606B"}
               placement="full" flow="stream" material="pearl" detail="balanced" effect="none"
-              scale={1} spread={1} depth={1} speed={1} spin={1} interaction="repel"
-              density={0.9} shardSize={1.1} stretch={1} turbulence={1} glow={0.65}
+              scale={1} spread={1} depth={1} speed={0.0875} spin={0.0875} interaction="repel"
+              density={0.9} shardSize={1.1} stretch={1} turbulence={0.45} glow={0.65}
               edgeSoftness={2} bloom={0.3} grain={0.03} chromaticAberration={0}
-              transitionDuration={1} interactionRadius={1.5} interactionStrength={0.5}
-              rippleIntensity={1} holdToGather
+              transitionDuration={1} interactionRadius={1.5} interactionStrength={0.25}
+              rippleIntensity={0.5} holdToGather
             />
           </div>
           <div className={styles.heroMeta}>
@@ -316,7 +316,7 @@ export default function HomePage() {
           </div>
           <div ref={heroContentRef} className={styles.heroContent}>
             <h1 ref={heroTitleRef}>
-              拾起灵光，织成作品。
+              拾起微光，织成作品，
               <br />让<em>灵感</em>，继续生长。
             </h1>
             <p ref={heroDescriptionRef}>从对话、画布或工作流开始，让资料、方法与作品沉淀，随时取用、继续创作。</p>
