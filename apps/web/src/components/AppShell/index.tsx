@@ -5,15 +5,12 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Bot,
-  Bookmark,
   CircleHelp,
-  Heart,
   Layers,
   LayoutGrid,
   PanelLeftClose,
   PanelLeftOpen,
   ShoppingBag,
-  Trash2,
   Wand2,
 } from "lucide-react";
 import { StarburstLogo } from "@/components/StarburstLogo";
@@ -24,16 +21,9 @@ import styles from "./index.module.scss";
 const NAV_ITEMS = [
   { href: "/home", label: "首页", icon: LayoutGrid },
   { href: "/projects", label: "项目", icon: Layers },
-  { href: "/agent", label: "Agent 对话", icon: Bot },
+  { href: "/agent", label: "Agent", icon: Bot },
   { href: "/market", label: "市场", icon: ShoppingBag },
   { href: "/preset", label: "预设", icon: Wand2 },
-] as const;
-
-const MY_SPACE_ITEMS = [
-  { label: "我的预设", icon: Wand2 },
-  { label: "我的作品", icon: Bookmark },
-  { label: "我的收藏", icon: Heart },
-  { label: "回收站", icon: Trash2 },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -93,21 +83,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* 我的空间（收起时隐藏） */}
-          {!collapsed && (
-            <div className={styles.spaceSection}>
-              <p className={styles.spaceTitle}>我的空间</p>
-              {MY_SPACE_ITEMS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button key={item.label} className={styles.spaceItem}>
-                    <Icon size={14} />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* 底部帮助 */}
