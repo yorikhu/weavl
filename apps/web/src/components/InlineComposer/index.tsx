@@ -7,6 +7,7 @@ export type ComposerToken = { type: "asset" | "model" | "skill"; id: string; lab
 export type InlineComposerHandle = {
   insertToken: (token: ComposerToken, focus?: boolean) => void;
   focus: () => void;
+  clear: () => void;
 };
 
 type Props = {
@@ -15,10 +16,14 @@ type Props = {
   onTokenRemove: (token: ComposerToken) => void;
   onSubmit: () => void;
   placeholder: string;
+  ariaLabel?: string;
+  submitOnEnter?: boolean;
+  disabled?: boolean;
 };
 
 const iconPaths: Record<ComposerToken["type"], string> = {
-  asset: "M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.82-2.82l8.49-8.49",
+  asset:
+    "M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.82-2.82l8.49-8.49",
   model: "m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10",
   skill: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4L15 12l-3-3 2.7-2.7Z",
 };
@@ -65,7 +70,16 @@ function readText(root: HTMLElement) {
 }
 
 export const InlineComposer = forwardRef<InlineComposerHandle, Props>(function InlineComposer(
-  { value, onValueChange, onTokenRemove, onSubmit, placeholder },
+  {
+    value,
+    onValueChange,
+    onTokenRemove,
+    onSubmit,
+    placeholder,
+    ariaLabel = "描述你想完成的内容",
+    submitOnEnter = true,
+    disabled = false,
+  },
   ref,
 ) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -106,9 +120,8 @@ export const InlineComposer = forwardRef<InlineComposerHandle, Props>(function I
     const editor = editorRef.current!;
     const selection = window.getSelection();
     const editorFocused = document.activeElement === editor || editor.contains(document.activeElement);
-    const active = editorFocused && selection?.rangeCount && editor.contains(selection.anchorNode)
-      ? selection.getRangeAt(0)
-      : null;
+    const active =
+      editorFocused && selection?.rangeCount && editor.contains(selection.anchorNode) ? selection.getRangeAt(0) : null;
     const saved = active || rangeRef.current;
     const range = saved && editor.contains(saved.startContainer) ? saved.cloneRange() : document.createRange();
     if (!saved || !editor.contains(saved.startContainer)) {
@@ -176,7 +189,18 @@ export const InlineComposer = forwardRef<InlineComposerHandle, Props>(function I
       else rangeRef.current = range.cloneRange();
       sync(!focus);
     },
-    focus() { editorRef.current?.focus(); },
+    focus() {
+      editorRef.current?.focus();
+    },
+    clear() {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.replaceChildren();
+      editor.dataset.empty = "true";
+      knownTokensRef.current = [];
+      rangeRef.current = null;
+      callbacksRef.current.onValueChange("");
+    },
   }));
 
   useEffect(() => {
@@ -195,25 +219,24 @@ export const InlineComposer = forwardRef<InlineComposerHandle, Props>(function I
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
     event.preventDefault();
-    if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
+    if (!submitOnEnter || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
       document.execCommand("insertLineBreak");
       sync();
-    }
-    else callbacksRef.current.onSubmit();
+    } else callbacksRef.current.onSubmit();
   }
 
   return (
     <div
       ref={editorRef}
       className={styles.editor}
-      contentEditable
+      contentEditable={!disabled}
       suppressContentEditableWarning
       role="textbox"
-      aria-label="描述你想完成的内容"
+      aria-label={ariaLabel}
       aria-multiline="true"
       data-placeholder={placeholder}
       data-empty="true"
-      title="Enter 开始创作；Shift / Ctrl / Command + Enter 换行"
+      title={submitOnEnter ? "Enter 发送；Shift / Ctrl / Command + Enter 换行" : "Enter 换行；点击发送按钮提交"}
       onInput={() => sync()}
       onKeyDown={onKeyDown}
       onKeyUp={saveRange}

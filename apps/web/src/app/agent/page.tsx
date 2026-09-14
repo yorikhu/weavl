@@ -2,12 +2,32 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowUp, Bot, Box, FileText, FolderPlus, Paperclip, Plus, Search, X } from "lucide-react";
+import {
+  Archive,
+  ArrowUp,
+  AudioLines,
+  Bot,
+  Box,
+  Check,
+  Clapperboard,
+  FileText,
+  FolderPlus,
+  Image,
+  Paperclip,
+  Plus,
+  Search,
+  Settings2,
+  UserRound,
+  Wrench,
+} from "lucide-react";
 import type { AgentConversation, Asset, CanvasProject, MarketEntry, ModelKind } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
-import { ComposerTextarea } from "@/components/ComposerTextarea";
+import { ActionPopover } from "@/components/ActionPopover";
+import { InlineComposer, type ComposerToken, type InlineComposerHandle } from "@/components/InlineComposer";
+import { Form } from "@/components/Form";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { openCanvasAfter } from "@/utils/openCanvas";
+import { uploadAsset } from "@/utils/uploadAsset";
 import ui from "@/styles/studio.module.scss";
 import styles from "./page.module.scss";
 
@@ -20,13 +40,25 @@ type AgentStart = {
   modelKind?: ModelKind;
   auto: boolean;
 };
-const modelOptions: { id: ModelKind; label: string }[] = [
-  { id: "text", label: "文本模型" },
-  { id: "image", label: "图片模型" },
-  { id: "video", label: "视频模型" },
-  { id: "audio", label: "音频模型" },
-  { id: "avatar", label: "数字人模型" },
-];
+const modelOptions = [
+  { id: "text", label: "文本模型", detail: "文案、策划、结构化内容", icon: FileText },
+  { id: "image", label: "图片模型", detail: "视觉概念与图片生成", icon: Image },
+  { id: "video", label: "视频模型", detail: "分镜与视频生成", icon: Clapperboard },
+  { id: "audio", label: "音频模型", detail: "配音、音乐与音效", icon: AudioLines },
+  { id: "avatar", label: "数字人模型", detail: "形象与口播内容", icon: UserRound },
+] as const;
+const composerTools = [
+  { id: "attachments", label: "插入附件", icon: Paperclip },
+  { id: "model", label: "插入模型", icon: Box },
+  { id: "skill", label: "插入 Skill", icon: Wrench },
+  { id: "mode", label: "选择模式", icon: Settings2 },
+] as const;
+type ComposerTool = (typeof composerTools)[number]["id"];
+type CreationMode = "auto" | "manual";
+function removeFirst<T>(items: T[], value: T): T[] {
+  const index = items.indexOf(value);
+  return index < 0 ? items : items.filter((_, itemIndex) => itemIndex !== index);
+}
 
 export default function AgentPage() {
   const router = useRouter();
@@ -39,12 +71,23 @@ export default function AgentPage() {
   const [assetIds, setAssetIds] = useState<string[]>([]);
   const [methodIds, setMethodIds] = useState<string[]>([]);
   const [modelKinds, setModelKinds] = useState<ModelKind[]>([]);
-  const [showAssets, setShowAssets] = useState(false);
+  const [mode, setMode] = useState<CreationMode>("auto");
+  const [openTool, setOpenTool] = useState<ComposerTool | null>(null);
+  const [toolSearch, setToolSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
+  const [pendingTokens, setPendingTokens] = useState<{
+    assetIds: string[];
+    methodIds: string[];
+    modelKinds: ModelKind[];
+  } | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef(false);
+  const composerRef = useRef<InlineComposerHandle>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const selected = conversations.find((item) => item.id === selectedId) || null;
   const visible = useMemo(
     () =>
@@ -64,6 +107,7 @@ export default function AgentPage() {
       setConversations(chats);
       setAssets(files);
       setMarket(methods);
+      setCatalogReady(true);
       return chats;
     } catch (cause) {
       setError((cause as Error).message);
@@ -77,6 +121,11 @@ export default function AgentPage() {
     const selectedMethod = sessionStorage.getItem("weavl:market-id");
     if (selectedMethod) {
       setMethodIds((current) => [...new Set([...current, selectedMethod])]);
+      setPendingTokens((current) => ({
+        assetIds: current?.assetIds || [],
+        methodIds: [...(current?.methodIds || []), selectedMethod],
+        modelKinds: current?.modelKinds || [],
+      }));
       sessionStorage.removeItem("weavl:market-id");
     }
   }, []);
@@ -84,6 +133,11 @@ export default function AgentPage() {
     const selectedAsset = sessionStorage.getItem("weavl:agent-asset-id");
     if (selectedAsset) {
       setAssetIds([selectedAsset]);
+      setPendingTokens((current) => ({
+        assetIds: [...(current?.assetIds || []), selectedAsset],
+        methodIds: current?.methodIds || [],
+        modelKinds: current?.modelKinds || [],
+      }));
       sessionStorage.removeItem("weavl:agent-asset-id");
     }
   }, []);
@@ -99,18 +153,22 @@ export default function AgentPage() {
     pendingRef.current = true;
     sessionStorage.removeItem("weavl:agent-start");
     sessionStorage.removeItem("weavl:agent-prompt");
-    const start: AgentStart = launch
-      ? JSON.parse(launch)
-      : { prompt: legacyPrompt || "", assetIds: [], auto: true };
+    const start: AgentStart = launch ? JSON.parse(launch) : { prompt: legacyPrompt || "", assetIds: [], auto: true };
     const startMethodIds = start.marketEntryIds || (start.marketEntryId ? [start.marketEntryId] : []);
     const startModelKinds = start.modelKinds || (start.modelKind ? [start.modelKind] : []);
-    setMethodIds(startMethodIds);
-    setModelKinds(startModelKinds);
     if (!start.auto || !start.prompt.trim()) {
       setDraft(start.prompt);
       setAssetIds(start.assetIds);
+      setMethodIds(startMethodIds);
+      setModelKinds(startModelKinds);
+      setMode("manual");
+      setPendingTokens({ assetIds: start.assetIds, methodIds: startMethodIds, modelKinds: startModelKinds });
       return;
     }
+    setAssetIds([]);
+    setMethodIds([]);
+    setModelKinds([]);
+    setPendingTokens(null);
     void (async () => {
       try {
         const created = await studioApi<AgentConversation>("/studio/conversations", {
@@ -121,22 +179,53 @@ export default function AgentPage() {
         setBusy(true);
         await studioApi(`/studio/conversations/${created.id}/messages`, {
           method: "POST",
-          body: jsonBody({ content: start.prompt, assetIds: start.assetIds, marketEntryIds: startMethodIds, modelKinds: startModelKinds }),
+          body: jsonBody({
+            content: start.prompt,
+            assetIds: [...new Set(start.assetIds)],
+            marketEntryIds: [...new Set(startMethodIds)],
+            modelKinds: [...new Set(startModelKinds)],
+          }),
         });
         await refresh();
       } catch (cause) {
         setError((cause as Error).message);
         setDraft(start.prompt);
         setAssetIds(start.assetIds);
+        setMethodIds(startMethodIds);
+        setModelKinds(startModelKinds);
+        setPendingTokens({ assetIds: start.assetIds, methodIds: startMethodIds, modelKinds: startModelKinds });
       } finally {
         setBusy(false);
       }
     })();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!catalogReady || !pendingTokens) return;
+    for (const id of pendingTokens.assetIds) {
+      composerRef.current?.insertToken(
+        { type: "asset", id, label: assets.find((asset) => asset.id === id)?.name || "资产" },
+        false,
+      );
+    }
+    for (const id of pendingTokens.methodIds) {
+      composerRef.current?.insertToken(
+        { type: "skill", id, label: market.find((entry) => entry.id === id)?.title || "Skill" },
+        false,
+      );
+    }
+    for (const id of pendingTokens.modelKinds) {
+      composerRef.current?.insertToken(
+        { type: "model", id, label: modelOptions.find((option) => option.id === id)?.label || "模型" },
+        false,
+      );
+    }
+    setPendingTokens(null);
+  }, [catalogReady, pendingTokens, assets, market]);
+
   async function send() {
     const text = draft.trim();
-    if (!text || busy) return;
+    if (!text || busy || uploading) return;
     setBusy(true);
     setError("");
     try {
@@ -149,20 +238,191 @@ export default function AgentPage() {
         id = created.id;
         setSelectedId(id);
       }
-      setDraft("");
       await studioApi(`/studio/conversations/${id}/messages`, {
         method: "POST",
-        body: jsonBody({ content: text, assetIds, marketEntryIds: methodIds, modelKinds }),
+        body: jsonBody({
+          content: text,
+          assetIds: [...new Set(assetIds)],
+          marketEntryIds: [...new Set(methodIds)],
+          modelKinds: [...new Set(modelKinds)],
+        }),
       });
+      composerRef.current?.clear();
+      setDraft("");
       setAssetIds([]);
       setMethodIds([]);
+      setModelKinds([]);
       await refresh();
     } catch (cause) {
       setError((cause as Error).message);
-      setDraft(text);
     } finally {
       setBusy(false);
     }
+  }
+
+  function removeToken(token: ComposerToken) {
+    if (token.type === "asset") setAssetIds((current) => removeFirst(current, token.id));
+    if (token.type === "skill") setMethodIds((current) => removeFirst(current, token.id));
+    if (token.type === "model") setModelKinds((current) => removeFirst(current, token.id as ModelKind));
+  }
+
+  async function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    setError("");
+    try {
+      for (const file of Array.from(files)) {
+        const asset = await uploadAsset(file);
+        setAssets((current) => [asset, ...current]);
+        setAssetIds((current) => [...current, asset.id]);
+        composerRef.current?.insertToken({ type: "asset", id: asset.id, label: asset.name });
+      }
+      setOpenTool(null);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function renderToolContent(tool: ComposerTool) {
+    if (tool === "model") {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>插入模型</strong>
+          <div className={styles.menuList}>
+            {modelOptions.map((model) => {
+              const Icon = model.icon;
+              return (
+                <button
+                  key={model.id}
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    composerRef.current?.insertToken({ type: "model", id: model.id, label: model.label }, false);
+                    setModelKinds((current) => [...current, model.id]);
+                  }}
+                >
+                  <Icon size={15} />
+                  <span>
+                    {model.label}
+                    <small>{model.detail}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p>当前生成服务尚未接入；模型结果为文字模拟稿。</p>
+        </div>
+      );
+    }
+    if (tool === "mode") {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>输入模式</strong>
+          {(
+            [
+              { id: "auto", title: "自动", detail: "Enter 发送，组合键换行" },
+              { id: "manual", title: "手动", detail: "Enter 换行，点击按钮发送" },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`${styles.menuItem} ${mode === option.id ? styles.menuItemSelected : ""}`}
+              onClick={() => {
+                setMode(option.id);
+                setOpenTool(null);
+              }}
+            >
+              <span>
+                {option.title}
+                <small>{option.detail}</small>
+              </span>
+              {mode === option.id && <Check size={14} />}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    if (tool === "attachments") {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>插入附件</strong>
+          <button
+            type="button"
+            className={styles.menuItem}
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            <Paperclip size={15} />
+            <span>
+              {uploading ? "正在上传…" : "从电脑上传"}
+              <small>单个文件不超过 5 MB</small>
+            </span>
+          </button>
+          <div className={styles.menuDivider} />
+          <span className={styles.menuCaption}>已有资产</span>
+          <div className={styles.menuList}>
+            {assets.length ? (
+              assets.map((asset) => (
+                <button
+                  key={asset.id}
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    composerRef.current?.insertToken({ type: "asset", id: asset.id, label: asset.name }, false);
+                    setAssetIds((current) => [...current, asset.id]);
+                  }}
+                >
+                  <span>{asset.name}</span>
+                </button>
+              ))
+            ) : (
+              <p>还没有资产。可以先上传一份资料。</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+    const entries = market.filter((entry) =>
+      `${entry.title} ${entry.description}`.toLowerCase().includes(toolSearch.toLowerCase()),
+    );
+    return (
+      <div className={styles.toolMenu}>
+        <strong>插入 Skill</strong>
+        <Form.Input
+          className={styles.menuSearch}
+          value={toolSearch}
+          onChange={(event) => setToolSearch(event.target.value)}
+          placeholder="搜索 Skill"
+          aria-label="搜索 Skill"
+        />
+        <div className={styles.menuList}>
+          {entries.length ? (
+            entries.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className={styles.menuItem}
+                onClick={() => {
+                  composerRef.current?.insertToken({ type: "skill", id: entry.id, label: entry.title }, false);
+                  setMethodIds((current) => [...current, entry.id]);
+                }}
+              >
+                <span>
+                  {entry.title}
+                  <small>{entry.description}</small>
+                </span>
+              </button>
+            ))
+          ) : (
+            <p>没有找到可用的 Skill。</p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   async function updateConversation(id: string, value: Record<string, unknown>) {
@@ -210,7 +470,13 @@ export default function AgentPage() {
               title="新建会话"
               onClick={() => {
                 setSelectedId(null);
+                composerRef.current?.clear();
                 setDraft("");
+                setAssetIds([]);
+                setMethodIds([]);
+                setModelKinds([]);
+                setPendingTokens(null);
+                setMode("auto");
               }}
             >
               <Plus size={18} />
@@ -322,105 +588,71 @@ export default function AgentPage() {
           </div>
           <div className={styles.composerWrap}>
             {error && <p className={ui.error}>{error}</p>}
-            {showAssets && (
-              <div className={styles.assetPicker}>
-                <div className={ui.rowBetween}>
-                  <strong>引用资产</strong>
-                  <button onClick={() => setShowAssets(false)}>
-                    <X size={15} />
-                  </button>
-                </div>
-                {assets.length === 0 ? (
-                  <p>资产库为空。先上传资料即可在这里引用。</p>
-                ) : (
-                  assets.map((asset) => (
-                    <label key={asset.id}>
-                      <input
-                        type="checkbox"
-                        checked={assetIds.includes(asset.id)}
-                        onChange={(event) =>
-                          setAssetIds((current) =>
-                            event.target.checked ? [...current, asset.id] : current.filter((id) => id !== asset.id),
-                          )
-                        }
-                      />
-                      {asset.name} <small>{asset.source}</small>
-                    </label>
-                  ))
-                )}
-              </div>
-            )}
             <div className={styles.composer}>
-              <ComposerTextarea
+              <InlineComposer
+                ref={composerRef}
                 value={draft}
                 onValueChange={setDraft}
+                onTokenRemove={removeToken}
                 onSubmit={() => void send()}
                 placeholder="告诉 Weavl Agent 你想完成什么…"
-                title="Enter 发送；Shift / Ctrl / Command + Enter 换行"
-                rows={3}
+                ariaLabel="告诉 Weavl Agent 你想完成什么"
+                submitOnEnter={mode === "auto"}
+                disabled={busy}
               />
-              <div className={ui.rowBetween}>
-                <div className={`${ui.row} ${styles.composerControls}`}>
-                  <button className={styles.toolButton} onClick={() => setShowAssets((value) => !value)}>
-                    <Paperclip size={14} />
-                    {assetIds.length ? `${assetIds.length} 份资产` : "添加资产"}
-                  </button>
-                  <select
-                    className={styles.methodSelect}
-                    aria-label="添加 Skill"
-                    value=""
-                    onChange={(event) => {
-                      const id = event.target.value;
-                      if (id) setMethodIds((current) => current.includes(id) ? current : [...current, id]);
-                    }}
-                  >
-                    <option value="">{methodIds.length ? `已选 ${methodIds.length} 个 Skill` : "添加 Skill"}</option>
-                    {market.map((entry) => (
-                      <option key={entry.id} value={entry.id} disabled={methodIds.includes(entry.id)}>
-                          Skill · {entry.title}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className={styles.methodSelect}
-                    aria-label="添加模型"
-                    value=""
-                    onChange={(event) => {
-                      const id = event.target.value as ModelKind;
-                      if (id) setModelKinds((current) => current.includes(id) ? current : [...current, id]);
-                    }}
-                  >
-                    <option value="">{modelKinds.length ? `已选 ${modelKinds.length} 个模型` : "添加模型（默认文本）"}</option>
-                    {modelOptions.map((option) => (
-                      <option key={option.id} value={option.id} disabled={modelKinds.includes(option.id)}>{option.label}</option>
-                    ))}
-                  </select>
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(event) => void addFiles(event.target.files)}
+              />
+              <div className={styles.composerFooter}>
+                <div className={styles.composerTools}>
+                  {composerTools.map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <ActionPopover
+                        key={tool.id}
+                        hint={tool.label}
+                        open={openTool === tool.id}
+                        onOpenChange={(open) => {
+                          setOpenTool(open ? tool.id : null);
+                          if (open) setToolSearch("");
+                        }}
+                        trigger={
+                          <button
+                            type="button"
+                            className={`${styles.toolButton} ${tool.id === "mode" && mode === "manual" ? styles.toolButtonActive : ""}`}
+                            aria-label={tool.label}
+                          >
+                            <Icon size={15} strokeWidth={1.7} />
+                          </button>
+                        }
+                      >
+                        {renderToolContent(tool.id)}
+                      </ActionPopover>
+                    );
+                  })}
+                  <span className={styles.modeLabel}>{mode === "auto" ? "自动" : "手动"} · 模拟</span>
                 </div>
-                <button
-                  className={styles.send}
-                  title="发送"
-                  disabled={!draft.trim() || busy}
-                  onClick={() => void send()}
+                <ActionPopover
+                  mode="hover"
+                  trigger={
+                    <button
+                      type="button"
+                      className={styles.send}
+                      aria-label="发送"
+                      disabled={!draft.trim() || busy || uploading}
+                      onClick={() => void send()}
+                    >
+                      <ArrowUp size={17} />
+                    </button>
+                  }
                 >
-                  <ArrowUp size={17} />
-                </button>
+                  发送
+                </ActionPopover>
               </div>
-              {(methodIds.length > 0 || modelKinds.length > 0) && (
-                <div className={styles.selectionChips}>
-                  {modelKinds.map((id) => (
-                    <span key={`model-${id}`} className={styles.selectionChip}>
-                      <Box size={12} />{modelOptions.find((option) => option.id === id)?.label || id}
-                      <button type="button" aria-label={`移除${id}模型`} onClick={() => setModelKinds((current) => current.filter((item) => item !== id))}><X size={12} /></button>
-                    </span>
-                  ))}
-                  {methodIds.map((id) => (
-                    <span key={`skill-${id}`} className={styles.selectionChip}>
-                      Skill · {market.find((entry) => entry.id === id)?.title || "已选方法"}
-                      <button type="button" aria-label="移除 Skill" onClick={() => setMethodIds((current) => current.filter((item) => item !== id))}><X size={12} /></button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
             <p className={styles.disclaimer}>
               模拟模式：内容由本地模板生成并保存，可用于验证完整交互；模型接入后替换服务适配器。
