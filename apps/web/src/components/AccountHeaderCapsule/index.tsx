@@ -4,6 +4,7 @@ import { Coins, User } from "lucide-react";
 import type { ComponentProps } from "react";
 
 import { HeaderCapsule } from "@/components/HeaderCapsule";
+import { formatNumber } from "@/utils/formatNumber";
 import styles from "./index.module.scss";
 
 type MembershipPlan = "Free" | "Plus" | "Pro" | "Max";
@@ -19,7 +20,7 @@ export function AccountHeaderCapsule({ amount, plan, ...props }: AccountHeaderCa
     <HeaderCapsule endInset {...props}>
       <span className={styles.credits}>
         <Coins size={12} />
-        <span>{amount}</span>
+        <span>{formatNumber(amount)}</span>
       </span>
       <span className={styles.divider} aria-hidden="true" />
       <span className={styles.plan}>{plan}</span>

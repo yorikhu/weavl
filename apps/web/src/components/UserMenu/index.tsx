@@ -8,6 +8,7 @@ import { Popover, type PopoverProps } from "@/components/Popover";
 import { useTheme } from "@/provider/ThemeProvider";
 import { useAuth } from "@/provider/AuthProvider";
 import { useAccount } from "@/provider/AccountProvider";
+import { formatNumber } from "@/utils/formatNumber";
 import styles from "./index.module.scss";
 
 const Switch = SwitchPrimitive.Root;
@@ -74,7 +75,7 @@ export function UserMenu({ trigger, side = "bottom", align = "end" }: UserMenuPr
         <div className={styles.statsRow}>
           <span className={styles.stat}>
             <span className={styles.statLabel}>积分</span>
-            <span className={styles.statValue}>{account?.credits ?? "—"}</span>
+            <span className={styles.statValue}>{account ? formatNumber(account.credits) : "—"}</span>
           </span>
         </div>
         <div className={styles.statsRow}>

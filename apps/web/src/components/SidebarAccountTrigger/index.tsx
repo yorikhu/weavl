@@ -3,6 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { Coins, UserRound } from "lucide-react";
 import type { AccountPlanId } from "@weavl/shared";
+import { formatNumber } from "@/utils/formatNumber";
 import styles from "./index.module.scss";
 
 type SidebarAccountTriggerProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
@@ -26,7 +27,7 @@ export const SidebarAccountTrigger = forwardRef<HTMLButtonElement, SidebarAccoun
         <span className={styles.plan}>{plan}</span>
         <span className={styles.credits}>
           <Coins size={13} />
-          <span>{credits}</span>
+          <span>{formatNumber(credits)}</span>
         </span>
       </button>
     );

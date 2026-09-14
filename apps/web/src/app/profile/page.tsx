@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { studioApi, jsonBody } from "@/lib/studioApi";
 import { useAccount } from "@/provider/AccountProvider";
 import { useAuth } from "@/provider/AuthProvider";
+import { formatNumber } from "@/utils/formatNumber";
 import ui from "@/styles/studio.module.scss";
 import styles from "./page.module.scss";
 
@@ -127,7 +128,7 @@ export default function ProfilePage() {
               </section>
               <button className={`${ui.card} ${styles.summaryButton}`} onClick={() => changeTab("credits")}>
                 <span className={ui.eyebrow}>可用积分</span>
-                <strong>{account?.credits ?? "—"}</strong>
+                <strong>{account ? formatNumber(account.credits) : "—"}</strong>
                 <span className={ui.meta}>
                   模拟生成目前不扣积分 <ArrowUpRight size={13} />
                 </span>
@@ -185,7 +186,7 @@ export default function ProfilePage() {
             <section className={`${ui.card} ${styles.creditHero}`}>
               <Coins size={20} />
               <span>可用积分</span>
-              <strong>{account?.credits ?? "—"}</strong>
+              <strong>{account ? formatNumber(account.credits) : "—"}</strong>
               <p>当前 Agent 与工作流使用模拟生成，不扣除积分。真实计费与充值会在模型服务接入后开放。</p>
             </section>
             <h2 className={styles.sectionTitle}>积分记录</h2>
@@ -198,7 +199,9 @@ export default function ProfilePage() {
                     <p>{event.detail}</p>
                   </div>
                   <div>
-                    <b>{event.delta && event.delta > 0 ? `+${event.delta}` : (event.delta ?? "—")}</b>
+                    <b>
+                      {event.delta === undefined ? "—" : `${event.delta > 0 ? "+" : ""}${formatNumber(event.delta)}`}
+                    </b>
                     <small>{new Date(event.createdAt).toLocaleString("zh-CN")}</small>
                   </div>
                 </article>
