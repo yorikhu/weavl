@@ -312,7 +312,7 @@ export default function HomePage() {
           </div>
           <div className={styles.heroMeta}>
             <span>WEAVL / CREATIVE WORKSPACE</span>
-            <span>从想法到作品，再到可重复的方法</span>
+            <span>从想法到作品，再到可复用的方法</span>
           </div>
           <div ref={heroContentRef} className={styles.heroContent}>
             <h1 ref={heroTitleRef}>

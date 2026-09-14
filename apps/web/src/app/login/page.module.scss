@@ -13,7 +13,11 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  background: radial-gradient(ellipse 46% 66% at 26% 50%, color-mix(in srgb, var(--background) 46%, transparent), transparent 100%);
+  background: radial-gradient(
+    ellipse 46% 66% at 26% 50%,
+    color-mix(in srgb, var(--background) 46%, transparent),
+    transparent 100%
+  );
   pointer-events: none;
 }
 .screen > :not(.aeroLayer) {
@@ -47,6 +51,10 @@
   max-width: 1180px;
   width: 100%;
   margin: auto;
+}
+.intro {
+  -webkit-user-select: none;
+  user-select: none;
 }
 .intro h1 {
   margin: 18px 0;
@@ -124,11 +132,7 @@
 }
 @media (max-width: 800px) {
   .screen::after {
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--background) 62%, transparent),
-      transparent 58%
-    );
+    background: linear-gradient(180deg, color-mix(in srgb, var(--background) 62%, transparent), transparent 58%);
   }
   .content {
     grid-template-columns: 1fr;
@@ -143,9 +147,20 @@
   }
 }
 @media (max-width: 480px) {
-  .screen { padding: 24px 20px; }
-  .content { padding: 44px 0 36px; }
-  .intro h1 { font-size: clamp(32px, 9vw, 38px); }
-  .capabilityTrail { gap: 7px; margin-top: 32px; }
-  .capabilityTrail span { font-size: 9px; }
+  .screen {
+    padding: 24px 20px;
+  }
+  .content {
+    padding: 44px 0 36px;
+  }
+  .intro h1 {
+    font-size: clamp(32px, 9vw, 38px);
+  }
+  .capabilityTrail {
+    gap: 7px;
+    margin-top: 32px;
+  }
+  .capabilityTrail span {
+    font-size: 9px;
+  }
 }
