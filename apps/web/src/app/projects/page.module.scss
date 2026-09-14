@@ -1,67 +1,537 @@
-.createBox {
+.workspace {
   display: grid;
-  grid-template-columns: 1fr minmax(220px, 360px) auto;
+  grid-template-columns: 206px minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(24px, 3vw, 42px);
+  margin-top: 30px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.sideItem {
+  display: flex;
   align-items: center;
-  gap: 18px;
-  margin-bottom: 20px;
-}
-.projectCard {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-.cover {
-  height: 120px;
-  border-radius: 12px;
-  background: var(--subcard);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-.iconButton {
-  color: var(--muted-foreground);
-  padding: 6px;
-  border-radius: 8px;
-}
-.iconButton:hover {
-  background: var(--subcard);
-}
-.canvasList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-top: 1px solid var(--surface-border);
-  padding-top: 12px;
-}
-.canvasLink {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 11px;
   width: 100%;
+  min-height: 39px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--muted-foreground);
   text-align: left;
-  padding: 9px 10px;
-  border-radius: 8px;
   font-size: 12px;
-  color: inherit;
-  text-decoration: none;
-  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
 }
-.canvasLink:hover {
-  background: var(--subcard);
-}
-.canvasLink > span:last-child {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--faint-foreground);
+
+.sideItem span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.sideItem small {
+  margin-left: auto;
+  color: var(--faint-foreground);
+  font-size: 11px;
+}
+
+.sideItem:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.sideActive,
+.sideActive:hover {
+  background: var(--surface);
+  border-color: var(--surface-border);
+  color: var(--foreground);
+}
+
+.folderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 22px 5px 8px 11px;
+  color: var(--faint-foreground);
+  font-size: 10px;
+  font-weight: 620;
+  letter-spacing: 0.06em;
+}
+
+.folderHeader button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+.folderHeader button:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.folderRow {
+  position: relative;
+  min-width: 0;
+}
+
+.folderRow .sideItem {
+  padding-right: 35px;
+}
+
+.folderMore {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  opacity: 0;
+}
+
+.folderRow:hover .folderMore,
+.folderMore:focus-visible,
+.folderMore[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.folderMore:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.folderMenu {
+  width: 160px;
+}
+
+.sideDivider {
+  height: 1px;
+  margin: 18px 11px 13px;
+  background: var(--surface-border);
+}
+
+.content {
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.toolbar h2 {
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+}
+
+.toolbar p {
+  margin-top: 4px;
+  color: var(--faint-foreground);
+  font-size: 11px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(270px, 100%);
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  background: var(--input);
+  color: var(--muted-foreground);
+}
+
+.search:focus-within {
+  border-color: var(--muted-foreground);
+}
+
+.search input {
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.search input:focus {
+  border: 0;
+  box-shadow: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.projectCard {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  border-radius: 15px;
+  background: var(--surface);
+  transform: perspective(850px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transform-style: preserve-3d;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 130ms ease-out;
+}
+
+.projectCard:hover {
+  z-index: 2;
+  border-color: var(--surface-hover-border);
+  box-shadow: 0 14px 30px rgb(26 31 39 / 10%);
+  transform: perspective(850px) translateY(-3px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(1.015);
+}
+
+:global(html.dark) .projectCard:hover {
+  box-shadow: 0 16px 36px rgb(0 0 0 / 25%);
+}
+
+.projectCard.editing,
+.projectCard.editing:hover {
+  transform: none;
+}
+
+.cardHitArea {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.cardHitArea:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: -3px;
+}
+
+.editing .cardHitArea {
+  pointer-events: none;
+}
+
+.cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #222729;
+}
+
+.cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 72% 16%, rgb(255 255 255 / 42%), transparent 48%);
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+:global(html:not(.dark)) .cover::after {
+  opacity: 0.32;
+}
+
+.coverArtwork,
+.coverImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 220ms ease;
+}
+
+.projectCard:hover .coverArtwork,
+.projectCard:hover .coverImage {
+  transform: translateY(-3px) scale(1.02);
+}
+
+.coverOpen {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 7px;
+  background: rgb(18 21 22 / 67%);
+  color: #fff;
+  font-size: 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.projectCard:hover .coverOpen,
+.projectCard:focus-within .coverOpen {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cardFooter {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 78px;
+  padding: 14px 13px 15px 16px;
+  pointer-events: none;
+}
+
+.cardInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.cardInfo h2 {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.cardInfo h2 span {
+  cursor: text;
+  user-select: none;
+}
+
+.nameEditing {
+  overflow: visible !important;
+  white-space: normal !important;
+}
+
+.nameInput {
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.renameError {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger, #b64747);
+  font-size: 10px;
+}
+
+.cardInfo p {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+}
+
+.menuTrigger {
+  pointer-events: auto;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  margin-top: -3px;
+  border-radius: 7px;
+  color: var(--muted-foreground);
+}
+
+.menuTrigger:hover,
+.menuTrigger[aria-expanded="true"] {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.projectMenu {
+  width: 190px;
+}
+
+.menuItems {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuItems button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 9px;
+  border-radius: 7px;
+  color: var(--foreground);
+  text-align: left;
+  font-size: 11.5px;
+}
+
+.menuItems button svg {
+  color: var(--muted-foreground);
+}
+
+.menuItems button:hover {
+  background: var(--surface-hover);
+}
+
+.menuItems .dangerItem,
+.menuItems .dangerItem svg {
+  color: #c96868;
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--surface-border);
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 250px;
+  border: 1px dashed var(--surface-border);
+  border-radius: 14px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.notice {
+  margin-bottom: 14px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 55%);
+}
+
+.dialog {
+  width: min(420px, 100%);
+  padding: 26px;
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 18%);
+}
+
+.dialogHead,
+.dialogActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.dialogHead h2 {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 620;
+}
+
+.dialogHead button {
+  color: var(--muted-foreground);
+}
+
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 27px;
+}
+
+.dialogActions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 850px) {
-  .createBox {
+  .workspace {
     grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+  .sideItem {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .folderRow {
+    flex: 0 0 auto;
+  }
+  .folderHeader {
+    margin: 0 5px 0 12px;
+  }
+  .sideDivider {
+    width: 1px;
+    height: 25px;
+    flex: 0 0 auto;
+    margin: 0 5px;
+  }
+}
+
+@media (max-width: 560px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 13px;
+  }
+  .search {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projectCard,
+  .coverArtwork,
+  .coverImage,
+  .coverOpen {
+    transition: none;
+  }
+
+  .projectCard:hover,
+  .projectCard:hover .coverArtwork,
+  .projectCard:hover .coverImage {
+    transform: none;
   }
 }
