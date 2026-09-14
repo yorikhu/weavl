@@ -1,626 +1,504 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  ArrowUp,
-  Bot,
-  Box,
-  Check,
-  Clock,
-  Cpu,
-  Images,
-  Layers,
-  Plus,
-  SlidersHorizontal,
-  Sparkles,
-  Upload,
-  Workflow,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUp, AudioLines, Bot, Box, Check, Clapperboard, FileText, FolderOpen, Image, LayoutGrid, Paperclip, Settings2, ShoppingBag, UserRound, Wrench, Workflow } from "lucide-react";
+import type { Asset, MarketEntry } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
-import { Popover } from "@/components/Popover";
+import { ActionPopover } from "@/components/ActionPopover";
+import { AbilityCard } from "./components/AbilityCard";
+import { InlineComposer, type InlineComposerHandle } from "@/components/InlineComposer";
+import GlareHover from "@/components/GlareHover";
+import { studioApi } from "@/lib/studioApi";
+import { useAuth } from "@/provider/AuthProvider";
 import { useTheme } from "@/provider/ThemeProvider";
+import { uploadAsset } from "@/utils/uploadAsset";
+import { createTiltCardHandlers } from "@/utils/tiltCard";
 import styles from "./page.module.scss";
 
+const examples = ["把访谈资料整理成 IP 定位", "根据产品资料写一版脚本", "梳理一周进度形成周报"];
 const AeroShards = memo(dynamic(() => import("@/components/AeroShards"), { ssr: false }));
-
-/* 工作流模板（mock，后续接 templates API） */
-const TEMPLATES = [
+const heroTiltHandlers = createTiltCardHandlers<HTMLDivElement>(6);
+const models = [
+  { id: "text", label: "文本模型", detail: "文案、策划、结构化内容", icon: FileText },
+  { id: "image", label: "图片模型", detail: "视觉概念与图片生成", icon: Image },
+  { id: "video", label: "视频模型", detail: "分镜与视频生成", icon: Clapperboard },
+  { id: "audio", label: "音频模型", detail: "配音、音乐与音效", icon: AudioLines },
+  { id: "avatar", label: "数字人模型", detail: "形象与口播内容", icon: UserRound },
+] as const;
+type ModelKind = (typeof models)[number]["id"];
+const composerTools = [
+  { id: "attachments", label: "插入附件", icon: Paperclip },
+  { id: "model", label: "插入模型", icon: Box },
+  { id: "skill", label: "插入 Skill", icon: Wrench },
+  { id: "mode", label: "选择模式", icon: Settings2 },
+] as const;
+type ComposerTool = (typeof composerTools)[number]["id"];
+type CreationMode = "manual" | "auto";
+function removeFirst<T>(items: T[], value: T): T[] {
+  const index = items.indexOf(value);
+  return index < 0 ? items : items.filter((_, itemIndex) => itemIndex !== index);
+}
+const abilities = [
+  { title: "对话创作", desc: "让每个念头，在对话中渐渐成形。", href: "/agent", icon: Bot, number: "01", artwork: "agent" },
   {
-    name: "小红书种草图文",
-    desc: "6 节点 · 选题→封面→正文",
-    tag: "图文",
-    uses: "12.4k",
-    flow: ["llm", "image", "output"] as const,
+    title: "项目画布",
+    desc: "素材与思路，在画布上有序生长。",
+    href: "/projects",
+    icon: LayoutGrid,
+    number: "02",
+    artwork: "canvas",
+  },
+  { title: "技能市场", desc: "让好方法被发现，也被更多人沿用。", href: "/market", icon: ShoppingBag, number: "03", artwork: "skill" },
+  {
+    title: "工作流",
+    desc: "一键复用，重复的工作不再重复。",
+    href: "/workflows",
+    icon: Workflow,
+    number: "04",
+    artwork: "workflow",
   },
   {
-    name: "电商主图流水线",
-    desc: "4 节点 · 批量出图",
-    tag: "图片",
-    uses: "8.2k",
-    flow: ["llm", "image"] as const,
-  },
-  {
-    name: "短剧分镜工作台",
-    desc: "8 节点 · 分支剧情",
-    tag: "视频",
-    uses: "6.7k",
-    flow: ["llm", "output", "image", "llm"] as const,
-  },
-  {
-    name: "古风视频成片",
-    desc: "5 节点 · 脚本→配音→成片",
-    tag: "视频",
-    uses: "5.1k",
-    flow: ["image", "output"] as const,
+    title: "共享资产",
+    desc: "让资料与作品，始终有处可归。",
+    href: "/assets",
+    icon: FolderOpen,
+    number: "05",
+    artwork: "assets",
   },
 ] as const;
-
-/* 节点色（与画布 KIND_META 对齐） */
-const FLOW_COLORS: Record<string, string> = {
-  llm: "#d44b7e",
-  image: "#d4537e",
-  output: "#f59e0b",
-};
-
-/* 最近画布（mock，后续接 projects API） */
-const RECENT = [
-  { name: "法式穿搭大片", meta: "3 分钟前编辑 · 6 节点", flow: ["image", "video", "output"] },
-  { name: "夏日海边宣传片", meta: "昨天编辑 · 4 节点", flow: ["video", "output"] },
-  { name: "国风水墨分镜", meta: "3 天前编辑 · 8 节点", flow: ["llm", "output", "video", "llm"] },
-] as const;
-
-/* 我的 Agent（mock） */
-const MY_AGENTS = [
-  { name: "种草文案手", runs: 23, hue: "#534ab7" },
-  { name: "分镜师", runs: 11, hue: "#0F6E56" },
-] as const;
-
-const HOT_TAGS = ["古风视频", "电商主图", "小红书图文", "短剧分镜"] as const;
-const PROMPT_MIN_HEIGHT = 58;
-const PROMPT_MAX_HEIGHT = 118;
-
-interface PromptChoice {
-  id: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-}
-
-type PromptMenu = "model" | "skill" | "mode";
-
-const MODEL_OPTIONS: PromptChoice[] = [
-  { id: "auto", label: "智能选择", description: "根据任务自动匹配合适模型", icon: Sparkles },
-  { id: "quality", label: "高质量模型", description: "优先复杂推理与生成质量", icon: Cpu },
-  { id: "fast", label: "快速模型", description: "优先响应速度与轻量任务", icon: Bot },
+const capabilities = [
+  { name: "文本与结构化内容", status: "本地模拟可用", desc: "对话草稿、定位、脚本与周报" },
+  { name: "图像、视频与音频", status: "待接入模型", desc: "资产可上传、预览与引用；生成服务尚未接入" },
+  { name: "Word、PPT 与 PDF", status: "文件管理可用", desc: "支持资产化与下载，专项生成随后接入" },
 ];
-
-const SKILL_OPTIONS: PromptChoice[] = [
-  { id: "auto", label: "自动匹配 Skill", description: "根据输入自动加载专业能力", icon: Sparkles },
-  { id: "visual", label: "视觉创作", description: "图像、设计与视觉内容生成", icon: Images },
-  { id: "workflow", label: "工作流编排", description: "拆解任务并连接多个执行步骤", icon: Workflow },
-];
-
-const MODE_OPTIONS: PromptChoice[] = [
-  { id: "workflow", label: "工作流模式", description: "生成可继续编辑的完整工作流", icon: Workflow },
-  { id: "direct", label: "直接生成", description: "跳过编排，直接生成最终内容", icon: Sparkles },
-  { id: "plan", label: "仅规划", description: "先输出结构和执行计划", icon: Layers },
-];
-
-interface PromptChoicePopoverProps {
-  label: string;
-  hint: string;
-  icon: LucideIcon;
-  options: PromptChoice[];
-  selected: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSelect: (id: string) => void;
-}
-
-function PromptChoicePopover({
-  label,
-  hint,
-  icon: TriggerIcon,
-  options,
-  selected,
-  open,
-  onOpenChange,
-  onSelect,
-}: PromptChoicePopoverProps) {
-  return (
-    <Popover
-      mode="click"
-      open={open}
-      onOpenChange={onOpenChange}
-      side="top"
-      align="center"
-      sideOffset={10}
-      ariaLabel={label}
-      contentRole="menu"
-      contentClassName={styles.attachmentPopover}
-      hint={hint}
-      hintAlign="center"
-      preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
-      trigger={
-        <button
-          type="button"
-          className={styles.promptIconButton}
-          aria-label={label}
-          data-prompt-popover-trigger
-        >
-          <TriggerIcon size={14} />
-        </button>
-      }
-    >
-      {options.map((option) => {
-        const OptionIcon = option.icon;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            className={styles.attachmentOption}
-            role="menuitemradio"
-            aria-checked={selected === option.id}
-            onClick={() => onSelect(option.id)}
-          >
-            <span className={styles.attachmentOptionIcon}>
-              <OptionIcon size={15} />
-            </span>
-            <span>
-              <strong>{option.label}</strong>
-              <small>{option.description}</small>
-            </span>
-            {selected === option.id && <Check size={14} className={styles.choiceCheck} />}
-          </button>
-        );
-      })}
-    </Popover>
-  );
-}
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const { theme } = useTheme();
-  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
-  const [attachmentComposerExpanded, setAttachmentComposerExpanded] = useState(false);
-  const [activePromptMenu, setActivePromptMenu] = useState<PromptMenu | null>(null);
-  const [selectedModel, setSelectedModel] = useState("auto");
-  const [selectedSkill, setSelectedSkill] = useState("auto");
-  const [selectedMode, setSelectedMode] = useState("workflow");
-  const attachmentInputRef = useRef<HTMLInputElement>(null);
-  const promptInputRef = useRef<HTMLTextAreaElement>(null);
-  const promptSubmitRef = useRef<HTMLButtonElement>(null);
-  const promptBarRef = useRef<HTMLDivElement>(null);
-  const attachmentExpandTimerRef = useRef<number | null>(null);
+  const [initialPrompt, setInitialPrompt] = useState("");
+  const promptRef = useRef("");
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [market, setMarket] = useState<MarketEntry[]>([]);
+  const [assetIds, setAssetIds] = useState<string[]>([]);
+  const [methodIds, setMethodIds] = useState<string[]>([]);
+  const [modelKinds, setModelKinds] = useState<ModelKind[]>([]);
+  const [mode, setMode] = useState<CreationMode>("auto");
+  const [openTool, setOpenTool] = useState<ComposerTool | null>(null);
+  const [toolSearch, setToolSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [composerError, setComposerError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<InlineComposerHandle>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
+  const heroTitleRef = useRef<HTMLHeadingElement>(null);
+  const heroDescriptionRef = useRef<HTMLParagraphElement>(null);
+  const [hideHeroCard, setHideHeroCard] = useState(false);
 
-  useEffect(
-    () => () => {
-      if (attachmentExpandTimerRef.current !== null) window.clearTimeout(attachmentExpandTimerRef.current);
-    },
-    [],
-  );
+  useLayoutEffect(() => {
+    const hero = heroRef.current;
+    const content = heroContentRef.current;
+    const title = heroTitleRef.current;
+    const description = heroDescriptionRef.current;
+    if (!hero || !content || !title || !description) return;
 
-  useEffect(() => {
-    const handleOutsidePointerDown = (event: PointerEvent) => {
-      if (promptInputRef.current?.value.trim()) return;
-
-      const target = event.target;
-      if (!(target instanceof Node) || promptBarRef.current?.contains(target)) return;
-      if (target instanceof Element && target.closest(`.${styles.attachmentPopover}`)) return;
-
-      setAttachmentComposerExpanded(false);
+    const updateCardVisibility = () => {
+      const heroStyle = getComputedStyle(hero);
+      const contentStyle = getComputedStyle(content);
+      const gap = parseFloat(heroStyle.columnGap) || 0;
+      const innerWidth = hero.clientWidth - gap;
+      const cardMinWidth = 260;
+      const contentColumnWidth = Math.min((innerWidth * 1.7) / 2.4, innerWidth - cardMinWidth);
+      const textWidth =
+        contentColumnWidth - parseFloat(contentStyle.paddingLeft) - parseFloat(contentStyle.paddingRight);
+      setHideHeroCard(textWidth < Math.max(title.scrollWidth, description.scrollWidth) + 8);
     };
 
-    document.addEventListener("pointerdown", handleOutsidePointerDown);
-    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+    const observer = new ResizeObserver(updateCardVisibility);
+    observer.observe(hero);
+    observer.observe(title);
+    observer.observe(description);
+    updateCardVisibility();
+    return () => observer.disconnect();
   }, []);
 
-  const handleAttachmentMenuOpenChange = (open: boolean) => {
-    if (attachmentExpandTimerRef.current !== null) {
-      window.clearTimeout(attachmentExpandTimerRef.current);
-      attachmentExpandTimerRef.current = null;
+  useEffect(() => {
+    if (!user) return;
+    void Promise.all([
+      studioApi<Asset[]>("/studio/assets"),
+      studioApi<MarketEntry[]>("/studio/market"),
+    ])
+      .then(([files, methods]) => {
+        setAssets(files);
+        setMarket(methods);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("weavl:home-draft");
+    if (saved) {
+      promptRef.current = saved;
+      setInitialPrompt(saved);
+      sessionStorage.removeItem("weavl:home-draft");
     }
+  }, []);
 
-    setAttachmentMenuOpen(open);
-    if (!open) {
-      return;
+  async function addFiles(files: FileList | null) {
+    if (!files?.length || !user) return;
+    setUploading(true);
+    setComposerError("");
+    try {
+      for (const file of Array.from(files)) {
+        const asset = await uploadAsset(file);
+        setAssets((current) => [asset, ...current]);
+        setAssetIds((current) => [...current, asset.id]);
+        composerRef.current?.insertToken({ type: "asset", id: asset.id, label: asset.name });
+      }
+      setOpenTool(null);
+    } catch (cause) {
+      setComposerError((cause as Error).message);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
+  }
 
-    setActivePromptMenu(null);
+  function openLogin() {
+    if (promptRef.current) sessionStorage.setItem("weavl:home-draft", promptRef.current);
+    router.push("/login?next=/home");
+  }
 
-    if (promptInputRef.current?.value.trim() || document.activeElement === promptInputRef.current) {
-      setAttachmentComposerExpanded(true);
-      return;
+  function begin(value = promptRef.current) {
+    const text = value.trim();
+    if (text || assetIds.length || methodIds.length || modelKinds.length) {
+      sessionStorage.setItem(
+        "weavl:agent-start",
+        JSON.stringify({ prompt: text, assetIds, marketEntryIds: methodIds, modelKinds, auto: mode === "auto" && Boolean(text) }),
+      );
     }
+    router.push(user ? "/agent" : "/login?next=/agent");
+  }
 
-    attachmentExpandTimerRef.current = window.setTimeout(() => {
-      setAttachmentComposerExpanded(true);
-      attachmentExpandTimerRef.current = null;
-    }, 90);
-  };
-
-  const handlePromptMenuOpenChange = (menu: PromptMenu, open: boolean) => {
-    setActivePromptMenu((currentMenu) => {
-      if (open) return menu;
-      return currentMenu === menu ? null : currentMenu;
-    });
-
-    if (open) setAttachmentMenuOpen(false);
-  };
-
-  const resizePromptInput = (input: HTMLTextAreaElement) => {
-    const nextHeight = Math.min(
-      PROMPT_MAX_HEIGHT,
-      Math.max(PROMPT_MIN_HEIGHT, input.getBoundingClientRect().height),
+  function renderToolContent(tool: ComposerTool) {
+    if (tool === "model") {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>插入模型</strong>
+          <div className={styles.menuList}>
+            {models.map((model) => {
+              const Icon = model.icon;
+              return (
+                <button key={model.id} type="button" className={styles.menuItem} onClick={() => {
+                  composerRef.current?.insertToken({ type: "model", id: model.id, label: model.label }, false);
+                  setModelKinds((current) => [...current, model.id]);
+                }}>
+                  <Icon size={15} />
+                  <span>{model.label}<small>{model.detail}</small></span>
+                </button>
+              );
+            })}
+          </div>
+          <p>当前生成服务尚未接入；插入的模型会带入 Agent，结果为文字模拟稿。</p>
+        </div>
+      );
+    }
+    if (tool === "mode") {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>创作模式</strong>
+          {([
+            { id: "auto", title: "自动", detail: "进入 Agent 后直接开始生成" },
+            { id: "manual", title: "手动", detail: "先带入草稿，由你确认后发送" },
+          ] as const).map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`${styles.menuItem} ${mode === option.id ? styles.menuItemSelected : ""}`}
+              onClick={() => { setMode(option.id); setOpenTool(null); }}
+            >
+              <span>{option.title}<small>{option.detail}</small></span>
+              {mode === option.id && <Check size={14} />}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    if (!user) {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>{composerTools.find((item) => item.id === tool)?.label}</strong>
+          <p>登录后可使用自己的资产与 Skill。</p>
+          <button type="button" className={styles.menuItem} onClick={openLogin}>登录后继续 <ArrowRight size={14} /></button>
+        </div>
+      );
+    }
+    if (tool === "attachments") {
+      return (
+        <div className={styles.toolMenu}>
+          <strong>插入附件</strong>
+          <button type="button" className={styles.menuItem} onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <Paperclip size={15} /><span>{uploading ? "正在上传…" : "从电脑上传"}<small>单个文件不超过 5 MB</small></span>
+          </button>
+          <div className={styles.menuDivider} />
+          <span className={styles.menuCaption}>已有资产</span>
+          <div className={styles.menuList}>
+            {assets.length ? assets.map((asset) => (
+              <button
+                key={asset.id}
+                type="button"
+                className={styles.menuItem}
+                onClick={() => {
+                  composerRef.current?.insertToken({ type: "asset", id: asset.id, label: asset.name }, false);
+                  setAssetIds((current) => [...current, asset.id]);
+                }}
+              >
+                <span>{asset.name}</span>
+              </button>
+            )) : <p>还没有资产。可以先上传一份资料。</p>}
+          </div>
+        </div>
+      );
+    }
+    const entries = market.filter((entry) => `${entry.title} ${entry.description}`.toLowerCase().includes(toolSearch.toLowerCase()));
+    return (
+      <div className={styles.toolMenu}>
+        <strong>插入 Skill</strong>
+        <input
+          className={styles.menuSearch}
+          value={toolSearch}
+          onChange={(event) => setToolSearch(event.target.value)}
+          placeholder="搜索 Skill"
+          aria-label="搜索 Skill"
+        />
+        <div className={styles.menuList}>
+          {entries.length ? entries.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={styles.menuItem}
+              onClick={() => {
+                composerRef.current?.insertToken({ type: "skill", id: entry.id, label: entry.title }, false);
+                setMethodIds((current) => [...current, entry.id]);
+              }}
+            >
+              <span>{entry.title}<small>{entry.description}</small></span>
+            </button>
+          )) : <p>没有找到可用的 Skill。</p>}
+        </div>
+      </div>
     );
-    promptBarRef.current?.style.setProperty("--prompt-input-height", `${nextHeight}px`);
-  };
-
-  const openLocalAttachmentPicker = () => {
-    if (attachmentExpandTimerRef.current !== null) {
-      window.clearTimeout(attachmentExpandTimerRef.current);
-      attachmentExpandTimerRef.current = null;
-    }
-
-    setAttachmentMenuOpen(false);
-    setAttachmentComposerExpanded(true);
-
-    const input = attachmentInputRef.current;
-    if (input) {
-      input.value = "";
-      input.click();
-    }
-  };
-
-  /* Hero 提交：带 prompt 进画布并自动唤起 Agent */
-  const startAgent = () => {
-    const q = promptInputRef.current?.value.trim() ?? "";
-    if (q) {
-      sessionStorage.setItem("weavl:agent-prompt", q);
-      router.push("/canvas?agent=1");
-    } else {
-      router.push("/canvas");
-    }
-  };
+  }
 
   return (
     <AppShell>
-      <div className={styles.container}>
-        {/* ---- Hero：Agent 主入口 ---- */}
-        <section className={styles.hero}>
-          <div className={styles.aeroLayer}>
+      <div className={styles.page}>
+        <section ref={heroRef} className={`${styles.hero} ${hideHeroCard ? styles.heroWithoutCard : ""}`}>
+          <div className={styles.aeroLayer} aria-hidden="true">
             <AeroShards
-              backgroundColor={theme === "dark" ? "#161618" : "#F5F1FF"}
-              shardColor={theme === "dark" ? "#696973" : "#5ED7E5"}
-              accentColor={theme === "dark" ? "#E4E4E7" : "#7C5CFC"}
-              placement="full"
-              flow="stream"
-              material="pearl"
-              detail="balanced"
-              effect="none"
-              scale={1}
-              spread={1}
-              depth={1}
-              speed={1}
-              spin={1}
-              interaction="repel"
-              density={1.5}
-              shardSize={1.1}
-              stretch={1}
-              turbulence={1}
-              glow={1}
-              edgeSoftness={2}
-              bloom={0.5}
-              grain={0.05}
-              chromaticAberration={0.0075}
-              transitionDuration={1}
-              interactionRadius={1.5}
-              interactionStrength={0.5}
-              rippleIntensity={1}
-              holdToGather
-              onError={undefined}
+              backgroundColor={theme === "dark" ? "#161618" : "#FFFFFF"}
+              shardColor={theme === "dark" ? "#696973" : "#C2C7D0"}
+              accentColor={theme === "dark" ? "#E4E4E7" : "#59606B"}
+              placement="full" flow="stream" material="pearl" detail="balanced" effect="none"
+              scale={1} spread={1} depth={1} speed={1} spin={1} interaction="repel"
+              density={0.9} shardSize={1.1} stretch={1} turbulence={1} glow={0.65}
+              edgeSoftness={2} bloom={0.3} grain={0.03} chromaticAberration={0}
+              transitionDuration={1} interactionRadius={1.5} interactionStrength={0.5}
+              rippleIntensity={1} holdToGather
             />
           </div>
-          <h1 className={styles.heroTitle}>你好，织光师</h1>
-          <p className={styles.heroSub}>描述你想做的事，Agent 为你编排画布工作流</p>
-          <div
-            ref={promptBarRef}
-            className={`${styles.promptBar} ${
-              attachmentComposerExpanded || activePromptMenu ? styles.promptBarActive : ""
-            }`}
-          >
-            <input
-              ref={attachmentInputRef}
-              className={styles.attachmentInput}
-              type="file"
-              multiple
-              onChange={() => setAttachmentComposerExpanded(true)}
-            />
-            <Popover
-              mode="click"
-              open={attachmentMenuOpen}
-              onOpenChange={handleAttachmentMenuOpenChange}
-              side="top"
-              align="start"
-              sideOffset={10}
-              ariaLabel="添加附件"
-              contentRole="menu"
-              contentClassName={styles.attachmentPopover}
-              hint="添加附件"
-              hintAlign="center"
-              preserveOpenOnOutsideSelector="[data-prompt-popover-trigger]"
-              autoFocusOnOpen={false}
-              trigger={
-                <button
-                  type="button"
-                  className={`${styles.promptIconButton} ${styles.promptPlus}`}
-                  aria-label="添加附件"
-                  data-prompt-popover-trigger
-                  onMouseDown={(event) => event.preventDefault()}
-                >
-                  <Plus size={15} />
-                </button>
-              }
-            >
-              <button
-                type="button"
-                className={styles.attachmentOption}
-                role="menuitem"
-                onClick={openLocalAttachmentPicker}
-              >
-                <span className={styles.attachmentOptionIcon}>
-                  <Upload size={15} />
-                </span>
-                <span>
-                  <strong>从本地添加</strong>
-                  <small>从本地选择图片、视频或文档</small>
-                </span>
-              </button>
-              <button
-                type="button"
-                className={styles.attachmentOption}
-                role="menuitem"
-                onClick={() => handleAttachmentMenuOpenChange(false)}
-              >
-                <span className={styles.attachmentOptionIcon}>
-                  <Images size={15} />
-                </span>
-                <span>
-                  <strong>从素材库添加</strong>
-                  <small>选择已保存到空间的素材</small>
-                </span>
-              </button>
-            </Popover>
-            <textarea
-              ref={promptInputRef}
-              rows={1}
-              onInput={(event) => {
-                const hasPrompt = Boolean(event.currentTarget.value.trim());
-                resizePromptInput(event.currentTarget);
-                if (promptSubmitRef.current) promptSubmitRef.current.disabled = !hasPrompt;
-                promptBarRef.current?.toggleAttribute("data-has-value", hasPrompt);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  startAgent();
-                }
-              }}
-              placeholder="帮我做一支古风穿搭种草视频，从脚本到成片…"
-              className={styles.promptInput}
-            />
-            <div className={styles.promptOptions} aria-label="生成选项">
-              <PromptChoicePopover
-                label="选择模型"
-                hint="选择模型"
-                icon={Box}
-                options={MODEL_OPTIONS}
-                selected={selectedModel}
-                open={activePromptMenu === "model"}
-                onOpenChange={(open) => handlePromptMenuOpenChange("model", open)}
-                onSelect={(id) => {
-                  setSelectedModel(id);
-                  setActivePromptMenu(null);
-                }}
-              />
-              <PromptChoicePopover
-                label="选择 Skill"
-                hint="选择 Skill"
-                icon={Sparkles}
-                options={SKILL_OPTIONS}
-                selected={selectedSkill}
-                open={activePromptMenu === "skill"}
-                onOpenChange={(open) => handlePromptMenuOpenChange("skill", open)}
-                onSelect={(id) => {
-                  setSelectedSkill(id);
-                  setActivePromptMenu(null);
-                }}
-              />
-              <PromptChoicePopover
-                label="选择生成模式"
-                hint="选择生成模式"
-                icon={SlidersHorizontal}
-                options={MODE_OPTIONS}
-                selected={selectedMode}
-                open={activePromptMenu === "mode"}
-                onOpenChange={(open) => handlePromptMenuOpenChange("mode", open)}
-                onSelect={(id) => {
-                  setSelectedMode(id);
-                  setActivePromptMenu(null);
-                }}
-              />
-            </div>
-            <button
-              ref={promptSubmitRef}
-              type="button"
-              className={`${styles.promptIconButton} ${styles.promptGo}`}
-              aria-label="开始创作"
-              disabled
-              onClick={startAgent}
-            >
-              <ArrowUp size={15} />
-            </button>
+          <div className={styles.heroMeta}>
+            <span>WEAVL / CREATIVE WORKSPACE</span>
+            <span>从想法到作品，再到可重复的方法</span>
           </div>
-          <div className={styles.hotTags}>
-            {HOT_TAGS.map((t) => (
-              <button
-                key={t}
-                className={styles.hotTag}
-                onClick={() => {
-                  if (promptInputRef.current) {
-                    promptInputRef.current.value = `帮我做${t}相关内容`;
-                    resizePromptInput(promptInputRef.current);
+          <div ref={heroContentRef} className={styles.heroContent}>
+            <h1 ref={heroTitleRef}>
+              拾起灵光，织成作品。
+              <br />让<em>灵感</em>，继续生长。
+            </h1>
+            <p ref={heroDescriptionRef}>从对话、画布或工作流开始，让资料、方法与作品沉淀，随时取用、继续创作。</p>
+            <div className={styles.prompt}>
+              <InlineComposer
+                ref={composerRef}
+                value={initialPrompt}
+                onValueChange={(value) => { promptRef.current = value; }}
+                onTokenRemove={(token) => {
+                  if (token.type === "asset") setAssetIds((current) => removeFirst(current, token.id));
+                  if (token.type === "skill") setMethodIds((current) => removeFirst(current, token.id));
+                  if (token.type === "model") setModelKinds((current) => removeFirst(current, token.id as ModelKind));
+                }}
+                onSubmit={() => begin()}
+                placeholder="描述你想完成的内容…"
+              />
+              <input ref={fileRef} type="file" multiple hidden onChange={(event) => void addFiles(event.target.files)} />
+              <div className={styles.promptFooter}>
+                <div className={styles.promptTools}>
+                  {composerTools.map((tool) => {
+                    const Icon = tool.icon;
+                    const active = tool.id === "mode" && mode === "manual";
+                    return (
+                      <ActionPopover
+                        key={tool.id}
+                        hint={tool.label}
+                        open={openTool === tool.id}
+                        onOpenChange={(open) => { setOpenTool(open ? tool.id : null); if (open) setToolSearch(""); }}
+                        trigger={<button type="button" className={`${styles.toolButton} ${active ? styles.toolButtonActive : ""}`} aria-label={tool.label}><Icon size={15} strokeWidth={1.7} /></button>}
+                      >
+                        {renderToolContent(tool.id)}
+                      </ActionPopover>
+                    );
+                  })}
+                  <span className={styles.modeLabel}>{mode === "auto" ? "自动" : "手动"} · 模拟</span>
+                </div>
+                <ActionPopover
+                  mode="hover"
+                  trigger={
+                    <button type="button" className={styles.sendButton} onClick={() => begin()} aria-label="开始创作" disabled={uploading}>
+                      <ArrowUp size={17} />
+                    </button>
                   }
-                  if (promptSubmitRef.current) promptSubmitRef.current.disabled = false;
-                  promptBarRef.current?.setAttribute("data-has-value", "");
-                  setAttachmentComposerExpanded(true);
-                }}
-              >
-                {t}
-              </button>
+                >
+                  开始创作
+                </ActionPopover>
+              </div>
+            </div>
+            {composerError && <p className={styles.composerError} role="alert">{composerError}</p>}
+            <div className={styles.quick}>
+              {examples.map((item) => (
+                <button key={item} onClick={() => begin(item)}>
+                  {item} <ArrowRight size={12} />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.heroSide}>
+            <div className={styles.heroTilt} {...heroTiltHandlers}>
+              <GlareHover className={styles.artwork} width="100%" height="100%" background="var(--artwork-bg)" borderRadius="14px" borderColor="var(--artwork-border)" glareColor="var(--artwork-glare)" glareAngle={-35} glareSize={185} transitionDuration={850}>
+                <span>IDEA → WORK</span>
+                <div className={styles.artworkShape}>
+                  <span>W</span>
+                </div>
+                <small>灵感 / 方法 / 作品</small>
+              </GlareHover>
+            </div>
+          </div>
+        </section>
+        <section className={styles.section}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.overline}>ONE CONNECTED STUDIO</span>
+              <h2>按照你的方式工作</h2>
+            </div>
+            <p>丰富的工作方式，总有一款适合你。</p>
+          </div>
+          <div className={styles.abilityGrid}>
+            {abilities.map((item) => (
+              <AbilityCard key={item.title} {...item} onClick={() => router.push(item.href)} />
             ))}
           </div>
         </section>
-
-        {/* ---- 三入口卡 ---- */}
-        <section className={styles.entries}>
-          <button className={`${styles.entryCard} ${styles.entryCardPrimary}`} onClick={() => router.push("/canvas")}>
-            <span className={styles.entryIconPrimary}>
-              <Workflow size={16} />
-            </span>
-            <span className={styles.entryTexts}>
-              <span className={styles.entryTitle}>新建空白画布</span>
-              <span className={styles.entryDesc}>从零搭建你的工作流 · 空画布起步</span>
-            </span>
-            <ArrowRight size={15} className={styles.entryArrow} />
-          </button>
-          <button className={styles.entryCard} onClick={() => router.push("/agent")}>
-            <span className={styles.entryIcon}>
-              <Bot size={14} />
-            </span>
-            <span className={styles.entryTexts}>
-              <span className={styles.entryTitle}>找 Agent</span>
-              <span className={styles.entryDesc}>对话式创建</span>
-            </span>
-          </button>
-          <button className={styles.entryCard} onClick={() => router.push("/projects")}>
-            <span className={styles.entryIcon}>
-              <Layers size={14} />
-            </span>
-            <span className={styles.entryTexts}>
-              <span className={styles.entryTitle}>导入工作流</span>
-              <span className={styles.entryDesc}>JSON / 模板文件</span>
-            </span>
-          </button>
-        </section>
-
-        {/* ---- 工作流模板 ---- */}
-        <section>
+        <section className={styles.section}>
           <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>
-              工作流模板
-              <span className={styles.sectionBadge}>新品</span>
-            </h3>
-            <button className={styles.moreLink}>
-              全部模板 <ArrowRight size={11} />
+            <div>
+              <span className={styles.overline}>MODEL & FORMAT</span>
+              <h2>能力边界，清楚可见</h2>
+            </div>
+            <p>模型供应商接入前，先把项目、流程和资产体验做好。页面会清楚标明模拟与可用状态。</p>
+          </div>
+          <div className={styles.capabilities}>
+            {capabilities.map((item) => (
+              <div key={item.name}>
+                <span className={styles.capName}>{item.name}</span>
+                <span>{item.desc}</span>
+                <strong>{item.status}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className={styles.section}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.overline}>EXAMPLE WORK</span>
+              <h2>从资料，到可交付内容</h2>
+            </div>
+            <p>下方案例为流程演示，并非真实客户效果或已接入的视频生成结果。</p>
+          </div>
+          <div className={styles.cases}>
+            <button onClick={() => router.push("/workflows")}>
+              <span className={styles.caseOne}>
+                IP <i>01</i>
+              </span>
+              <span className={styles.caseInfo}>
+                <strong>人物 IP 内容策划</strong>
+                <small>访谈 / 定位 / 选题 / 脚本 / 审核</small>
+                <span>
+                  演示流程 <ArrowRight size={13} />
+                </span>
+              </span>
+            </button>
+            <button onClick={() => router.push("/workflows")}>
+              <span className={styles.caseTwo}>
+                <i>WEEKLY</i>
+                <b>REPORT</b>
+              </span>
+              <span className={styles.caseInfo}>
+                <strong>团队周报提炼</strong>
+                <small>进度记录 / 摘要 / 审核 / 文稿</small>
+                <span>
+                  演示流程 <ArrowRight size={13} />
+                </span>
+              </span>
+            </button>
+            <button onClick={() => router.push("/projects")}>
+              <span className={styles.caseThree}>
+                <i>CANVAS</i>
+                <b>OBJECTS / SPACE</b>
+              </span>
+              <span className={styles.caseInfo}>
+                <strong>画布与共享资产</strong>
+                <small>来自 Agent 和工作流的同一份成果</small>
+                <span>
+                  打开项目 <ArrowRight size={13} />
+                </span>
+              </span>
             </button>
           </div>
-          <div className={styles.tplGrid}>
-            {TEMPLATES.map((tpl) => (
-              <button
-                key={tpl.name}
-                className={styles.tplCard}
-                onClick={() => router.push(`/preset/detail?id=${encodeURIComponent(tpl.name)}`)}
-              >
-                <div className={styles.tplCover}>
-                  <span className={styles.tplFlow}>
-                    {tpl.flow.map((kind, i) => (
-                      <span key={i} className={styles.tplFlowWrap}>
-                        {i > 0 && <span className={styles.tplFlowLine}>──▶</span>}
-                        <span
-                          className={styles.tplFlowNode}
-                          style={{ background: `${FLOW_COLORS[kind]}55`, borderColor: `${FLOW_COLORS[kind]}70` }}
-                        />
-                      </span>
-                    ))}
-                  </span>
-                </div>
-                <div className={styles.tplBody}>
-                  <h4 className={styles.tplName}>{tpl.name}</h4>
-                  <p className={styles.tplDesc}>{tpl.desc}</p>
-                  <div className={styles.tplMeta}>
-                    <span className={styles.tplTag}>{tpl.tag}</span>
-                    <span className={styles.tplUses}>{tpl.uses} 使用</span>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
         </section>
-
-        {/* ---- 最近画布 + 我的 Agent ---- */}
-        <section className={styles.bottomSplit}>
-          <div className={styles.recentCol}>
+        {/* TODO:暂时先隐藏，项目调整完毕后放开 */}
+        {/* {user && (projects.length > 0 || conversations.length > 0) && (
+          <section className={styles.section}>
             <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>最近画布</h3>
-              <button className={styles.moreLink} onClick={() => router.push("/projects")}>
-                全部项目 <ArrowRight size={11} />
-              </button>
+              <div>
+                <span className={styles.overline}>PICK UP WHERE YOU LEFT OFF</span>
+                <h2>继续工作</h2>
+              </div>
             </div>
-            <div className={styles.recentList}>
-              {RECENT.map((r) => (
-                <button key={r.name} className={styles.recentRow} onClick={() => router.push("/canvas")}>
-                  <span className={styles.recentThumb}>
-                    {r.flow.map((kind, i) => (
-                      <span key={i} className={styles.recentNode} style={{ background: `${FLOW_COLORS[kind]}66` }} />
-                    ))}
-                  </span>
-                  <span className={styles.recentTexts}>
-                    <span className={styles.recentName}>{r.name}</span>
-                    <span className={styles.recentMeta}>
-                      <Clock size={9} />
-                      {r.meta}
-                    </span>
-                  </span>
-                  <span className={styles.recentGo}>继续编辑</span>
+            <div className={styles.recent}>
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  onClick={() => router.push(`/canvas?projectId=${project.id}&canvasId=${project.canvases[0]?.id}`)}
+                >
+                  <LayoutGrid size={16} />
+                  <span>{project.name}</span>
+                  <small>项目 · {project.canvases.length} 张画布</small>
+                  <ArrowRight size={13} />
+                </button>
+              ))}
+              {conversations.map((conversation) => (
+                <button key={conversation.id} onClick={() => router.push("/agent")}>
+                  <Bot size={16} />
+                  <span>{conversation.title}</span>
+                  <small>Agent 会话</small>
+                  <ArrowRight size={13} />
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className={styles.agentCol}>
-            <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>我的 Agent</h3>
-              <button className={styles.moreLink}>
-                管理 <ArrowRight size={11} />
-              </button>
-            </div>
-            <div className={styles.agentGrid}>
-              {MY_AGENTS.map((a) => (
-                <button key={a.name} className={styles.agentCard}>
-                  <span
-                    className={styles.agentAvatar}
-                    style={{ background: `linear-gradient(135deg, ${a.hue}, ${a.hue}cc)` }}
-                  >
-                    {a.name.slice(0, 1)}
-                  </span>
-                  <span className={styles.agentName}>{a.name}</span>
-                  <span className={styles.agentRuns}>运行 {a.runs} 次</span>
-                </button>
-              ))}
-              <button className={styles.agentCardAdd}>
-                <span className={styles.agentAddIcon}>
-                  <Plus size={13} />
-                </span>
-                <span className={styles.agentAddText}>创建 Agent</span>
-              </button>
-            </div>
-          </div>
-        </section>
+          </section>
+        )} */}
       </div>
     </AppShell>
   );

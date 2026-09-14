@@ -1,0 +1,48 @@
+.editor {
+  width: 100%;
+  min-height: 72px;
+  max-height: 170px;
+  overflow: auto;
+  outline: 0;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+.editor[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+.token {
+  display: inline-flex;
+  vertical-align: baseline;
+  align-items: center;
+  gap: 5px;
+  max-width: min(220px, 80%);
+  margin: 1px 3px;
+  padding: 2px 5px 2px 7px;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface-hover);
+  color: var(--foreground);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.token svg { flex: 0 0 auto; }
+.tokenLabel { overflow: hidden; text-overflow: ellipsis; }
+.remove {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.remove:hover { color: var(--foreground); background: var(--surface); }

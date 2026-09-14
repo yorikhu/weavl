@@ -1,0 +1,25 @@
+import type { PointerEventHandler } from "react";
+
+export function createTiltCardHandlers<T extends HTMLElement>(range = 9): {
+  onPointerMove: PointerEventHandler<T>;
+  onPointerLeave: PointerEventHandler<T>;
+} {
+  return {
+    onPointerMove(event) {
+      if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+
+      const card = event.currentTarget;
+      const rect = card.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+      const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+
+      card.style.setProperty("--tilt-x", `${((0.5 - y) * range).toFixed(2)}deg`);
+      card.style.setProperty("--tilt-y", `${((x - 0.5) * range).toFixed(2)}deg`);
+    },
+    onPointerLeave(event) {
+      const card = event.currentTarget;
+      card.style.setProperty("--tilt-x", "0deg");
+      card.style.setProperty("--tilt-y", "0deg");
+    },
+  };
+}
