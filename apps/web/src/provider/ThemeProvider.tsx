@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
 
@@ -13,20 +13,19 @@ const ThemeContext = createContext<{
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("weavl-theme") as Theme | null;
-    if (saved === "light" || saved === "dark") {
-      setTheme(saved);
-    }
+  useLayoutEffect(() => {
+    setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("weavl-theme", theme);
-  }, [theme]);
-
   const toggle = useCallback(() => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
+    const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    try {
+      localStorage.setItem("weavl-theme", nextTheme);
+    } catch {
+      // 隐私模式禁用存储时，当前页面仍可正常切换主题。
+    }
+    setTheme(nextTheme);
   }, []);
 
   return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;

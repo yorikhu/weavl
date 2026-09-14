@@ -1,0 +1,137 @@
+"use client";
+
+import { memo, useState, type FormEvent } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { WeavlBrand } from "@/components/WeavlBrand";
+import { useAuth } from "@/provider/AuthProvider";
+import { useTheme } from "@/provider/ThemeProvider";
+import ui from "@/styles/studio.module.scss";
+import styles from "./page.module.scss";
+
+const AeroShards = memo(dynamic(() => import("@/components/AeroShards"), { ssr: false }));
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { login, register } = useAuth();
+  const { theme } = useTheme();
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "register") await register(name, email, password);
+      else await login(email, password);
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/home");
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className={styles.screen}>
+      <div className={styles.aeroLayer} aria-hidden="true">
+        <AeroShards
+          backgroundColor={theme === "dark" ? "#161618" : "#FFFFFF"}
+          shardColor={theme === "dark" ? "#696973" : "#C2C7D0"}
+          accentColor={theme === "dark" ? "#E4E4E7" : "#59606B"}
+          placement="full" flow="stream" material="pearl" detail="balanced" effect="none"
+          scale={1} spread={1} depth={1} speed={0.7} spin={0.8} interaction="repel"
+          density={0.78} shardSize={1.1} stretch={1} turbulence={1} glow={0.65}
+          edgeSoftness={2} bloom={0.3} grain={0.03} chromaticAberration={0}
+          transitionDuration={1} interactionRadius={1.5} interactionStrength={0.5}
+          rippleIntensity={1} holdToGather
+        />
+      </div>
+      <WeavlBrand className={styles.brand} iconSize={23} />
+      <div className={styles.content}>
+        <div className={styles.intro}>
+          <span className={ui.eyebrow}>YOUR CREATIVE WORKSPACE</span>
+          <h1>
+            让内容与方法，
+            <br />
+            在同一个地方生长。
+          </h1>
+          <p>从一句想法开始，连接 Agent、画布、工作流和每一份资产。</p>
+          <div className={styles.capabilityTrail} aria-label="创作能力">
+            <span>01 / 对话起笔</span>
+            <span>02 / 画布成形</span>
+            <span>03 / 流程交付</span>
+          </div>
+        </div>
+        <form className={styles.form} onSubmit={submit}>
+          <div className={styles.formHead}>
+            <h2>{mode === "login" ? "欢迎回来" : "创建工作空间"}</h2>
+            <p>{mode === "login" ? "继续你的创作" : "几步即可开始使用 Weavl"}</p>
+          </div>
+          {mode === "register" && (
+            <label>
+              <span className={ui.label}>称呼</span>
+              <input
+                className={ui.input}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+                autoComplete="name"
+              />
+            </label>
+          )}
+          <label>
+            <span className={ui.label}>邮箱</span>
+            <input
+              className={ui.input}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              autoComplete="email"
+            />
+          </label>
+          <label>
+            <span className={ui.label}>密码</span>
+            <input
+              className={ui.input}
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={8}
+              required
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+            />
+          </label>
+          {error && <p className={ui.error}>{error}</p>}
+          <button className={ui.button} type="submit" disabled={busy}>
+            {busy ? "请稍候…" : mode === "login" ? "登录工作台" : "创建账号"}
+            <ArrowRight size={14} />
+          </button>
+          <button
+            type="button"
+            className={styles.switch}
+            onClick={() => {
+              setMode(mode === "login" ? "register" : "login");
+              setError("");
+            }}
+          >
+            {mode === "login" ? "没有账号？创建一个" : "已有账号？返回登录"}
+          </button>
+          <p className={styles.demo}>本地演示账号：demo@weavl.local · weavl1234</p>
+        </form>
+      </div>
+      <Link href="/home" className={styles.back}>
+        浏览产品首页 →
+      </Link>
+    </main>
+  );
+}

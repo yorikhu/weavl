@@ -7,7 +7,7 @@
 
 :root {
   // ---- 亮色主题 ----
-  --background: #f4f5f8;
+  --background: #f6f7f9;
   --foreground: #1a1d24;
 
   --header: rgba(255, 255, 255, 0.9);
@@ -17,9 +17,9 @@
   --sider-border: #d8dce5;
 
   --surface: #ffffff;
-  --surface-border: #d5dae4;
-  --surface-hover: #f8fafc;
-  --surface-hover-border: #cbd5e1;
+  --surface-border: #cbd2dc;
+  --surface-hover: #f5f7fa;
+  --surface-hover-border: #b9c3d1;
 
   --subcard: #f8fafc;
   --subcard-border: #d8dde7;
@@ -42,22 +42,25 @@
   --nav-text: #3d4a63; // 提亮：菜单未选中态
 
   --pro-border: #e2e8f0;
-  --btn: #1e293b;
+  --btn: #1b1d21;
   --btn-border: transparent;
-  --btn-hover: #0f172a;
+  --btn-hover: #303238;
   --btn-foreground: #ffffff;
+
+  --switch-active: #1b1d21;
+  --switch-thumb: #ffffff;
 
   --canvas: #f8fafc;
   --canvas-border: #e2e8f0;
   --monitor: #f8fafc;
   --monitor-border: #e2e8f0;
 
-  --muted-foreground: #64748b;
-  --faint-foreground: #94a3b8;
+  --muted-foreground: #536174;
+  --faint-foreground: #6b778a;
 
-  --accent: #d97706;
+  --accent: #30343a;
   --accent-foreground: #ffffff;
-  --accent-soft: rgba(217, 119, 6, 0.12);
+  --accent-soft: rgba(30, 36, 42, 0.09);
   --success: #059669;
 
   --glass: rgba(255, 255, 255, 0.65);
@@ -77,10 +80,10 @@
   --sider: #111113;
   --sider-border: #303035;
 
-  --surface: #161618;
-  --surface-border: #34343a;
-  --surface-hover: #1b1b1f;
-  --surface-hover-border: #34343a;
+  --surface: #212121;
+  --surface-border: #52525b;
+  --surface-hover: #36363c;
+  --surface-hover-border: #686872;
 
   --subcard: #1a1a1e;
   --subcard-border: #333339;
@@ -108,17 +111,20 @@
   --btn-hover: #2d2d33;
   --btn-foreground: #ffffff;
 
+  --switch-active: #51515a;
+  --switch-thumb: #d8d8df;
+
   --canvas: #101012;
   --canvas-border: #202024;
   --monitor: #121215;
   --monitor-border: #1e1e22;
 
-  --muted-foreground: #8a8a92;
-  --faint-foreground: #5e5e66;
+  --muted-foreground: #b4b4bd;
+  --faint-foreground: #8d8d98;
 
-  --accent: #f59e0b;
-  --accent-foreground: #1a1205;
-  --accent-soft: rgba(245, 158, 11, 0.12);
+  --accent: #d5d7da;
+  --accent-foreground: #17181a;
+  --accent-soft: rgba(255, 255, 255, 0.09);
   --success: #34d399;
 
   --glass: rgba(255, 255, 255, 0.04);

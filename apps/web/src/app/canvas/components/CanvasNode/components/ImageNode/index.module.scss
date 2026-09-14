@@ -9,8 +9,8 @@
   height: 26px;
   border-radius: 50%;
   border: none;
-  background: #f59e0b;
-  color: #1a1205;
+  background: var(--btn);
+  color: var(--btn-foreground);
   cursor: pointer;
   display: inline-flex;
   align-items: center;

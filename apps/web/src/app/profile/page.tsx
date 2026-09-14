@@ -2,365 +2,281 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Search,
-  Coins,
-  Plus,
-  Clock,
-  Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle2,
-  AlertCircle,
-  LayoutGrid,
-  History,
-  Settings,
-  BookOpen,
-  Image as ImageIcon,
-  Upload,
-  Bot,
-  Bell,
-  User as UserIcon,
-} from "lucide-react";
-import type { RunView } from "@weavl/shared";
+import { ArrowUpRight, Bell, Check, Coins, FolderOpen, Layers, MessagesSquare, Workflow } from "lucide-react";
+import type { AccountPlan, AgentConversation, Asset, CanvasProject, WorkflowRunRecord } from "@weavl/shared";
+import { AppShell } from "@/components/AppShell";
+import { studioApi, jsonBody } from "@/lib/studioApi";
+import { useAccount } from "@/provider/AccountProvider";
+import { useAuth } from "@/provider/AuthProvider";
+import ui from "@/styles/studio.module.scss";
 import styles from "./page.module.scss";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-
-/* ---------------- 类型 ---------------- */
-
-type Tab = "overview" | "assets" | "history" | "brand" | "settings";
-
-interface ActivityItem {
-  id: string;
-  name: string;
-  meta: string;
-  status: "success" | "pending" | "failed";
-  time: string;
-}
-
-/* ---------------- 顶部栏 ---------------- */
-
-function Topbar() {
-  return (
-    <div className={styles.topbar}>
-      <div className={styles.topbarLeft}>
-        <div className={styles.brand}>
-          <div className={styles.brandLogo}>W</div>
-          <span className={styles.brandText}>织光 · 织光台</span>
-        </div>
-        <span className={styles.crumbSep}>/</span>
-        <span className={styles.crumbCurrent}>个人中心</span>
-      </div>
-      <div className={styles.topbarRight}>
-        <button className={styles.iconBtn} title="搜索">
-          <Search size={14} />
-        </button>
-        <button className={styles.iconBtn} title="通知">
-          <Bell size={14} />
-        </button>
-        <button className={styles.creditPill}>
-          <Coins size={12} />
-          45
-        </button>
-        <div className={styles.avatar}>
-          <UserIcon size={14} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 二级 tab ---------------- */
-
-const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: "overview", label: "总览", icon: <LayoutGrid size={12} /> },
-  { key: "assets", label: "我的资产", icon: <ImageIcon size={12} /> },
-  { key: "history", label: "任务历史", icon: <History size={12} /> },
-  { key: "brand", label: "品牌库", icon: <BookOpen size={12} /> },
-  { key: "settings", label: "设置", icon: <Settings size={12} /> },
+type Tab = "overview" | "credits" | "plans" | "billing" | "notifications";
+const tabs: { id: Tab; label: string }[] = [
+  { id: "overview", label: "总览" },
+  { id: "credits", label: "积分" },
+  { id: "plans", label: "套餐" },
+  { id: "billing", label: "订阅与发票" },
+  { id: "notifications", label: "通知" },
 ];
-
-function Tabs({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
-  return (
-    <div className={styles.tabs}>
-      {TABS.map((t) => (
-        <button
-          key={t.key}
-          className={`${styles.tab} ${active === t.key ? styles.tabActive : ""}`}
-          onClick={() => onChange(t.key)}
-        >
-          {t.icon}
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* ---------------- 通用：即将上线占位 ---------------- */
-
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div className={styles.placeholder}>
-      <div className={styles.placeholderIcon}>
-        <Sparkles size={24} />
-      </div>
-      <div className={styles.placeholderTitle}>{title}</div>
-      <div className={styles.placeholderSub}>即将上线 · 当前 MVP 阶段仅总览可用</div>
-    </div>
-  );
-}
-
-/* ---------------- 总览 tab ---------------- */
-
-function OverviewTab({ onGoPreset }: { onGoPreset: () => void }) {
-  const [range, setRange] = useState<"week" | "month" | "all">("week");
-  const [recent, setRecent] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch(`${API}/runs/latest/_pick`);
-        if (!alive) return;
-        if (res.ok) {
-          const data: RunView = await res.json();
-          const items: ActivityItem[] = [
-            {
-              id: data.id,
-              name: data.contentPackage?.fields?.[0]?.value?.slice(0, 24) ?? data.templateId,
-              meta: `${data.templateId} · ${data.decisions?.length ?? 0} 决策${data.actualCost ? ` · ¥${data.actualCost}` : ""}`,
-              status:
-                data.status === "succeeded"
-                  ? "success"
-                  : data.status === "awaiting_confirmation"
-                    ? "pending"
-                    : "pending",
-              time: "刚刚",
-            },
-          ];
-          setRecent(items);
-        }
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  return (
-    <div className={styles.overview}>
-      {/* 北极星指标 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHead}>
-          <div>
-            <div className={styles.sectionTag}>北极星指标</div>
-            <div className={styles.sectionTitle}>每周可交付任务数</div>
-          </div>
-          <div className={styles.rangeToggle}>
-            {(["week", "month", "all"] as const).map((r) => (
-              <button
-                key={r}
-                className={`${styles.rangeBtn} ${range === r ? styles.rangeBtnActive : ""}`}
-                onClick={() => setRange(r)}
-              >
-                {r === "week" ? "本周" : r === "month" ? "本月" : "全部"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={styles.northCard}>
-          <div className={styles.northMain}>
-            <div className={styles.northValue}>12</div>
-            <div className={styles.northDelta}>
-              <ArrowUpRight size={11} />
-              <span>vs 上周 +20%</span>
-            </div>
-          </div>
-          <svg className={styles.northChart} viewBox="0 0 280 60" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon
-              points="0,42 35,38 70,40 105,30 140,32 175,22 210,18 245,12 280,8 280,60 0,60"
-              fill="url(#trendFill)"
-            />
-            <polyline
-              points="0,42 35,38 70,40 105,30 140,32 175,22 210,18 245,12 280,8"
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-            <circle cx="280" cy="8" r="3" fill="#f59e0b" />
-          </svg>
-        </div>
-      </div>
-
-      {/* 配套指标 */}
-      <div className={styles.metricsGrid}>
-        <MetricCard label="预设启动率" value="82%" delta="4%" trend="up" />
-        <MetricCard label="任务完成率" value="68%" delta="6%" trend="up" />
-        <MetricCard label="采纳/发布率" value="47%" delta="0" trend="flat" />
-        <MetricCard label="30 日复用率" value="31%" delta="0" trend="flat" />
-      </div>
-
-      {/* 最近任务 */}
-      <div className={styles.recentCard}>
-        <div className={styles.recentHead}>
-          <div className={styles.sectionTitle}>最近任务</div>
-          <button className={styles.linkBtn}>查看全部 →</button>
-        </div>
-        {loading ? (
-          <div className={styles.recentEmpty}>加载中…</div>
-        ) : recent.length === 0 ? (
-          <div className={styles.recentEmpty}>
-            暂无任务记录 ·{" "}
-            <button className={styles.linkBtn} onClick={onGoPreset}>
-              去新建一个 →
-            </button>
-          </div>
-        ) : (
-          <div className={styles.recentList}>
-            {recent.map((it) => (
-              <div key={it.id} className={styles.recentItem}>
-                <div className={`${styles.recentIcon} ${styles[`status_${it.status}`]}`}>
-                  {it.status === "success" && <CheckCircle2 size={14} />}
-                  {it.status === "pending" && <Clock size={14} />}
-                  {it.status === "failed" && <AlertCircle size={14} />}
-                </div>
-                <div className={styles.recentInfo}>
-                  <div className={styles.recentName}>{it.name}</div>
-                  <div className={styles.recentMeta}>{it.meta}</div>
-                </div>
-                <div className={styles.recentTime}>{it.time}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  delta,
-  trend,
-}: {
-  label: string;
-  value: string;
-  delta: string;
-  trend: "up" | "down" | "flat";
-}) {
-  return (
-    <div className={styles.metricCard}>
-      <div className={styles.metricLabel}>{label}</div>
-      <div className={styles.metricValue}>{value}</div>
-      <div
-        className={`${styles.metricDelta} ${trend === "up" ? styles.metricUp : trend === "down" ? styles.metricDown : styles.metricFlat}`}
-      >
-        {trend === "up" && <ArrowUpRight size={10} />}
-        {trend === "down" && <ArrowDownRight size={10} />}
-        {trend === "flat" && <span>—</span>}
-        <span>{trend === "flat" ? "持平" : delta + "%"}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 主组件 ---------------- */
+const formatBytes = (bytes: number) =>
+  bytes < 1024 ** 2
+    ? `${(bytes / 1024).toFixed(1)} KB`
+    : bytes < 1024 ** 3
+      ? `${(bytes / 1024 ** 2).toFixed(1)} MB`
+      : `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { account, refresh } = useAccount();
   const [tab, setTab] = useState<Tab>("overview");
+  const [counts, setCounts] = useState<number[] | null>(null);
+  const [plans, setPlans] = useState<AccountPlan[]>([]);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (tabs.some((item) => item.id === requested)) setTab(requested as Tab);
+    void studioApi<AccountPlan[]>("/studio/account/plans")
+      .then(setPlans)
+      .catch((cause) => setError((cause as Error).message));
+    void Promise.all([
+      studioApi<CanvasProject[]>("/studio/projects"),
+      studioApi<AgentConversation[]>("/studio/conversations"),
+      studioApi<WorkflowRunRecord[]>("/studio/workflows/runs"),
+      studioApi<Asset[]>("/studio/assets"),
+    ])
+      .then(([projects, conversations, runs, assets]) =>
+        setCounts([projects.length, conversations.length, runs.length, assets.length]),
+      )
+      .catch((cause) => setError((cause as Error).message));
+  }, []);
+
+  function changeTab(next: Tab) {
+    setTab(next);
+    window.history.replaceState(null, "", `/profile?tab=${next}`);
+    setError("");
+    setMessage("");
+  }
+  async function requestPlan(plan: AccountPlan["id"]) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await studioApi("/studio/account/plan-requests", { method: "POST", body: jsonBody({ plan }) });
+      await refresh();
+      setMessage(`${plan} 开通意向已记录。当前为模拟阶段，尚未支付或开通。`);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function readEvent(id: string) {
+    try {
+      await studioApi(`/studio/account/events/${id}/read`, { method: "PATCH" });
+      await refresh();
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  const links = [
+    { label: "项目", path: "/projects", icon: Layers },
+    { label: "Agent 会话", path: "/agent", icon: MessagesSquare },
+    { label: "工作流运行", path: "/workflows", icon: Workflow },
+    { label: "资产", path: "/assets", icon: FolderOpen },
+  ];
   return (
-    <div className={styles.shell}>
-      <Topbar />
-      <Tabs active={tab} onChange={setTab} />
-
-      <div className={styles.body}>
-        {/* 左 280 侧栏 */}
-        <aside className={styles.sidebar}>
-          {/* 头像 + 资料 */}
-          <div className={styles.profileCard}>
-            <div className={styles.avatarBig}>M</div>
-            <div className={styles.profileName}>周</div>
-            <div className={styles.profileHandle}>@zxxx · 个人空间</div>
-            <button className={styles.editBtn}>编辑资料</button>
+    <AppShell>
+      <div className={ui.page}>
+        <header className={ui.header}>
+          <div>
+            <span className={ui.eyebrow}>ACCOUNT</span>
+            <h1 className={ui.title}>个人中心</h1>
+            <p className={ui.description}>账户、积分、套餐与工作空间概览。</p>
           </div>
-
-          {/* 本周数据 */}
-          <div className={styles.statsBlock}>
-            <div className={styles.blockLabel}>本周数据</div>
-            <div className={styles.statsGrid}>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>可交付任务</div>
-                <div className={styles.statValueAccent}>12</div>
+        </header>
+        <div className={ui.tabs}>
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              className={`${ui.tab} ${tab === item.id ? ui.tabActive : ""}`}
+              onClick={() => changeTab(item.id)}
+            >
+              {item.label}
+              {item.id === "notifications" && account?.unreadNotifications ? ` · ${account.unreadNotifications}` : ""}
+            </button>
+          ))}
+        </div>
+        {error && <p className={ui.error}>{error}</p>}
+        {message && <p className={styles.notice}>{message}</p>}
+        {tab === "overview" && (
+          <div className={styles.section}>
+            <div className={styles.summaryGrid}>
+              <section className={`${ui.card} ${styles.identity}`}>
+                <span className={ui.eyebrow}>账户</span>
+                <h2>{user?.name}</h2>
+                <p>{user?.email}</p>
+                <span className={ui.meta}>
+                  加入于 {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("zh-CN") : "—"}
+                </span>
+              </section>
+              <button className={`${ui.card} ${styles.summaryButton}`} onClick={() => changeTab("credits")}>
+                <span className={ui.eyebrow}>可用积分</span>
+                <strong>{account?.credits ?? "—"}</strong>
+                <span className={ui.meta}>
+                  模拟生成目前不扣积分 <ArrowUpRight size={13} />
+                </span>
+              </button>
+              <button className={`${ui.card} ${styles.summaryButton}`} onClick={() => changeTab("plans")}>
+                <span className={ui.eyebrow}>当前套餐</span>
+                <strong>{account?.plan ?? "—"}</strong>
+                <span className={ui.meta}>
+                  查看套餐 <ArrowUpRight size={13} />
+                </span>
+              </button>
+            </div>
+            <section className={`${ui.card} ${styles.storage}`}>
+              <div className={ui.rowBetween}>
+                <div>
+                  <span className={ui.eyebrow}>资产容量</span>
+                  <h3>
+                    {account ? formatBytes(account.storageUsed) : "—"}{" "}
+                    <small>/ {account ? formatBytes(account.storageLimit) : "—"}</small>
+                  </h3>
+                </div>
+                <button className={ui.buttonQuiet} onClick={() => router.push("/assets")}>
+                  管理资产 <ArrowUpRight size={13} />
+                </button>
               </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>素材沉淀</div>
-                <div className={styles.statValue}>48</div>
+              <div className={styles.bar}>
+                <span
+                  style={{
+                    width: `${account ? Math.min(100, (account.storageUsed / account.storageLimit) * 100) : 0}%`,
+                  }}
+                />
               </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>品牌库</div>
-                <div className={styles.statValue}>3</div>
-              </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>草稿画布</div>
-                <div className={styles.statValue}>2</div>
-              </div>
+              <p className={ui.cardText}>按当前未删除资产的最新版本统计；生产环境接入对象存储后以实际用量为准。</p>
+            </section>
+            <div className={ui.grid}>
+              {links.map((item, index) => (
+                <button
+                  key={item.path}
+                  className={`${ui.card} ${styles.linkCard}`}
+                  onClick={() => router.push(item.path)}
+                >
+                  <div className={ui.rowBetween}>
+                    <item.icon size={18} />
+                    <ArrowUpRight size={15} />
+                  </div>
+                  <h3>{item.label}</h3>
+                  <p>{counts ? `${counts[index]} 项` : "正在加载…"}</p>
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* 快捷入口 */}
-          <div className={styles.shortcuts}>
-            <div className={styles.blockLabel}>快捷入口</div>
-            <button className={styles.shortcutBtn} onClick={() => router.push("/preset")}>
-              <span className={`${styles.shortcutIcon} ${styles.scAmber}`}>
-                <Plus size={12} />
-              </span>
-              新建任务
-            </button>
-            <button className={styles.shortcutBtn} onClick={() => alert("导入素材：即将上线")}>
-              <span className={`${styles.shortcutIcon} ${styles.scBlue}`}>
-                <Upload size={12} />
-              </span>
-              导入素材
-            </button>
-            <button className={styles.shortcutBtn} onClick={() => alert("创建品牌库：即将上线")}>
-              <span className={`${styles.shortcutIcon} ${styles.scPink}`}>
-                <Plus size={12} />
-              </span>
-              创建品牌库
-            </button>
-            <button className={styles.shortcutBtn} onClick={() => alert("Agent 设置：即将上线")}>
-              <span className={`${styles.shortcutIcon} ${styles.scGreen}`}>
-                <Bot size={12} />
-              </span>
-              Agent 设置
-            </button>
+        )}
+        {tab === "credits" && (
+          <div className={styles.section}>
+            <section className={`${ui.card} ${styles.creditHero}`}>
+              <Coins size={20} />
+              <span>可用积分</span>
+              <strong>{account?.credits ?? "—"}</strong>
+              <p>当前 Agent 与工作流使用模拟生成，不扣除积分。真实计费与充值会在模型服务接入后开放。</p>
+            </section>
+            <h2 className={styles.sectionTitle}>积分记录</h2>
+            {account?.events
+              .filter((event) => event.type === "credit")
+              .map((event) => (
+                <article className={`${ui.card} ${styles.event}`} key={event.id}>
+                  <div>
+                    <strong>{event.title}</strong>
+                    <p>{event.detail}</p>
+                  </div>
+                  <div>
+                    <b>{event.delta && event.delta > 0 ? `+${event.delta}` : (event.delta ?? "—")}</b>
+                    <small>{new Date(event.createdAt).toLocaleString("zh-CN")}</small>
+                  </div>
+                </article>
+              ))}
           </div>
-        </aside>
-
-        {/* 主区 */}
-        <main className={styles.main}>
-          {tab === "overview" && <OverviewTab onGoPreset={() => router.push("/preset")} />}
-          {tab === "assets" && <ComingSoon title="我的资产" />}
-          {tab === "history" && <ComingSoon title="任务历史" />}
-          {tab === "brand" && <ComingSoon title="品牌库" />}
-          {tab === "settings" && <ComingSoon title="设置" />}
-        </main>
+        )}
+        {tab === "plans" && (
+          <div className={styles.section}>
+            <p className={ui.description}>以下为模拟套餐与容量配置。价格、支付和正式权益尚未接入；可提交开通意向。</p>
+            <div className={styles.planGrid}>
+              {plans.map((plan) => (
+                <article className={`${ui.card} ${styles.planCard}`} key={plan.id}>
+                  <div className={ui.rowBetween}>
+                    <span className={ui.eyebrow}>{plan.id}</span>
+                    {account?.plan === plan.id && <span className={ui.badge}>当前套餐</span>}
+                  </div>
+                  <h2>{plan.name}</h2>
+                  <p>{plan.description}</p>
+                  <div className={styles.planQuota}>
+                    {formatBytes(plan.storageLimit)} <small>资产容量</small>
+                  </div>
+                  <button
+                    className={
+                      account?.plan === plan.id || account?.pendingPlan === plan.id ? ui.buttonQuiet : ui.button
+                    }
+                    disabled={busy || account?.plan === plan.id || account?.pendingPlan === plan.id}
+                    onClick={() => void requestPlan(plan.id)}
+                  >
+                    {account?.plan === plan.id
+                      ? "使用中"
+                      : account?.pendingPlan === plan.id
+                        ? "意向已提交"
+                        : "申请开通"}
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+        {tab === "billing" && (
+          <div className={styles.section}>
+            <section className={`${ui.card} ${styles.billing}`}>
+              <span className={ui.eyebrow}>订阅状态</span>
+              <h2>{account?.plan === "Free" ? "免费版" : (account?.plan ?? "读取中")}</h2>
+              <p>当前没有支付订单或发票记录。套餐申请仅记录意向，不会产生扣款。</p>
+              {account?.pendingPlan && <p>已申请：{account.pendingPlan} · 待开通</p>}
+              <button className={ui.buttonQuiet} onClick={() => changeTab("plans")}>
+                查看套餐 <ArrowUpRight size={13} />
+              </button>
+            </section>
+          </div>
+        )}
+        {tab === "notifications" && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>
+              <Bell size={17} /> 通知
+            </h2>
+            {!account?.events.some((event) => event.type !== "credit") && <div className={ui.empty}>暂无通知。</div>}
+            {account?.events
+              .filter((event) => event.type !== "credit")
+              .map((event) => (
+                <article className={`${ui.card} ${styles.event}`} key={event.id}>
+                  <div>
+                    <strong>{event.title}</strong>
+                    <p>{event.detail}</p>
+                    <small>{new Date(event.createdAt).toLocaleString("zh-CN")}</small>
+                  </div>
+                  {!event.readAt && (
+                    <button className={ui.buttonQuiet} onClick={() => void readEvent(event.id)}>
+                      <Check size={13} />
+                      标记已读
+                    </button>
+                  )}
+                </article>
+              ))}
+          </div>
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 }

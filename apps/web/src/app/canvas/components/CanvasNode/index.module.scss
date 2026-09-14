@@ -449,7 +449,7 @@
     color: #5e5e66;
   }
   &:focus {
-    border-color: rgba(245, 158, 11, 0.45);
+    border-color: color-mix(in srgb, var(--foreground) 40%, transparent);
   }
 }
 
@@ -551,8 +551,8 @@
 }
 
 .imageEditRatioItemActive {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
+  color: var(--foreground);
+  background: var(--accent-soft);
 }
 
 .imageEditParamIcon {
@@ -580,7 +580,7 @@
   color: #a8a8b2;
   font-size: 11px;
   svg {
-    color: #f59e0b;
+    color: var(--foreground);
   }
 }
 

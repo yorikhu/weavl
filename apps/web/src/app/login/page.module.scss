@@ -1,0 +1,151 @@
+.screen {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: 34px clamp(24px, 6vw, 96px);
+  background: var(--background);
+  overflow: hidden;
+}
+.screen::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: radial-gradient(ellipse 46% 66% at 26% 50%, color-mix(in srgb, var(--background) 46%, transparent), transparent 100%);
+  pointer-events: none;
+}
+.screen > :not(.aeroLayer) {
+  position: relative;
+  z-index: 2;
+}
+.aeroLayer {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+  transform: translateZ(0);
+}
+.brand {
+  align-self: flex-start;
+}
+.brand:focus-visible,
+.back:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 5px;
+  border-radius: 3px;
+}
+.content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr minmax(340px, 410px);
+  align-items: center;
+  gap: clamp(40px, 10vw, 160px);
+  max-width: 1180px;
+  width: 100%;
+  margin: auto;
+}
+.intro h1 {
+  margin: 18px 0;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.14;
+  letter-spacing: -0.055em;
+  font-weight: 570;
+}
+.intro p {
+  max-width: 420px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.capabilityTrail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 510px;
+  margin-top: 46px;
+}
+.capabilityTrail span {
+  padding-top: 13px;
+  border-top: 1px solid var(--surface-hover-border);
+  color: var(--muted-foreground);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid var(--surface-border);
+  border-radius: 20px;
+  padding: clamp(24px, 3vw, 38px);
+  -webkit-backdrop-filter: blur(16px) saturate(108%);
+  backdrop-filter: blur(16px) saturate(108%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.07);
+}
+.formHead {
+  margin-bottom: 10px;
+}
+.formHead h2 {
+  font-size: 24px;
+  letter-spacing: -0.035em;
+  font-weight: 630;
+}
+.formHead p {
+  margin-top: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.switch {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  text-align: center;
+}
+.switch:hover {
+  color: var(--foreground);
+}
+.demo {
+  border-top: 1px solid var(--surface-border);
+  padding-top: 16px;
+  color: var(--faint-foreground);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+.back {
+  align-self: flex-end;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .screen::after {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 62%, transparent),
+      transparent 58%
+    );
+  }
+  .content {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 55px 0;
+  }
+  .intro h1 {
+    font-size: 38px;
+  }
+  .form {
+    max-width: 460px;
+  }
+}
+@media (max-width: 480px) {
+  .screen { padding: 24px 20px; }
+  .content { padding: 44px 0 36px; }
+  .intro h1 { font-size: clamp(32px, 9vw, 38px); }
+  .capabilityTrail { gap: 7px; margin-top: 32px; }
+  .capabilityTrail span { font-size: 9px; }
+}

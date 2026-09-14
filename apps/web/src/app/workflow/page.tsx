@@ -36,9 +36,11 @@ import {
   X,
 } from "lucide-react";
 import { API } from "@/lib/env";
+import { jsonBody, studioApi } from "@/lib/studioApi";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { STEP_KIND_META, stepKindOf, stepNameOf, type TemplateDetail } from "@/features/preset/display";
-import type { ModelRef } from "@weavl/shared";
+import { STEP_KIND_META, stepKindOf, stepNameOf } from "@/utils/templateStep";
+import type { TemplateDetail } from "@/types/template";
+import type { ModelRef, WorkflowDefinition, WorkflowField, WorkflowStage } from "@weavl/shared";
 import { BASE_NODES, NODE_GROUPS, NODE_META, TOP_GROUPS, TOP_GROUP_NODES, type NodeTypeMeta } from "./nodeTypes";
 import type { NodeGroup, NodeRow } from "./types";
 import styles from "./page.module.scss";
@@ -66,12 +68,16 @@ const KIND_ACCENT: Record<string, { color: string; icon: string }> = {
  */
 export default function WorkflowPage() {
   const [id, setId] = useState("");
+  const [workflowId, setWorkflowId] = useState("");
+  const [workflowDefinition, setWorkflowDefinition] = useState<WorkflowDefinition | null>(null);
+  const [graphReady, setGraphReady] = useState(false);
 
   /* 读 id —— window.location.search 避免 useSearchParams 静态导出问题 */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const sp = new URLSearchParams(window.location.search);
     setId(sp.get("id") ?? "");
+    setWorkflowId(sp.get("workflowId") ?? "");
   }, []);
 
   const [template, setTemplate] = useState<TemplateDetail | null>(null);
@@ -362,6 +368,67 @@ export default function WorkflowPage() {
   }
   const [edges, setEdges] = useState<FlowEdge[] | null>(null);
 
+  /** 编辑器状态作为图快照保存；表单式运行的数据契约独立于视觉布局。 */
+  const graphSnapshot = useCallback(() => ({
+    startNode, customNodes, endNode, positions, edges, llmConfigs, codeConfigs, selectorConfigs,
+    deletedStepIds: [...deletedStepIds], view,
+  }), [startNode, customNodes, endNode, positions, edges, llmConfigs, codeConfigs, selectorConfigs, deletedStepIds, view]);
+
+  useEffect(() => {
+    if (!workflowId) return;
+    let active = true;
+    void studioApi<WorkflowDefinition>(`/studio/workflows/${workflowId}`).then((definition) => {
+      if (!active) return;
+      setWorkflowDefinition(definition);
+      const graph = definition.graph;
+      if (graph) {
+        if (graph.startNode !== undefined) setStartNode(graph.startNode as typeof startNode);
+        if (Array.isArray(graph.customNodes)) setCustomNodes(graph.customNodes as CustomNode[]);
+        if (graph.endNode !== undefined) setEndNode(graph.endNode as EndNodeData | null);
+        if (graph.positions) setPositions(graph.positions as typeof positions);
+        if (graph.edges !== undefined) setEdges(graph.edges as FlowEdge[] | null);
+        if (graph.llmConfigs) setLlmConfigs(graph.llmConfigs as typeof llmConfigs);
+        if (graph.codeConfigs) setCodeConfigs(graph.codeConfigs as typeof codeConfigs);
+        if (graph.selectorConfigs) setSelectorConfigs(graph.selectorConfigs as typeof selectorConfigs);
+        if (Array.isArray(graph.deletedStepIds)) setDeletedStepIds(new Set(graph.deletedStepIds as string[]));
+        if (graph.view) setView(graph.view as typeof view);
+      }
+      setGraphReady(true);
+    }).catch(() => { if (active) setGraphReady(true); });
+    return () => { active = false; };
+    // 加载一次图快照，后续修改由保存效果处理。
+  }, [workflowId]);
+
+  useEffect(() => {
+    if (!workflowId || !graphReady || !workflowDefinition || workflowDefinition.ownerId === null) return;
+    const timer = window.setTimeout(() => {
+      void studioApi(`/studio/workflows/${workflowId}`, { method: "PATCH", body: jsonBody({ graph: graphSnapshot() }) });
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [workflowId, graphReady, workflowDefinition, graphSnapshot]);
+
+  const publishWorkflow = useCallback(async () => {
+    const graph = graphSnapshot();
+    const fields: WorkflowField[] = (startNode?.vars ?? []).map((item) => ({ id: item.name, label: item.name, type: item.type === "int" || item.type === "float" ? "number" : "text", required: item.required }));
+    if (fields.length === 0) fields.push({ id: "brief", label: "任务说明", type: "textarea", required: true });
+    const stages: WorkflowStage[] = customNodes.filter((item) => item.type !== "end").map((item) => ({ id: item.id, title: item.title, instruction: item.type === "llm" ? llmConfigs[item.id]?.userPrompt || "根据输入处理内容" : `执行${item.title}节点`, outputKind: "text", visibility: "preview" }));
+    if (stages.length === 0) stages.push({ id: "draft", title: "内容初稿", instruction: "根据输入生成初稿", outputKind: "text", visibility: "review" });
+    try {
+      if (workflowId && workflowDefinition?.ownerId) {
+        const next = await studioApi<WorkflowDefinition>(`/studio/workflows/${workflowId}`, { method: "PATCH", body: jsonBody({ graph, fields, stages, status: "published" }) });
+        setWorkflowDefinition(next);
+      } else {
+        const title = window.prompt("工作流名称", template?.name || "未命名工作流")?.trim();
+        if (!title) return;
+        const created = await studioApi<WorkflowDefinition>("/studio/workflows", { method: "POST", body: jsonBody({ title, description: "由节点编辑器创建的工作流", category: "自定义", fields, stages, graph }) });
+        const next = await studioApi<WorkflowDefinition>(`/studio/workflows/${created.id}`, { method: "PATCH", body: jsonBody({ status: "published" }) });
+        setWorkflowId(next.id); setWorkflowDefinition(next); setGraphReady(true);
+        window.history.replaceState(null, "", `/workflow?workflowId=${next.id}`);
+      }
+      window.alert("工作流已保存并发布，可在工作流列表中运行。");
+    } catch (cause) { window.alert((cause as Error).message); }
+  }, [graphSnapshot, startNode, customNodes, llmConfigs, workflowId, workflowDefinition, template]);
+
   /** 待连接状态：从某节点 output 端口拖出时记录（选择器分支端口带 branch），鼠标到目标 input 端口松手时建边 */
   const [pendingEdge, setPendingEdge] = useState<{
     from: string;
@@ -561,6 +628,8 @@ export default function WorkflowPage() {
 
   /** 拖拽会话 */
   const dragRef = useRef<{ id: string; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingDragRef = useRef<{ id: string; x: number; y: number } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   /** 是否真的移动过（>3px 才算拖拽，否则当点击处理） */
   const draggedRef = useRef(false);
@@ -596,16 +665,19 @@ export default function WorkflowPage() {
       const dy = e.clientY - d.startY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) draggedRef.current = true;
       /* 不 clamp：节点可拖到画布任何方向（含负坐标），连线跟随节点位置 */
-      setPositions((p) => ({
-        ...p,
-        [d.id]: {
-          x: d.baseX + dx / s,
-          y: d.baseY + dy / s,
-        },
-      }));
+      pendingDragRef.current = { id: d.id, x: d.baseX + dx / s, y: d.baseY + dy / s };
+      if (dragFrameRef.current === null) dragFrameRef.current = window.requestAnimationFrame(() => {
+        const next = pendingDragRef.current;
+        if (next) setPositions((p) => ({ ...p, [next.id]: { x: next.x, y: next.y } }));
+        dragFrameRef.current = null;
+      });
     };
     const onUp = () => {
       if (dragRef.current) {
+        if (dragFrameRef.current !== null) window.cancelAnimationFrame(dragFrameRef.current);
+        const next = pendingDragRef.current;
+        if (next) setPositions((p) => ({ ...p, [next.id]: { x: next.x, y: next.y } }));
+        pendingDragRef.current = null; dragFrameRef.current = null;
         dragRef.current = null;
         setDraggingId(null);
       }
@@ -613,6 +685,7 @@ export default function WorkflowPage() {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
+      if (dragFrameRef.current !== null) window.cancelAnimationFrame(dragFrameRef.current);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -889,12 +962,12 @@ export default function WorkflowPage() {
       {/* 顶栏 */}
       <header className={styles.topbar}>
         <div className={styles.topbarLeft}>
-          <Link href="/preset" className={styles.backBtn} aria-label="返回">
+          <Link href="/workflows" className={styles.backBtn} aria-label="返回">
             ‹
           </Link>
           <div className={styles.titleWrap}>
-            <h1 className={styles.title}>{template?.name ?? "未命名工作流"}</h1>
-            <button className={styles.editBtn} aria-label="编辑标题">
+            <h1 className={styles.title}>{workflowDefinition?.title ?? template?.name ?? "未命名工作流"}</h1>
+            <button className={styles.editBtn} aria-label="编辑标题" onClick={() => { if (!workflowDefinition?.ownerId) return; const title = window.prompt("工作流名称", workflowDefinition.title)?.trim(); if (title) void studioApi<WorkflowDefinition>(`/studio/workflows/${workflowDefinition.id}`, { method: "PATCH", body: jsonBody({ title }) }).then(setWorkflowDefinition); }}>
               ✎
             </button>
           </div>
@@ -913,7 +986,7 @@ export default function WorkflowPage() {
               <Coins size={10} /> 预计消耗 {costLabel}
             </span>
           )}
-          <button className={styles.publishBtn}>发布</button>
+          <button className={styles.publishBtn} onClick={() => void publishWorkflow()}>保存并发布</button>
         </div>
       </header>
 
@@ -1623,7 +1696,7 @@ export default function WorkflowPage() {
           <button className={styles.debugBtn} aria-label="调试">
             <Wrench size={13} />
           </button>
-          <button className={styles.runBtn}>
+          <button className={styles.runBtn} onClick={() => { if (workflowId) window.location.assign(`/workflows?workflowId=${workflowId}`); else void publishWorkflow(); }}>
             <Play size={12} /> 试运行
           </button>
         </div>

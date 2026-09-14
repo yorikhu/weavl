@@ -7,6 +7,7 @@ import { StarburstLogo } from "@/components/StarburstLogo";
 import { UserMenu } from "@/components/UserMenu";
 import { HeaderCapsule } from "@/components/HeaderCapsule";
 import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
+import { useAccount } from "@/provider/AccountProvider";
 import styles from "./index.module.scss";
 
 interface CanvasProjectHeaderProps {
@@ -36,6 +37,7 @@ export function CanvasProjectHeader({
   onToggleAgent,
   agentButtonRef,
 }: CanvasProjectHeaderProps) {
+  const { account } = useAccount();
   return (
     <div className={styles.topbar}>
       <div className={styles.topbarLeft}>
@@ -106,8 +108,8 @@ export function CanvasProjectHeader({
         <UserMenu
           trigger={
             <AccountHeaderCapsule
-              amount={100}
-              plan="Plus"
+              amount={account?.credits ?? 0}
+              plan={account?.plan ?? "Free"}
               className={styles.canvasHeaderCapsule}
               aria-label="用户菜单"
             />

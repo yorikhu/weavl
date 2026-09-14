@@ -8,12 +8,10 @@ import { toast } from "@/hooks/useToast";
 import { API } from "@/lib/env";
 import {
   DEFAULT_DISPLAY,
-  STEP_KIND_META,
   TEMPLATE_DISPLAY,
-  stepKindOf,
-  stepNameOf,
-  type TemplateDetail,
-} from "@/features/preset/display";
+} from "../display";
+import { STEP_KIND_META, stepKindOf, stepNameOf } from "@/utils/templateStep";
+import type { TemplateDetail } from "@/types/template";
 import styles from "./page.module.scss";
 
 /** 一条对话消息 */

@@ -1,44 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Bot,
-  CircleHelp,
   Layers,
   LayoutGrid,
+  LogIn,
   PanelLeftClose,
   PanelLeftOpen,
   ShoppingBag,
-  Wand2,
+  Workflow,
+  FolderOpen,
 } from "lucide-react";
 import { StarburstLogo } from "@/components/StarburstLogo";
+import { WeavlBrand } from "@/components/WeavlBrand";
+import { Popover } from "@/components/Popover";
 import { UserMenu } from "@/components/UserMenu";
-import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
+import { SidebarAccountTrigger } from "@/components/SidebarAccountTrigger";
+import { useAccount } from "@/provider/AccountProvider";
 import styles from "./index.module.scss";
+import { useAuth } from "@/provider/AuthProvider";
 
 const NAV_ITEMS = [
+  { href: "/agent", label: "Weavl Agent", icon: Bot },
   { href: "/home", label: "首页", icon: LayoutGrid },
   { href: "/projects", label: "项目", icon: Layers },
-  { href: "/agent", label: "Agent", icon: Bot },
   { href: "/market", label: "市场", icon: ShoppingBag },
-  { href: "/preset", label: "预设", icon: Wand2 },
+  { href: "/workflows", label: "工作流", icon: Workflow },
+  { href: "/assets", label: "资产", icon: FolderOpen },
 ] as const;
+const SIDEBAR_STATE_KEY = "weavl:sidebar-state";
+const SIDEBAR_NARROW_QUERY = "(max-width: 1180px)";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isAgentPage = pathname === "/agent" || pathname.startsWith("/agent/");
+  const { user, loading } = useAuth();
+  const { account } = useAccount();
   const [collapsed, setCollapsed] = useState(false);
+  const [sidebarReady, setSidebarReady] = useState(false);
+
+  useLayoutEffect(() => {
+    const narrow = window.matchMedia(SIDEBAR_NARROW_QUERY);
+    const saved = sessionStorage.getItem(SIDEBAR_STATE_KEY);
+    setSidebarReady(false);
+    // Agent 需要更宽的对话区域；只在进入页面时自动收起，不覆盖其他页面的侧栏偏好。
+    setCollapsed(isAgentPage || (saved?.startsWith(`${narrow.matches}:`) ? saved.endsWith(":true") : narrow.matches));
+    // 等收起状态完成首帧绘制后再启用过渡，避免切换页面时播放一次收起动画。
+    let readyFrame = 0;
+    const paintFrame = requestAnimationFrame(() => {
+      readyFrame = requestAnimationFrame(() => setSidebarReady(true));
+    });
+    const syncSidebar = () => {
+      setCollapsed(isAgentPage || narrow.matches);
+      sessionStorage.setItem(SIDEBAR_STATE_KEY, `${narrow.matches}:${narrow.matches}`);
+    };
+    narrow.addEventListener("change", syncSidebar);
+    return () => {
+      cancelAnimationFrame(paintFrame);
+      cancelAnimationFrame(readyFrame);
+      narrow.removeEventListener("change", syncSidebar);
+    };
+  }, [isAgentPage]);
+
+  const setSidebarCollapsed = (next: boolean) => {
+    setCollapsed(next);
+    sessionStorage.setItem(SIDEBAR_STATE_KEY, `${window.matchMedia(SIDEBAR_NARROW_QUERY).matches}:${next}`);
+  };
+  const loginLink = (
+    <Link href="/login" className={styles.navItem} aria-label={collapsed ? "登录" : undefined}>
+      <LogIn size={16} />
+      {!collapsed && <span>登录</span>}
+    </Link>
+  );
 
   return (
     <div className={styles.shell}>
       {/* ============ 左侧栏（通天） ============ */}
-      <aside className={`${styles.sider} ${collapsed ? styles.collapsed : ""}`}>
+      <aside
+        className={`${styles.sider} ${collapsed ? styles.collapsed : ""} ${sidebarReady ? styles.siderReady : ""}`}
+      >
         <div className={styles.siderTop}>
           {/* 品牌行：logo + 标题 + 常显收起按钮 */}
           {collapsed ? (
-            // 收起态：logo 位，hover 变展开按钮
-            <button className={styles.logoSlot} onClick={() => setCollapsed(false)} title="展开侧栏">
+            // 收起后先提示展开操作，随后恢复品牌图标；整个按钮均可悬停展开。
+            <button
+              className={styles.logoSlot}
+              onClick={() => setSidebarCollapsed(false)}
+              title="展开侧栏"
+              aria-label="展开侧栏"
+            >
               <span className={styles.logoSlotRoot}>
                 <span className={styles.logoLayer}>
                   <StarburstLogo size={22} />
@@ -51,14 +104,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : (
             // 展开态：logo+标题 + 常显收起按钮
             <div className={styles.brandRow}>
-              <Link href="/home" className={styles.brand}>
-                <StarburstLogo size={22} />
-                <span className={styles.brandText}>
-                  <span className={styles.brandName}>Weavl</span>
-                  <span className={styles.brandSub}>织光拾忆</span>
-                </span>
-              </Link>
-              <button className={styles.collapseBtn} onClick={() => setCollapsed(true)} title="收起侧栏">
+              <WeavlBrand className={styles.brand} />
+              <button className={styles.collapseBtn} onClick={() => setSidebarCollapsed(true)} title="收起侧栏">
                 <PanelLeftClose size={16} />
               </button>
             </div>
@@ -67,41 +114,78 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* 主导航 */}
           <nav className={styles.nav}>
             {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href;
+              const active =
+                pathname === item.href ||
+                (item.href === "/workflows" && (pathname === "/workflow" || pathname.startsWith("/preset")));
               const Icon = item.icon;
-              return (
+              const navLink = (
                 <Link
-                  key={item.href}
                   href={item.href}
-                  title={item.label}
+                  aria-label={collapsed ? item.label : undefined}
                   className={`${styles.navItem} ${active ? styles.active : ""}`}
                 >
                   <Icon size={16} />
                   {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
                 </Link>
               );
+              return (
+                <Fragment key={item.href}>
+                  {collapsed ? (
+                    <Popover
+                      mode="hover"
+                      trigger={navLink}
+                      side="right"
+                      sideOffset={10}
+                      showArrow={false}
+                      contentClassName={styles.navPopover}
+                    >
+                      {item.label}
+                    </Popover>
+                  ) : (
+                    navLink
+                  )}
+                  {item.href === "/agent" && <div className={styles.navDivider} role="separator" />}
+                </Fragment>
+              );
             })}
           </nav>
-
         </div>
 
-        {/* 底部帮助 */}
-        <div className={styles.siderBottom}>
-          <button className={styles.helpBtn} title="帮助与支持">
-            <CircleHelp size={16} />
-            {!collapsed && <span>帮助与支持</span>}
-          </button>
-        </div>
+        {!loading && (
+          <div className={styles.siderBottom}>
+            {user ? (
+              <UserMenu
+                side={collapsed ? "right" : "top"}
+                align={collapsed ? "end" : "start"}
+                trigger={
+                  <SidebarAccountTrigger
+                    credits={account?.credits ?? 0}
+                    plan={account?.plan ?? "Free"}
+                    collapsed={collapsed}
+                    aria-label="用户菜单"
+                  />
+                }
+              />
+            ) : collapsed ? (
+              <Popover
+                mode="hover"
+                trigger={loginLink}
+                side="right"
+                sideOffset={10}
+                showArrow={false}
+                contentClassName={styles.navPopover}
+              >
+                登录
+              </Popover>
+            ) : (
+              loginLink
+            )}
+          </div>
+        )}
       </aside>
 
-      {/* ============ 右侧：header + 内容 ============ */}
+      {/* ============ 右侧内容 ============ */}
       <div className={styles.right}>
-        <header className={`${styles.header} frost-header`}>
-          <span className={styles.pageTitle}>{NAV_ITEMS.find((i) => i.href === pathname)?.label ?? "Weavl 织光拾忆"}</span>
-          <div className={styles.headerRight}>
-            <UserMenu trigger={<AccountHeaderCapsule amount={0} plan="Free" aria-label="用户菜单" />} />
-          </div>
-        </header>
         <main className={styles.main}>{children}</main>
       </div>
     </div>

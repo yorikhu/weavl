@@ -13,7 +13,7 @@ interface AccountHeaderCapsuleProps extends Omit<ComponentProps<typeof HeaderCap
   plan: MembershipPlan;
 }
 
-/** Header 账户入口：积分、会员等级与头像的统一组合胶囊。 */
+/** 画布顶栏的积分、会员等级与头像胶囊。 */
 export function AccountHeaderCapsule({ amount, plan, ...props }: AccountHeaderCapsuleProps) {
   return (
     <HeaderCapsule endInset {...props}>

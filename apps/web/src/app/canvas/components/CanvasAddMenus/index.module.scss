@@ -69,8 +69,8 @@
     background 0.12s,
     color 0.12s;
   &:hover:not(:disabled) {
-    background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    background: var(--accent-soft);
+    color: var(--foreground);
   }
   &:disabled {
     opacity: 0.45;
@@ -96,8 +96,8 @@
 }
 
 .contextMenuBadgeNew {
-  background: rgba(245, 158, 11, 0.18);
-  color: #f59e0b;
+  background: var(--accent-soft);
+  color: var(--foreground);
 }
 
 

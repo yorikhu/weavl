@@ -4,6 +4,7 @@
 
 import type { ChangeEvent, RefObject } from "react";
 import { Bot, Plus, Send, X } from "lucide-react";
+import { ComposerTextarea } from "@/components/ComposerTextarea";
 import styles from "./index.module.scss";
 
 export interface AgentMessage {
@@ -79,16 +80,15 @@ export function CanvasAgentDrawer({
             </button>
           </div>
         )}
-        <input
+        <ComposerTextarea
           className={styles.agentDrawerInput}
           placeholder="告诉 Agent 想做什么…"
           value={input}
-          onChange={(event) => onInputChange(event.target.value)}
+          onValueChange={onInputChange}
+          onSubmit={onSubmit}
+          title="Enter 发送；Shift / Ctrl / Command + Enter 换行"
+          rows={2}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSubmit();
-            }
             if (event.key === "Escape") {
               event.preventDefault();
               onClose();

@@ -1,589 +1,205 @@
-// 个人中心 · Profile（MVP 暗色风格）
-
-// 外壳
-.shell {
-  min-height: 100vh;
-  background: #0d0d0f;
-  color: #e6e8ec;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "PingFang SC",
-    sans-serif;
-}
-
-// =============== 顶部栏 ===============
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 0.5px solid #232326;
-  background: rgba(20, 20, 22, 0.72);
-  backdrop-filter: blur(12px);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.topbarLeft,
-.topbarRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.brandLogo {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a1205;
-}
-
-.brandText {
-  font-size: 12px;
-  color: #a8a8b2;
-}
-
-.crumbSep {
-  font-size: 11px;
-  color: #5e5e66;
-}
-
-.crumbCurrent {
-  font-size: 12px;
-  font-weight: 500;
-  color: #e6e8ec;
-}
-
-.iconBtn {
-  width: 30px;
-  height: 28px;
-  border-radius: 10px;
-  border: 0.5px solid #26262b;
-  background: transparent;
-  color: #a8a8b2;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  &:hover {
-    color: #e6e8ec;
-    border-color: #3a3a41;
-  }
-}
-
-.creditPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 0.5px solid rgba(245, 158, 11, 0.32);
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #26262b;
-  color: #e6e8ec;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-// =============== 二级 tab ===============
-.tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border-bottom: 0.5px solid #232326;
-  background: rgba(13, 13, 15, 0.5);
-}
-
-.tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 0.5px solid transparent;
-  background: transparent;
-  color: #a8a8b2;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-  &:hover {
-    color: #e6e8ec;
-    background: rgba(255, 255, 255, 0.04);
-  }
-}
-
-.tabActive {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.45);
-  font-weight: 500;
-}
-
-// =============== 两栏布局 ===============
-.body {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  min-height: calc(100vh - 100px);
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-// =============== 左 280 侧栏 ===============
-.sidebar {
-  padding: 20px;
-  border-right: 0.5px solid #232326;
-  background: rgba(20, 20, 22, 0.4);
-}
-
-.profileCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px 0;
-  border-bottom: 0.5px solid #232326;
-}
-
-.avatarBig {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: 500;
-  color: #1a1205;
-  margin-bottom: 12px;
-}
-
-.profileName {
-  font-size: 15px;
-  font-weight: 500;
-  color: #e6e8ec;
-}
-
-.profileHandle {
-  font-size: 11px;
-  color: #8a8a92;
-  margin-top: 2px;
-}
-
-.editBtn {
-  margin-top: 12px;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 0.5px solid #26262b;
-  background: transparent;
-  color: #a8a8b2;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  &:hover {
-    color: #e6e8ec;
-    border-color: #3a3a41;
-  }
-}
-
-.statsBlock,
-.shortcuts {
-  padding: 16px 0;
-  &:not(:last-child) {
-    border-bottom: 0.5px solid #232326;
-  }
-}
-
-.blockLabel {
-  font-size: 11px;
-  color: #5e5e66;
-  margin-bottom: 10px;
-  font-weight: 500;
-}
-
-.statsGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.statItem {
-  padding: 10px;
-  background: #161618;
-  border: 0.5px solid #232326;
-  border-radius: 10px;
-}
-
-.statLabel {
-  font-size: 10px;
-  color: #8a8a92;
-}
-
-.statValue {
-  font-size: 18px;
-  font-weight: 500;
-  color: #e6e8ec;
-  margin-top: 2px;
-}
-
-.statValueAccent {
-  font-size: 18px;
-  font-weight: 500;
-  color: #f59e0b;
-  margin-top: 2px;
-}
-
-.shortcuts {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.shortcutBtn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: #a8a8b2;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  &:hover {
-    color: #e6e8ec;
-    background: rgba(255, 255, 255, 0.04);
-  }
-}
-
-.shortcutIcon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.scAmber {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-}
-.scBlue {
-  background: rgba(55, 138, 221, 0.12);
-  color: #85b7eb;
-}
-.scPink {
-  background: rgba(212, 83, 126, 0.12);
-  color: #ed93b1;
-}
-.scGreen {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
-}
-
-// =============== 主区 ===============
-.main {
-  padding: 20px;
-}
-
-// =============== 总览 tab ===============
-.overview {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
 .section {
-  // 北极星指标块
-}
-
-.sectionHead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.sectionTag {
-  font-size: 11px;
-  color: #f59e0b;
-  font-weight: 500;
-}
-
-.sectionTitle {
-  font-size: 13px;
-  color: #e6e8ec;
-  font-weight: 500;
-  margin-top: 2px;
-}
-
-.rangeToggle {
-  display: flex;
-  gap: 6px;
-}
-
-.rangeBtn {
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: transparent;
-  border: 0.5px solid #26262b;
-  color: #a8a8b2;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  &:hover {
-    color: #e6e8ec;
-    border-color: #3a3a41;
-  }
-}
-
-.rangeBtnActive {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.4);
-}
-
-.northCard {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: #161618;
-  border: 0.5px solid rgba(245, 158, 11, 0.3);
-  border-radius: 12px;
-}
-
-.northMain {
-  flex-shrink: 0;
-}
-
-.northValue {
-  font-size: 32px;
-  font-weight: 500;
-  color: #f59e0b;
-  line-height: 1;
-}
-
-.northDelta {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 10px;
-  color: #34d399;
-  margin-top: 4px;
-}
-
-.northChart {
-  flex: 1;
-  height: 60px;
-  min-width: 0;
-}
-
-.metricsGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  @media (max-width: 1000px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.metricCard {
-  padding: 12px;
-  background: #161618;
-  border: 0.5px solid #232326;
-  border-radius: 10px;
-}
-
-.metricLabel {
-  font-size: 10px;
-  color: #8a8a92;
-}
-
-.metricValue {
-  font-size: 20px;
-  font-weight: 500;
-  color: #e6e8ec;
-  margin: 4px 0 0;
-}
-
-.metricDelta {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 10px;
-  margin-top: 4px;
-  padding: 0;
-}
-
-.metricUp {
-  color: #34d399;
-}
-.metricDown {
-  color: #f09595;
-}
-.metricFlat {
-  color: #8a8a92;
-}
-
-.recentCard {
-  padding: 14px;
-  background: #161618;
-  border: 0.5px solid #232326;
-  border-radius: 12px;
-}
-
-.recentHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.linkBtn {
-  background: none;
-  border: none;
-  color: #8a8a92;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  &:hover {
-    color: #f59e0b;
-  }
-}
-
-.recentEmpty {
-  font-size: 12px;
-  color: #8a8a92;
-  padding: 16px 0;
-  text-align: center;
-}
-
-.recentList {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  max-width: 1100px;
+}
+.notice {
+  margin: 16px 0 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: var(--subcard);
+  color: var(--foreground);
+  font-size: 12px;
+}
+.summaryGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(2, minmax(170px, 1fr));
+  gap: 14px;
+}
+.identity h2 {
+  margin: 22px 0 4px;
+  font-size: 21px;
+  font-weight: 620;
+  letter-spacing: -0.03em;
+}
+.identity p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin-bottom: 22px;
+}
+.summaryButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  cursor: pointer;
+}
+.summaryButton strong {
+  margin: 20px 0 12px;
+  font-size: 30px;
+  font-weight: 570;
+  letter-spacing: -0.05em;
+}
+.summaryButton span:last-child {
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
-
-.recentItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
+.storage h3 {
+  margin: 9px 0 0;
+  font-size: 22px;
+  font-weight: 580;
 }
-
-.recentIcon {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.storage h3 small {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 400;
 }
-
-.status_success {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
-}
-.status_pending {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-}
-.status_failed {
-  background: rgba(217, 75, 75, 0.12);
-  color: #f09595;
-}
-
-.recentInfo {
-  flex: 1;
-  min-width: 0;
-}
-.recentName {
-  font-size: 12px;
-  color: #e6e8ec;
-  font-weight: 500;
+.bar {
+  height: 6px;
+  margin-top: 20px;
+  border-radius: 99px;
+  background: var(--subcard);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.recentMeta {
-  font-size: 10px;
-  color: #8a8a92;
-  margin-top: 2px;
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--foreground);
+  border-radius: inherit;
 }
-.recentTime {
-  font-size: 10px;
-  color: #8a8a92;
-  flex-shrink: 0;
+.linkCard {
+  text-align: left;
+  cursor: pointer;
 }
-
-// =============== 占位 ===============
-.placeholder {
-  flex: 1;
+.linkCard h3 {
+  margin-top: 28px;
+  font-size: 14px;
+  font-weight: 630;
+}
+.linkCard p {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.creditHero {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 80px 20px;
-  text-align: center;
+  align-items: flex-start;
+  max-width: 570px;
+  gap: 9px;
 }
-
-.placeholderIcon {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: rgba(245, 158, 11, 0.1);
+.creditHero > span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.creditHero strong {
+  font-size: 48px;
+  font-weight: 550;
+  letter-spacing: -0.06em;
+}
+.creditHero p,
+.billing p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.sectionTitle {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #f59e0b;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 630;
 }
-
-.placeholderTitle {
-  font-size: 16px;
-  font-weight: 500;
-  color: #e6e8ec;
+.event {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
 }
-
-.placeholderSub {
+.event strong {
   font-size: 12px;
-  color: #8a8a92;
+  font-weight: 610;
+}
+.event p {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.event small {
+  display: block;
+  margin-top: 6px;
+  color: var(--faint-foreground);
+  font-size: 10px;
+}
+.event b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.planCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+}
+.planCard h2 {
+  margin: 20px 0 5px;
+  font-size: 21px;
+  font-weight: 600;
+}
+.planCard p {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.planQuota {
+  margin: auto 0 20px;
+  padding-top: 18px;
+  font-size: 20px;
+  font-weight: 590;
+}
+.planQuota small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 400;
+}
+.billing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 600px;
+}
+.billing h2 {
+  font-size: 24px;
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .summaryGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .identity {
+    grid-column: 1 / -1;
+  }
+  .planGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .summaryGrid,
+  .planGrid {
+    grid-template-columns: 1fr;
+  }
+  .identity {
+    grid-column: auto;
+  }
 }

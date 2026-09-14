@@ -1,123 +1,117 @@
-// 市场 · Market
-
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.sub {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-
 .grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-
-  @media (max-width: 1100px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  margin-top: 22px;
 }
-
-.card {
+.mineTools {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
+  margin-top: 20px;
+}
+.resultCount {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(260px, 100%);
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--surface-border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted-foreground);
+}
+.search:focus-within {
+  border-color: var(--muted-foreground);
+}
+.search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .mineTools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .search {
+    width: 100%;
+  }
+}
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 245px;
+}
+.entryTop,
+.entryFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.symbol {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--surface-border);
+  background: var(--subcard);
+  border-radius: 10px;
+  color: var(--muted-foreground);
+}
+.entryFoot {
+  margin-top: auto;
+  border-top: 1px solid var(--surface-border);
+  padding-top: 15px;
+}
+.manage {
+  display: flex;
+  gap: 13px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  margin-top: -10px;
+}
+.manage button:hover {
+  color: var(--foreground);
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  z-index: 100;
+  display: grid;
+  place-items: center;
   padding: 20px;
+}
+.editor {
+  width: min(610px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface);
   border: 1px solid var(--surface-border);
   border-radius: 18px;
-  background: var(--surface);
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: var(--surface-hover-border);
-    background: var(--surface-hover);
-  }
-}
-
-.cardHead {
+  padding: 24px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 22px;
 }
-
-.tagSkill {
-  padding: 2px 8px;
-  border: 1px solid var(--accent-soft);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--accent);
+.editorTitle {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 6px;
+  letter-spacing: -0.03em;
 }
-
-.tagPrompt {
-  padding: 2px 8px;
-  border: 1px solid var(--surface-hover-border);
-  border-radius: 999px;
-  background: var(--subcard);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-}
-
-.price {
+.fields {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.cardTitle {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.cardDesc {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--muted-foreground);
-}
-
-.cardFoot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px solid var(--surface-border);
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-
-.useBtn {
-  padding: 6px 12px;
-  border: 1px solid var(--btn-border);
-  border-radius: 10px;
-  background: var(--btn);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--btn-foreground);
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover {
-    background: var(--btn-hover);
-  }
+  flex-direction: column;
+  gap: 15px;
 }

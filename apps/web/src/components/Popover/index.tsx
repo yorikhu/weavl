@@ -9,7 +9,7 @@ import styles from "./index.module.scss";
 type Side = "top" | "right" | "bottom" | "left";
 type Align = "start" | "center" | "end";
 
-interface PopoverProps {
+export interface PopoverProps {
   mode: "click" | "hover";
   trigger: ReactElement;
   children: ReactNode;
@@ -40,7 +40,7 @@ export function Popover({
   children,
   side = "top",
   align = "center",
-  sideOffset = 8,
+  sideOffset = 2,
   collisionPadding = 12,
   contentClassName,
   ariaLabel,
@@ -118,7 +118,7 @@ export function Popover({
                 collisionPadding={collisionPadding}
               >
                 {hint}
-                <TooltipPrimitive.Arrow className={styles.arrow} width={12} height={6} />
+                {showArrow && <TooltipPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
               </TooltipPrimitive.Content>
             </TooltipPrimitive.Portal>
           )}

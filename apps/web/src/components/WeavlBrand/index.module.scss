@@ -1,0 +1,27 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 600;
+}

@@ -120,15 +120,14 @@
 }
 
 .chatSendActive {
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  background: var(--btn);
   border-color: transparent;
-  color: #1a1205;
+  color: var(--btn-foreground);
   cursor: pointer;
   &:hover {
     filter: brightness(1.08);
   }
 }
-
 
 // =============== v38：Agent 右侧抽屉 ===============
 .agentDrawer {
@@ -248,6 +247,8 @@
   color: #e6e8ec;
   font-size: 11px;
   line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .agentBubbleUser {
@@ -272,6 +273,11 @@
 .agentDrawerInput {
   flex: 1;
   min-width: 0;
+  min-height: 40px;
+  max-height: 120px;
+  line-height: 1.45;
+  resize: vertical;
+  overflow-y: auto;
   background: #0d0d0f;
   border: 0.5px solid #27272c;
   border-radius: 10px;

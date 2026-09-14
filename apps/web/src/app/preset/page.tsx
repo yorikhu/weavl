@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Bot, Loader2, Plus, Send, Sparkles, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { API } from "@/lib/env";
-import { CATEGORY_TABS, DEFAULT_DISPLAY, TEMPLATE_DISPLAY, type TemplateSummary } from "@/features/preset/display";
+import { CATEGORY_TABS, DEFAULT_DISPLAY, TEMPLATE_DISPLAY } from "./display";
+import type { TemplateSummary } from "@/types/template";
 import styles from "./page.module.scss";
 
 /* ========================================================================
