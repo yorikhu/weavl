@@ -19,11 +19,7 @@ import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { VideoNodeData } from "../../../../types/nodes";
-import {
-  getMediaCardSize,
-  getMediaDimensions,
-  type MediaDimensionOption,
-} from "../../../../utils/mediaSizing";
+import { getMediaCardSize, getMediaDimensions, type MediaDimensionOption } from "../../../../utils/mediaSizing";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
@@ -65,8 +61,10 @@ function VideoCardStatic({
             placeholder="视频节点"
             spellCheck={false}
           />
+        ) : nodeId ? (
+          <EditableNodeTitle nodeId={nodeId} value={d.title} fallback="视频节点" />
         ) : (
-          nodeId ? <EditableNodeTitle nodeId={nodeId} value={d.title} fallback="视频节点" /> : <span>{displayTitle}</span>
+          <span>{displayTitle}</span>
         )}
       </div>
       <div
@@ -142,6 +140,11 @@ export function VideoEditPanel() {
   const syncedNodeIdRef = useRef<string | null>(null);
   const dimensions = getMediaDimensions("video", model);
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  /** 编辑目标变化时清理所有附属菜单，避免新提示词面板继承旧节点状态。 */
+  useEffect(() => {
+    setShowRatioMenu(false);
+    setShowRefMenu(false);
+  }, [editingId]);
   useEffect(() => {
     if (!editingId) {
       syncedNodeIdRef.current = null;
