@@ -3,9 +3,11 @@ import { useReactFlow, type Connection, type Edge, type Node } from "@xyflow/rea
 import type { BasicNodeKind } from "../types/nodes";
 import { CANVAS_HANDLE_MAGNET_RADIUS } from "../constants/viewport";
 import { createBasicNode } from "../utils/nodeFactory";
+import { inheritSharedSourceGroup } from "../utils/canvasGroups";
 import {
   getCardHandleDistance,
   getCenteredHandleDistance,
+  isCanvasMovePointerTarget,
   isCardHandleExposed,
   isCardHandleInteractive,
 } from "../utils/handleMagnet";
@@ -214,6 +216,7 @@ export function useCanvasConnections(
     let animationFrameId: number | null = null;
     let pointerX = 0;
     let pointerY = 0;
+    let movePointerId: number | null = null;
 
     const resetHandle = (handle: HTMLElement) => {
       handle.classList.remove(handleMagnetClass);
@@ -225,6 +228,12 @@ export function useCanvasConnections(
 
     const updateNearestHandle = () => {
       animationFrameId = null;
+      /* 拖动节点时连接点不会被操作，跳过全量 DOM 测量，避免与 React Flow 拖动争抢主线程。 */
+      if (board.querySelector(".react-flow__node.dragging")) {
+        if (activeHandle) resetHandle(activeHandle);
+        activeHandle = null;
+        return;
+      }
       const handles = board.querySelectorAll<HTMLElement>(`.${nodeStyles.cardHandle}`);
       const selectedNodes = board.querySelectorAll(".react-flow__node.selected");
       const multiSelectionActive = selectedNodes.length > 1;
@@ -297,6 +306,11 @@ export function useCanvasConnections(
 
     const onPointerMove = (event: Event) => {
       const pointer = event as PointerEvent;
+      pointerRef.current = { x: pointer.clientX, y: pointer.clientY };
+      if (movePointerId === pointer.pointerId) {
+        onPointerLeave();
+        return;
+      }
       const boardRect = board.getBoundingClientRect();
       if (
         pointer.clientX < boardRect.left ||
@@ -309,7 +323,6 @@ export function useCanvasConnections(
       }
       pointerX = pointer.clientX;
       pointerY = pointer.clientY;
-      pointerRef.current = { x: pointerX, y: pointerY };
       if (animationFrameId === null) {
         animationFrameId = window.requestAnimationFrame(updateNearestHandle);
       }
@@ -324,12 +337,30 @@ export function useCanvasConnections(
         activeHandle = null;
       }
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!isCanvasMovePointerTarget(event.target)) return;
+      movePointerId = event.pointerId;
+      onPointerLeave();
+    };
+    const onPointerEnd = (event: PointerEvent) => {
+      if (movePointerId === event.pointerId) movePointerId = null;
+    };
+    const onWindowBlur = () => {
+      movePointerId = null;
+      onPointerLeave();
+    };
     /* 捕获阶段监听，保证指针位于 React Flow 连接线之上时仍能更新圆球吸附。 */
+    window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("pointermove", onPointerMove, true);
-    window.addEventListener("blur", onPointerLeave);
+    window.addEventListener("pointerup", onPointerEnd, true);
+    window.addEventListener("pointercancel", onPointerEnd, true);
+    window.addEventListener("blur", onWindowBlur);
     return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("pointermove", onPointerMove, true);
-      window.removeEventListener("blur", onPointerLeave);
+      window.removeEventListener("pointerup", onPointerEnd, true);
+      window.removeEventListener("pointercancel", onPointerEnd, true);
+      window.removeEventListener("blur", onWindowBlur);
       onPointerLeave();
     };
   }, [connectionSourceActiveClass]);
@@ -521,7 +552,11 @@ export function useCanvasConnections(
       if (!connectMenu) return;
       const { flowPos, sourceNodeId, sourceNodeIds } = connectMenu;
       const sources = sourceNodeIds?.length ? sourceNodeIds : [sourceNodeId];
-      const newNode = createBasicNode(kind, { x: flowPos.x, y: flowPos.y - 60 }, true, nodes);
+      const newNode = inheritSharedSourceGroup(
+        createBasicNode(kind, { x: flowPos.x, y: flowPos.y - 60 }, true, nodes),
+        sources,
+        nodes,
+      );
       setNodes((ns) => [...ns, newNode]);
       setEdges((es) => [
         ...es,

@@ -3,6 +3,7 @@ import { CANVAS_HANDLE_MAGNET_RADIUS } from "../../constants/viewport";
 import {
   getCardHandleDistance,
   getCenteredHandleDistance,
+  isCanvasMovePointerTarget,
   isCardHandleExposed,
   isCardHandleInteractive,
 } from "../../utils/handleMagnet";
@@ -27,10 +28,12 @@ export function useBatchHandleMagnet({ draggingRef }: UseBatchHandleMagnetOption
     let activeHandle: HTMLElement | null = null;
     let frame: number | null = null;
     let pointer = { x: 0, y: 0 };
+    let movePointerId: number | null = null;
 
     const update = () => {
       frame = null;
-      if (draggingRef.current) {
+      /* 卡片或批量连接正在拖动时无需寻找磁吸点，避免逐帧读取所有节点布局。 */
+      if (draggingRef.current || document.querySelector(".react-flow__node.dragging")) {
         if (activeHandle) resetHandle(activeHandle);
         activeHandle = null;
         return;
@@ -85,6 +88,10 @@ export function useBatchHandleMagnet({ draggingRef }: UseBatchHandleMagnetOption
 
     const onPointerMove = (event: PointerEvent) => {
       pointer = { x: event.clientX, y: event.clientY };
+      if (movePointerId === event.pointerId) {
+        clear();
+        return;
+      }
       if (frame === null) frame = window.requestAnimationFrame(update);
     };
     const clear = () => {
@@ -93,12 +100,30 @@ export function useBatchHandleMagnet({ draggingRef }: UseBatchHandleMagnetOption
       if (activeHandle) resetHandle(activeHandle);
       activeHandle = null;
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!isCanvasMovePointerTarget(event.target)) return;
+      movePointerId = event.pointerId;
+      clear();
+    };
+    const onPointerEnd = (event: PointerEvent) => {
+      if (movePointerId === event.pointerId) movePointerId = null;
+    };
+    const onWindowBlur = () => {
+      movePointerId = null;
+      clear();
+    };
 
+    window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("pointermove", onPointerMove, true);
-    window.addEventListener("blur", clear);
+    window.addEventListener("pointerup", onPointerEnd, true);
+    window.addEventListener("pointercancel", onPointerEnd, true);
+    window.addEventListener("blur", onWindowBlur);
     return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("pointermove", onPointerMove, true);
-      window.removeEventListener("blur", clear);
+      window.removeEventListener("pointerup", onPointerEnd, true);
+      window.removeEventListener("pointercancel", onPointerEnd, true);
+      window.removeEventListener("blur", onWindowBlur);
       clear();
     };
   }, [draggingRef]);

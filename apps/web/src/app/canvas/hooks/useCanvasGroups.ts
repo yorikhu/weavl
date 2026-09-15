@@ -14,6 +14,7 @@ import {
   getCanvasGroupBounds,
   getCanvasGroupActionTopInset,
   getCanvasSelectionState,
+  getNextCanvasLayer,
   getNextGroupName,
   rectIntersects,
   type CanvasRect,
@@ -49,12 +50,8 @@ function isGroupId(value: string | undefined): value is string {
   return typeof value === "string";
 }
 
-function nextLayer(nodes: Node[]): number {
-  return Math.max(0, ...nodes.map((node) => node.zIndex ?? 0)) + 1;
-}
-
 function nextGroupLayers(nodes: Node[]): { group: number; member: number } {
-  const group = nextLayer(nodes);
+  const group = getNextCanvasLayer(nodes);
   return { group, member: group + 1 };
 }
 
@@ -75,6 +72,8 @@ function isCanvasBackgroundTarget(target: Element): boolean {
 
 /** 管理画布分组的数据变更、选择规则和拖动手势。 */
 export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClearSelection }: UseCanvasGroupsOptions) {
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   const nodeDragRef = useRef<GroupNodeDrag | null>(null);
   const backgroundDragRef = useRef<GroupBackgroundDrag | null>(null);
   const marqueeStartRef = useRef<XYPosition | null>(null);
@@ -96,7 +95,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
   const groupNodes = useCallback(
     (nodeIds: string[], requestedName?: string) => {
       const groupId = `group_${Date.now()}`;
-      const groupName = getNextGroupName(nodes, requestedName);
+      const groupName = getNextGroupName(nodesRef.current, requestedName);
       const groupedIds = new Set(nodeIds);
       setNodes((current) => {
         const layers = nextGroupLayers(current);
@@ -121,7 +120,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
       onClearSelection();
       toast(`已建立分组“${groupName}”`, "success");
     },
-    [nodes, onClearSelection, setNodes],
+    [onClearSelection, setNodes],
   );
 
   const renameGroup = useCallback(
@@ -197,14 +196,21 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
   const startNodeDrag = useCallback(
     (node: Node) => {
       const groupId = groupIdOf(node);
-      const members = groupId ? nodes.filter((item) => groupIdOf(item) === groupId) : [];
+      const members = groupId ? nodesRef.current.filter((item) => groupIdOf(item) === groupId) : [];
       const moveWholeGroup = members.length > 0 && members.every((item) => item.selected);
       const raisedIds = new Set(moveWholeGroup ? members.map((item) => item.id) : [node.id]);
-      if (groupId && !moveWholeGroup) {
+      if (!groupId) {
+        /* 拖拽不会补发 click，开始拖动外部节点时立即清理此前的组与成员聚焦。 */
+        setFocusedGroupId(null);
+        setFocusedGroupMemberId(null);
+        onClearSelection();
+      } else if (!moveWholeGroup) {
         /* 拖拽不会继续触发 click，因此在拖动开始时直接同步组内成员的独立聚焦态。 */
         setFocusedGroupId(null);
         setFocusedGroupMemberId(node.id);
         onClearSelection();
+      } else {
+        setFocusedGroupMemberId(null);
       }
       setNodes((current) => {
         const layers = nextGroupLayers(current);
@@ -228,7 +234,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
         positions: new Map(members.map((item) => [item.id, { ...item.position }])),
       };
     },
-    [nodes, onClearSelection, setNodes],
+    [onClearSelection, setNodes],
   );
 
   const dragNodeGroup = useCallback(
@@ -257,11 +263,12 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
       const groupElement = (event.target as Element).closest<HTMLElement>("[data-canvas-group]");
       const groupId = groupElement?.dataset.canvasGroup;
       if (!groupId) return;
-      const group = getCanvasGroupBounds(nodes).find((item) => item.id === groupId);
+      const currentNodes = nodesRef.current;
+      const group = getCanvasGroupBounds(currentNodes).find((item) => item.id === groupId);
       if (!group) return;
       const point = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const positions = new Map(
-        nodes.filter((node) => groupIdOf(node) === group.id).map((node) => [node.id, { ...node.position }]),
+        currentNodes.filter((node) => groupIdOf(node) === group.id).map((node) => [node.id, { ...node.position }]),
       );
       if (!positions.size) return;
       event.preventDefault();
@@ -284,7 +291,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
       onClearSelection();
       backgroundDragRef.current = { pointerId: event.pointerId, start: point, positions, frame: null, latest: point };
     },
-    [nodes, onClearSelection, screenToFlowPosition, setNodes],
+    [onClearSelection, screenToFlowPosition, setNodes],
   );
 
   const moveBackgroundDrag = useCallback(
@@ -346,22 +353,34 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
   /** 组内卡片仍可单独聚焦，但不会恢复其框选能力。 */
   const focusGroupedNode = useCallback(
     (nodeId: string) => {
-      const target = nodes.find((node) => node.id === nodeId);
+      const target = nodesRef.current.find((node) => node.id === nodeId);
       if (!target) return;
       const groupId = groupIdOf(target);
       if (!groupId) {
-        setNodes((current) => current.map((node) => ({ ...node, selected: node.id === nodeId })));
+        setNodes((current) => {
+          let changed = false;
+          const next = current.map((node) => {
+            const selected = node.id === nodeId;
+            if (node.selected === selected) return node;
+            changed = true;
+            return { ...node, selected };
+          });
+          return changed ? next : current;
+        });
         setFocusedGroupId(null);
         setFocusedGroupMemberId(null);
         return;
       }
       /* 成员聚焦与 React Flow 的整组选中互斥，避免一个成员触发整组白边。 */
-      setNodes((current) => current.map((node) => ({ ...node, selected: false })));
+      setNodes((current) => {
+        if (!current.some((node) => node.selected)) return current;
+        return current.map((node) => (node.selected ? { ...node, selected: false } : node));
+      });
       setFocusedGroupId(null);
       setFocusedGroupMemberId(nodeId);
       onClearSelection();
     },
-    [nodes, onClearSelection, setNodes],
+    [onClearSelection, setNodes],
   );
 
   return {

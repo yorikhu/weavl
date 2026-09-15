@@ -42,6 +42,16 @@ function numberValue(...values: unknown[]): number | undefined {
   return values.find((value): value is number => typeof value === "number");
 }
 
+/** 返回高于当前全部节点和分组边框的下一层级。 */
+export function getNextCanvasLayer(nodes: Node[]): number {
+  return (
+    nodes.reduce((highest, node) => {
+      const groupLayer = (node.data as Record<string, unknown>).groupZIndex;
+      return Math.max(highest, node.zIndex ?? 0, typeof groupLayer === "number" ? groupLayer : 0);
+    }, 0) + 1
+  );
+}
+
 /** 返回节点用于画布几何计算的稳定尺寸。 */
 export function getCanvasNodeSize(node: Node) {
   const data = node.data as Record<string, unknown>;
@@ -165,6 +175,45 @@ export function stripNodeGroup(data: Record<string, unknown>): Record<string, un
   delete next.groupName;
   delete next.groupZIndex;
   return next;
+}
+
+/**
+ * 连线创建的新节点继承共同源节点的分组。只有全部源节点都属于同一个组时才继承，
+ * 避免临时多选跨组连接时把新节点错误收入其中一个组。
+ */
+export function inheritSharedSourceGroup(node: Node, sourceIds: string[], nodes: Node[]): Node {
+  const uniqueSourceIds = [...new Set(sourceIds)];
+  const sourceIdSet = new Set(uniqueSourceIds);
+  const sources = nodes.filter((item) => sourceIdSet.has(item.id));
+  if (!sources.length || sources.length !== uniqueSourceIds.length) return node;
+
+  const firstSource = sources[0];
+  if (!firstSource) return node;
+  const firstData = firstSource.data as Record<string, unknown>;
+  const groupId = firstData.groupId;
+  if (
+    typeof groupId !== "string" ||
+    !sources.every((source) => (source.data as Record<string, unknown>).groupId === groupId)
+  )
+    return node;
+
+  const groupName = typeof firstData.groupName === "string" ? firstData.groupName : "Group";
+  const groupZIndex =
+    typeof firstData.groupZIndex === "number"
+      ? firstData.groupZIndex
+      : Math.max(0, ...sources.map((source) => source.zIndex ?? 1)) - 1;
+  return {
+    ...node,
+    selectable: false,
+    selected: false,
+    zIndex: Math.max(1, ...sources.map((source) => source.zIndex ?? 1)),
+    data: {
+      ...(node.data as Record<string, unknown>),
+      groupId,
+      groupName,
+      groupZIndex,
+    },
+  };
 }
 
 export function rectIntersects(a: CanvasRect, b: CanvasRect): boolean {

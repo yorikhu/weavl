@@ -7,6 +7,7 @@ import { assetToCanvasNode } from "@/utils/assetNode";
 import { uploadAsset } from "@/utils/uploadAsset";
 import type { CanvasAddMenuPosition } from "../components/CanvasAddMenus";
 import { createBasicNode } from "../utils/nodeFactory";
+import { getNextCanvasLayer } from "../utils/canvasGroups";
 import { nodeAssetPayload, type NodeAssetPayload } from "../utils/nodeAssets";
 import { selectNodeFromAssetList } from "../utils/nodeSelectors";
 import { stripNodeGroup } from "../utils/canvasGroups";
@@ -164,13 +165,17 @@ export function useCanvasAssets(options: UseCanvasAssetsOptions) {
       try {
         const assets = await Promise.all(Array.from(files, (file) => uploadAsset(file, null, false)));
         const base = uploadPositionRef.current;
-        setNodes((current) => [
-          ...current,
-          ...assets.map((asset, index) => ({
-            ...assetToCanvasNode(asset, current.length + index),
-            position: { x: base.x + index * 24, y: base.y + index * 24 },
-          })),
-        ]);
+        setNodes((current) => {
+          const firstLayer = getNextCanvasLayer(current);
+          return [
+            ...current,
+            ...assets.map((asset, index) => ({
+              ...assetToCanvasNode(asset, current.length + index),
+              position: { x: base.x + index * 24, y: base.y + index * 24 },
+              zIndex: firstLayer + index,
+            })),
+          ];
+        });
         toast(`${assets.length} 个文件已上传并添加到画布`, "success");
       } catch (cause) {
         toast((cause as Error).message || "文件上传失败");
@@ -345,7 +350,7 @@ export function useCanvasAssets(options: UseCanvasAssetsOptions) {
         toast("剪贴板中没有可粘贴的文字");
         return;
       }
-      const node = createBasicNode("text", position);
+      const node = createBasicNode("text", position, false, nodes);
       setNodes((current) => [...current, { ...node, data: { ...node.data, title: "粘贴文本", text } }]);
     } catch {
       toast("无法读取剪贴板，请允许浏览器访问剪贴板");

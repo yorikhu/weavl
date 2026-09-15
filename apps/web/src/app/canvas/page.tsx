@@ -26,7 +26,7 @@ import type { AgentConversation, Asset, CanvasDocument, CanvasProject, RunView }
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
 import { jsonBody, studioApi } from "@/lib/studioApi";
-import { EnterEditContext } from "./editContext";
+import { EnterEditContext, type EditCtx } from "./editContext";
 import { ImageEditPanel, TextEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNode";
 import { CanvasViewportControls } from "./components/CanvasViewportControls";
 import { CanvasSelectionToolbar } from "./components/CanvasSelectionToolbar";
@@ -55,11 +55,12 @@ import { createBasicNode } from "./utils/nodeFactory";
 import { buildLatestRunGraph } from "./utils/latestRunGraph";
 import {
   isPointInsideCanvasGroup,
+  getNextCanvasLayer,
   markFocusedGroupMember,
   normalizeGroupedNodeSelection,
   type CanvasGroupBounds,
 } from "./utils/canvasGroups";
-import { isCanvasBackgroundTarget } from "./utils/canvasEvents";
+import { getCanvasNodePointerTarget, isCanvasBackgroundTarget } from "./utils/canvasEvents";
 import { getEditingNodeKind, normalizeLegacyEdges } from "./utils/nodeSelectors";
 import { assetToCanvasNode } from "@/utils/assetNode";
 import { openCanvasAfter } from "@/utils/openCanvas";
@@ -87,8 +88,15 @@ function CanvasInner() {
   const [canvasConversationId, setCanvasConversationId] = useState<string | null>(null);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<CanvasAddMenuPosition | null>(null);
+  const nodePointerGestureRef = useRef<{
+    pointerId: number;
+    nodeId: string;
+    clientX: number;
+    clientY: number;
+  } | null>(null);
+  const promptFallbackFrameRef = useRef<number | null>(null);
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
-  const { canUndo, canRedo, undo, redo } = useCanvasHistory(nodes, edges, setNodes, setEdges, canvasReady);
+  const { canUndo, canRedo, undo, redo } = useCanvasHistory(nodes, edges, setNodes, setEdges, canvasReady, canvasId);
 
   useEffect(() => {
     if (initializingRef.current) return;
@@ -142,6 +150,8 @@ function CanvasInner() {
 
   useEffect(() => {
     if (!canvasReady || !projectId || !canvasId) return;
+    /* 节点拖动期间不启动持久化计时，松手后的稳定状态再统一保存。 */
+    if (nodes.some((node) => node.dragging)) return;
     const timer = window.setTimeout(() => {
       void studioApi(`/studio/projects/${projectId}/canvases/${canvasId}`, {
         method: "PATCH",
@@ -197,7 +207,7 @@ function CanvasInner() {
   const [chatThumb, setChatThumb] = useState<string | null>(null);
   const [chatModel] = useState("Weavl LLM");
   const [hasRun, setHasRun] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const {
     editingId,
     editingMode,
@@ -216,7 +226,7 @@ function CanvasInner() {
     imageEditStateRef,
     videoEditStateRef,
   } = useCanvasEditing(nodes, setNodes);
-  const clearCanvasSelection = useCallback(() => setSelectedNode(null), []);
+  const clearCanvasSelection = useCallback(() => setSelectedNodeId(null), []);
   const {
     selection,
     focusedGroupId,
@@ -295,7 +305,7 @@ function CanvasInner() {
   const activateCanvas = useCallback(
     (canvas: CanvasDocument) => {
       exitEdit();
-      setSelectedNode(null);
+      setSelectedNodeId(null);
       setContextMenu(null);
       setNodes(normalizeGroupedNodeSelection(canvas.nodes as Node[]));
       setEdges(canvas.edges as Edge[]);
@@ -423,10 +433,10 @@ function CanvasInner() {
   const agentDrawerRef = useRef<HTMLDivElement | null>(null);
   const agentBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  /** 选中节点时同步 selectedNode（用于顶部 NodeToolbar 浮出） */
+  /** 只保存稳定 ID，避免拖动时因节点对象每帧变化而产生第二次页面更新。 */
   const onSelectionChange = useCallback(
     ({ nodes: sel }: { nodes: Node[] }) => {
-      setSelectedNode(sel[0] ?? null);
+      setSelectedNodeId(sel[0]?.id ?? null);
       if (sel.length) clearFocusedGroup();
     },
     [clearFocusedGroup],
@@ -549,7 +559,8 @@ function CanvasInner() {
             await studioApi(`/studio/conversations/${created.id}`, { method: "PATCH", body: jsonBody({ projectId }) });
         }
         const assetIds: string[] = [];
-        const selectedRef = selectedNode?.data.assetRef as { assetId?: string } | undefined;
+        const selectedRef = nodes.find((node) => node.id === selectedNodeId)?.data.assetRef as
+          { assetId?: string } | undefined;
         if (selectedRef?.assetId) assetIds.push(selectedRef.assetId);
         if (chatThumb) {
           const uploaded = await studioApi<Asset>("/studio/assets", {
@@ -569,12 +580,15 @@ function CanvasInner() {
           { method: "POST", body: jsonBody({ content: userText || "请参考附件生成内容", assetIds }) },
         );
         setAgentMessages((messages) => [...messages, { role: "agent", text: result.reply.content }]);
-        setNodes((current) => [...current, assetToCanvasNode(result.asset, current.length)]);
+        setNodes((current) => [
+          ...current,
+          { ...assetToCanvasNode(result.asset, current.length), zIndex: getNextCanvasLayer(current) },
+        ]);
       } catch (cause) {
         toast((cause as Error).message || "Agent 生成失败");
       }
     })();
-  }, [chatInput, chatThumb, canvasConversationId, projectName, projectId, selectedNode, setNodes]);
+  }, [chatInput, chatThumb, canvasConversationId, projectName, projectId, selectedNodeId, nodes, setNodes]);
 
   /** chat 缩略上传（占位：DataURL） */
   const handleThumb = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -591,30 +605,94 @@ function CanvasInner() {
     () => markFocusedGroupMember(nodes, focusedGroupMemberId),
     [focusedGroupMemberId, nodes],
   );
+  const editContextValue: EditCtx = {
+    editingId,
+    editingMode,
+    editingKind,
+    buffer: editBuffer,
+    setBuffer: setEditBuffer,
+    enterEdit,
+    focusNode,
+    saveEdit,
+    commitEdit,
+    commitImageEdit,
+    commitVideoEdit,
+    exitEdit,
+    focusMode: { nodeId: editingId },
+    onApplyFormat,
+    editorElRef,
+    composingRef,
+    imageEditStateRef,
+    videoEditStateRef,
+  };
+  const editingIdRef = useRef(editingId);
+  editingIdRef.current = editingId;
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
+  const openNodePrompt = useCallback(
+    (nodeId: string) => {
+      const node = nodesRef.current.find((item) => item.id === nodeId);
+      const data = node?.data as Record<string, unknown> | undefined;
+      if (!data) return;
+      if (data.nodeKind === "image" || data.nodeKind === "video") {
+        enterEdit(nodeId);
+        return;
+      }
+      const hasText = typeof data.text === "string" && Boolean(data.text.trim());
+      if (data.nodeKind === "text" && !hasText && data.creationMode !== "manual") enterEdit(nodeId, "generate");
+    },
+    [enterEdit],
+  );
+  const handleBoardPointerDownCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button === 0) {
+        const nodeId = getCanvasNodePointerTarget(event.target);
+        if (nodeId) {
+          if (promptFallbackFrameRef.current !== null) cancelAnimationFrame(promptFallbackFrameRef.current);
+          promptFallbackFrameRef.current = null;
+          nodePointerGestureRef.current = {
+            pointerId: event.pointerId,
+            nodeId,
+            clientX: event.clientX,
+            clientY: event.clientY,
+          };
+          focusGroupedNode(nodeId);
+        } else {
+          nodePointerGestureRef.current = null;
+        }
+      }
+      startBackgroundDrag(event);
+    },
+    [focusGroupedNode, startBackgroundDrag],
+  );
+  const handleBoardPointerUpCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const gesture = nodePointerGestureRef.current;
+      nodePointerGestureRef.current = null;
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+      if (Math.hypot(event.clientX - gesture.clientX, event.clientY - gesture.clientY) > 4) return;
+      const nodeId = gesture.nodeId;
+      promptFallbackFrameRef.current = requestAnimationFrame(() => {
+        promptFallbackFrameRef.current = null;
+        if (editingIdRef.current !== nodeId) openNodePrompt(nodeId);
+      });
+    },
+    [openNodePrompt],
+  );
+  const clearNodePointerGesture = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (nodePointerGestureRef.current?.pointerId === event.pointerId) nodePointerGestureRef.current = null;
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (promptFallbackFrameRef.current !== null) cancelAnimationFrame(promptFallbackFrameRef.current);
+    },
+    [],
+  );
 
   return (
-    <EnterEditContext.Provider
-      value={{
-        editingId,
-        editingMode,
-        editingKind,
-        buffer: editBuffer,
-        setBuffer: setEditBuffer,
-        enterEdit,
-        focusNode,
-        saveEdit,
-        commitEdit,
-        commitImageEdit,
-        commitVideoEdit,
-        exitEdit,
-        focusMode: { nodeId: editingId },
-        onApplyFormat,
-        editorElRef,
-        composingRef,
-        imageEditStateRef,
-        videoEditStateRef,
-      }}
-    >
+    <EnterEditContext.Provider value={editContextValue}>
       <div className={styles.shell}>
         <input
           ref={canvasUploadRef}
@@ -681,7 +759,12 @@ function CanvasInner() {
           onLocateNode={(nodeId) =>
             focusNode(nodeId, { leftInset: Math.max(0, Math.min(360, window.innerWidth - 220)) })
           }
-          onAddAsset={(asset) => setNodes((current) => [...current, assetToCanvasNode(asset, current.length)])}
+          onAddAsset={(asset) =>
+            setNodes((current) => [
+              ...current,
+              { ...assetToCanvasNode(asset, current.length), zIndex: getNextCanvasLayer(current) },
+            ])
+          }
           onAssetAdded={(asset) =>
             setAvailableAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)])
           }
@@ -718,15 +801,21 @@ function CanvasInner() {
         <div
           className={styles.board}
           onDoubleClick={onBoardDoubleClick}
-          onPointerDownCapture={startBackgroundDrag}
+          onPointerDownCapture={handleBoardPointerDownCapture}
           onPointerMoveCapture={(event) => {
             if (!isBackgroundDragging()) return;
             event.preventDefault();
             event.stopPropagation();
             moveBackgroundDrag(event);
           }}
-          onPointerUpCapture={stopBackgroundDrag}
-          onPointerCancelCapture={stopBackgroundDrag}
+          onPointerUpCapture={(event) => {
+            handleBoardPointerUpCapture(event);
+            stopBackgroundDrag(event);
+          }}
+          onPointerCancelCapture={(event) => {
+            clearNodePointerGesture(event);
+            stopBackgroundDrag(event);
+          }}
         >
           <ReactFlow
             nodes={renderedNodes}

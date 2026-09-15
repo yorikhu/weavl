@@ -1,6 +1,7 @@
 import type { Node } from "@xyflow/react";
 import type { BasicNodeKind, ImageNodeData, TextNodeData, VideoNodeData } from "../types/nodes";
 import type { NodeLibraryItem } from "../constants";
+import { getNextCanvasLayer } from "./canvasGroups";
 
 export type FlowPosition = { x: number; y: number };
 
@@ -90,6 +91,7 @@ export function createBasicNode(
     id: nextNodeId(),
     type: definition.type,
     position,
+    zIndex: getNextCanvasLayer(existingNodes),
     data,
   };
 }
