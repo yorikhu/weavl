@@ -9,6 +9,8 @@ import { IntegrationsController } from "./integrations.controller";
 import { AccountController } from "./account.controller";
 import { SessionGuard } from "./http";
 import { StudioStore } from "./store";
+import { TextGenerationController } from "./text-generation.controller";
+import { TextGenerationService } from "./text-generation.service";
 
 @Module({
   controllers: [
@@ -21,7 +23,8 @@ import { StudioStore } from "./store";
     WorkflowsController,
     IntegrationsController,
     AccountController,
+    TextGenerationController,
   ],
-  providers: [StudioStore, SessionGuard],
+  providers: [StudioStore, SessionGuard, TextGenerationService],
 })
 export class StudioModule {}
