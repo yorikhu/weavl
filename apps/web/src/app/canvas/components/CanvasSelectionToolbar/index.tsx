@@ -1,4 +1,4 @@
-import { NodeToolbar, Position } from "@xyflow/react";
+import { NodeToolbar, Position, useViewport } from "@xyflow/react";
 import { CanvasGroupActions } from "../CanvasGroupActions";
 import styles from "./index.module.scss";
 
@@ -9,6 +9,8 @@ interface CanvasSelectionToolbarProps {
   onGroup: (nodeIds: string[]) => void;
   onUngroup: (groupId: string) => void;
 }
+
+const TOOLBAR_FRAME_GAP = 12;
 
 /**
  * 渲染紧贴选区上沿的多节点操作栏。
@@ -23,10 +25,14 @@ export function CanvasSelectionToolbar({
   onGroup,
   onUngroup,
 }: CanvasSelectionToolbarProps) {
+  const { zoom } = useViewport();
   if (nodeIds.length < 2) return null;
 
+  /* NodeToolbar 的 offset 是屏幕像素，外框 inset 是画布单位，需要按当前缩放换算。 */
+  const toolbarOffset = topInset * zoom + TOOLBAR_FRAME_GAP;
+
   return (
-    <NodeToolbar nodeId={nodeIds} isVisible position={Position.Top} offset={topInset + 4} className={styles.anchor}>
+    <NodeToolbar nodeId={nodeIds} isVisible position={Position.Top} offset={toolbarOffset} className={styles.anchor}>
       <CanvasGroupActions nodeIds={nodeIds} groupId={groupId} onGroup={onGroup} onUngroup={onUngroup} />
     </NodeToolbar>
   );
