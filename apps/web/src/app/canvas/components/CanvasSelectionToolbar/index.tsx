@@ -10,7 +10,12 @@ interface CanvasSelectionToolbarProps {
   onUngroup: (groupId: string) => void;
 }
 
-/** 多节点框选操作栏；紧贴选区上沿，并提供选中节点的批量操作。 */
+/**
+ * 渲染紧贴选区上沿的多节点操作栏。
+ *
+ * @param props - 选中节点、定位内边距、完整分组标识和分组操作回调。
+ * @returns 通过 PanelPortal 挂载的选择操作栏；没有节点时返回 `null`。
+ */
 export function CanvasSelectionToolbar({
   nodeIds,
   topInset,

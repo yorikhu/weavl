@@ -41,7 +41,12 @@ type CanvasDialog = { kind: "rename" | "delete"; canvas: CanvasDocument };
 const isOverflowing = (element: HTMLElement) => element.scrollWidth > element.clientWidth;
 const isBlurredAndOverflowing = (element: HTMLElement) => document.activeElement !== element && isOverflowing(element);
 
-/** 项目内的画布搜索、新建与切换入口。 */
+/**
+ * 渲染项目内的画布搜索、新建、切换和管理入口。
+ *
+ * @param props - 画布集合、当前画布标识和增删改切换回调。
+ * @returns 画布选择 Popover 及其重命名、删除弹窗。
+ */
 function CanvasSwitcher({ canvases, currentCanvasId, onSelect, onCreate, onRename, onDelete }: CanvasSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -243,7 +248,13 @@ function CanvasSwitcher({ canvases, currentCanvasId, onSelect, onCreate, onRenam
   );
 }
 
-/** 画布项目操作栏；canvas 为左上角完整形态，drawer 为抽屉顶部紧凑形态。 */
+/**
+ * 渲染画布项目操作栏。
+ * `canvas` 变体用于左上角完整形态，`drawer` 变体用于资产抽屉顶部紧凑形态。
+ *
+ * @param props - 项目名称、项目菜单、画布列表及对应操作回调。
+ * @returns 与使用场景匹配的项目操作栏。
+ */
 export function CanvasProjectToolbar({
   variant = "canvas",
   projectName,

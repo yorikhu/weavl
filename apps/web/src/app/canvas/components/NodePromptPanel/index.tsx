@@ -77,7 +77,13 @@ function samePromptAnchor(previous: PromptAnchor | null, next: PromptAnchor | nu
   );
 }
 
-/** 图片、视频与文本节点共用的提示词生成面板。 */
+/**
+ * 渲染图片、视频与文本节点共用的提示词生成面板。
+ * 面板优先位于节点下方，仅在视口空间不足时与节点边界发生最小重叠。
+ *
+ * @param props - 锚点节点、提示词状态、模型选项和面板操作回调。
+ * @returns 通过 Portal 挂载到画布视口的提示词面板。
+ */
 export function NodePromptPanel({
   nodeId,
   prompt,

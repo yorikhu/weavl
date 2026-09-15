@@ -20,7 +20,11 @@ function resetHandle(handle: HTMLElement) {
   handle.style.removeProperty("--handle-hit-size");
 }
 
-/** 让组和临时多选区的批量连接球共享屏幕等距磁吸与候选仲裁。 */
+/**
+ * 让组和临时多选区的批量连接球共享屏幕等距磁吸与候选仲裁。
+ *
+ * @param options - 保存当前批量拖线状态的可变引用。
+ */
 export function useBatchHandleMagnet({ draggingRef }: UseBatchHandleMagnetOptions) {
   useEffect(() => {
     const magnetClass = styles.batchHandleMagnetActive;

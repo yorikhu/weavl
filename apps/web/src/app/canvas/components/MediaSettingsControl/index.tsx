@@ -27,6 +27,12 @@ interface MediaSettingsControlProps {
   onCountChange: (value: number) => void;
 }
 
+/**
+ * 按真实宽高比绘制规格选项中的比例示意图。
+ *
+ * @param props - 输出尺寸及是否使用紧凑展示。
+ * @returns 不超过组件边界的比例标记。
+ */
 function RatioMark({ option, compact = false }: { option: MediaDimensionOption; compact?: boolean }) {
   const cardSize = getMediaCardSize(option);
   const scale = (compact ? 14 : 20) / 300;
@@ -42,6 +48,12 @@ function RatioMark({ option, compact = false }: { option: MediaDimensionOption; 
   );
 }
 
+/**
+ * 渲染媒体设置中可复用的单选按钮组。
+ *
+ * @param props - 分组标题、候选项、当前值和变更回调。
+ * @returns 带选中状态的参数按钮组。
+ */
 function ChoiceGroup({
   label,
   values,
@@ -77,7 +89,12 @@ function ChoiceGroup({
   );
 }
 
-/** 图片与视频节点共用的生成尺寸、清晰度和数量设置。 */
+/**
+ * 渲染图片与视频节点共用的生成尺寸、清晰度和数量设置。
+ *
+ * @param props - 媒体类型、当前模型、选中参数和状态更新回调。
+ * @returns 可展开的媒体参数选择器。
+ */
 export function MediaSettingsControl({
   open,
   ratio,

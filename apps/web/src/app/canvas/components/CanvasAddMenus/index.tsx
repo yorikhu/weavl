@@ -77,6 +77,12 @@ interface CanvasMenuContentProps {
   canRedo: boolean;
 }
 
+/**
+ * 渲染画布或节点右键菜单的共享操作项。
+ *
+ * @param props - 菜单模式、撤销状态和节点操作回调。
+ * @returns 与当前命中对象匹配的菜单内容。
+ */
 function CanvasMenuContent(props: CanvasMenuContentProps) {
   const { menu } = props;
   if (menu.mode === "add") {
@@ -157,6 +163,12 @@ function CanvasMenuContent(props: CanvasMenuContentProps) {
   );
 }
 
+/**
+ * 渲染画布右键菜单、双击添加菜单以及拖线后的节点创建菜单。
+ *
+ * @param props - 菜单坐标、当前连线状态和各项画布操作回调。
+ * @returns 当前存在菜单状态时返回对应浮层，否则返回 `null`。
+ */
 export function CanvasAddMenus({
   addMenu,
   connectMenu,

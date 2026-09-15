@@ -12,6 +12,12 @@ interface CanvasViewportControlsProps {
   onToggleAssets: () => void;
 }
 
+/**
+ * 提供资产管理入口、缩放比例控制和适应视口操作。
+ *
+ * @param props - 资产抽屉状态及其切换回调。
+ * @returns 固定在画布左下角的视口控制条。
+ */
 export function CanvasViewportControls({ assetOpen, onToggleAssets }: CanvasViewportControlsProps) {
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow();
   const { zoom } = useViewport();

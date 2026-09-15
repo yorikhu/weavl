@@ -14,6 +14,12 @@ interface CanvasNodeLibraryProps {
   onAddFromLibrary: (index: number) => void;
 }
 
+/**
+ * 展示基础节点与业务节点目录，供工具栏按类型创建节点。
+ *
+ * @param props - 浮层引用、关闭回调和节点创建回调。
+ * @returns 节点目录浮层。
+ */
 export function CanvasNodeLibrary({ libraryRef, onClose, onAddBasic, onAddFromLibrary }: CanvasNodeLibraryProps) {
   return (
     <div className={styles.libraryBackdrop} onClick={onClose}>

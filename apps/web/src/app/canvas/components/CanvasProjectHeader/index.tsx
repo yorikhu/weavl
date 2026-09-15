@@ -13,7 +13,12 @@ interface CanvasProjectHeaderProps {
   agentButtonRef: RefObject<HTMLButtonElement | null>;
 }
 
-/** 画布顶部页面层，仅承载可替换的项目操作栏和右侧账户、Agent 入口。 */
+/**
+ * 渲染画布顶部页面层，承载可替换的项目操作栏和右侧账户、Agent 入口。
+ *
+ * @param props - 项目工具栏、Agent 抽屉状态和切换回调。
+ * @returns 画布顶部导航区域。
+ */
 export function CanvasProjectHeader({ toolbar, agentOpen, onToggleAgent, agentButtonRef }: CanvasProjectHeaderProps) {
   return (
     <div className={styles.topbar}>

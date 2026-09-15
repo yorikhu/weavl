@@ -11,7 +11,12 @@ interface EditableNodeTitleProps {
   className?: string;
 }
 
-/** 画布节点的行内标题；双击后可直接改名，不会触发节点编辑或画布聚焦。 */
+/**
+ * 渲染可行内改名的节点标题；双击标题不会触发节点编辑或画布聚焦。
+ *
+ * @param props - 节点标识、标题值、回退文案和可选样式类。
+ * @returns 节点标题的展示态或编辑态。
+ */
 export function EditableNodeTitle({ nodeId, value, fallback, className }: EditableNodeTitleProps) {
   const { setNodes } = useReactFlow();
   const [editing, setEditing] = useState(false);

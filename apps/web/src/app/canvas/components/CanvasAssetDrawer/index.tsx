@@ -55,6 +55,14 @@ interface CanvasAssetDrawerProps {
 type AssetDialog = { kind: "move" | "rename" | "delete"; asset: Asset };
 type NodeDialog = { kind: "move" | "rename" | "delete"; node: Node };
 
+/**
+ * 将树形资产文件夹展平为带层级信息的列表，供移动弹窗缩进展示。
+ *
+ * @param folders - 全部资产文件夹。
+ * @param parentId - 当前递归层级的父文件夹标识。
+ * @param depth - 当前递归深度。
+ * @returns 保持树顺序的扁平文件夹列表。
+ */
 function flattenFolders(
   folders: AssetFolder[],
   parentId: string | null = null,
@@ -75,6 +83,12 @@ function nodeName(node: Node) {
   return typeof title === "string" && title.trim() ? title : "未命名节点";
 }
 
+/**
+ * 渲染画布节点在资产管理器中的方形缩略图。
+ *
+ * @param props - 要预览的画布节点。
+ * @returns 真实媒体预览或节点类型图标。
+ */
 function Preview({ node }: { node: Node }) {
   const data = node.data as Record<string, unknown>;
   const kind = nodeKind(node);
@@ -86,6 +100,12 @@ function Preview({ node }: { node: Node }) {
   return <Icon size={20} strokeWidth={1.4} />;
 }
 
+/**
+ * 渲染全局资产在资产管理器中的方形缩略图。
+ *
+ * @param props - 要预览的全局资产。
+ * @returns 真实媒体预览或资产类型图标。
+ */
 function AssetPreview({ asset }: { asset: Asset }) {
   const content = asset.versions.at(-1)?.content || "";
   if (asset.kind === "image" && content)
@@ -109,7 +129,13 @@ interface TabFilterState {
   kind: FilterKind;
 }
 
-/** 画布项目资产管理器：统一浏览画布节点与全局资产，并同步节点选择和定位。 */
+/**
+ * 渲染项目资产管理器，统一浏览画布节点与全局资产。
+ * 画布与资产页签分别维护搜索和筛选状态，节点操作会同步实际画布选择与定位。
+ *
+ * @param props - 抽屉状态、画布数据、资产数据和各项持久化操作回调。
+ * @returns 支持目录、搜索、筛选与节点操作的左侧抽屉。
+ */
 function CanvasAssetDrawerView({
   open,
   header,
@@ -812,5 +838,8 @@ function CanvasAssetDrawerView({
   );
 }
 
-/** 抽屉关闭时忽略画布逐帧的位置变化，避免隐藏列表跟随节点拖动反复渲染。 */
+/**
+ * 资产管理抽屉的记忆化组件。
+ * 抽屉关闭时忽略画布逐帧的位置变化，避免隐藏列表跟随节点拖动反复渲染。
+ */
 export const CanvasAssetDrawer = memo(CanvasAssetDrawerView, (previous, next) => !previous.open && !next.open);

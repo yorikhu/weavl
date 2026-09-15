@@ -54,6 +54,14 @@ interface BatchConnectionSource {
   starts: Array<{ id: string; x: number; y: number }>;
 }
 
+/**
+ * 将临时多选区转换为批量连线源，并计算右侧操作球的位置。
+ *
+ * @param nodes - 覆盖层订阅的节点集合。
+ * @param selectedNodeIds - 当前多选节点标识。
+ * @param insets - 选择框围绕节点的扩展距离。
+ * @returns 批量连线锚点和源节点；不足两个节点时返回 `null`。
+ */
 function getSelectionBatchSource(
   nodes: Node[],
   selectedNodeIds: string[],
@@ -77,6 +85,12 @@ function getSelectionBatchSource(
   };
 }
 
+/**
+ * 在 React Flow 视口中绘制分组边界、多选批量连接点和临时连线。
+ *
+ * @param props - 分组聚焦、选择状态及批量连线回调。
+ * @returns 与画布缩放、平移同步的分组覆盖层。
+ */
 function CanvasGroupLayerView({
   focusedGroupId,
   selectedNodeIds,
@@ -253,9 +267,17 @@ function sameLayerProps(previous: CanvasGroupLayerProps, next: CanvasGroupLayerP
   );
 }
 
-/** 分组覆盖层仅在分组、多选或交互参数实际变化时更新。 */
+/**
+ * 分组覆盖层的记忆化入口，仅在分组、多选或交互参数实际变化时更新。
+ */
 export const CanvasGroupLayer = memo(CanvasGroupLayerView, sameLayerProps);
 
+/**
+ * 渲染单个持久分组的边界、名称编辑器和批量连接入口。
+ *
+ * @param props - 分组几何、交互状态和分组操作回调。
+ * @returns 位于 React Flow 视口坐标系中的分组区域。
+ */
 function GroupRegion({
   group,
   active,
@@ -359,6 +381,12 @@ function GroupRegion({
   );
 }
 
+/**
+ * 渲染分组或多选区使用的批量连接球，并转发完整指针手势。
+ *
+ * @param props - 批量连线源、无障碍标签和指针事件回调。
+ * @returns 可磁吸并拖出多根连线的连接按钮。
+ */
 function BatchConnectHandle({
   source,
   label,

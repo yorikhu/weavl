@@ -5,7 +5,12 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow, type EdgeProp
 import { Scissors } from "lucide-react";
 import styles from "./index.module.scss";
 
-/** 带悬停断开按钮的画布连线。 */
+/**
+ * 渲染带悬停断开按钮的贝塞尔画布连线。
+ *
+ * @param props - React Flow 注入的连线标识、端点坐标和位置。
+ * @returns 可通过剪刀按钮删除的自定义连线。
+ */
 export function CanvasEdge({
   id,
   sourceX,
