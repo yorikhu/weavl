@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { useReactFlow, type Node } from "@xyflow/react";
+import { getViewportForBounds, useReactFlow, useStore, type Node } from "@xyflow/react";
 import type { EditCtx } from "../editContext";
 import type { AnyNodeData, CardField } from "../types/nodes";
 import toolbarStyles from "../components/FloatingToolbar/index.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
 
+const NODE_FOCUS_MAX_ZOOM = 1.5;
+
 /** 节点编辑态及持久化写回，独立于页面菜单与连线交互。 */
 export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateAction<Node[]>>) {
-  const { setCenter } = useReactFlow();
+  const { setViewport } = useReactFlow();
+  const viewportWidth = useStore((state) => state.width);
+  const viewportHeight = useStore((state) => state.height);
+  const minZoom = useStore((state) => state.minZoom);
+  const maxZoom = useStore((state) => state.maxZoom);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingMode, setEditingMode] = useState<"manual" | "generate">("manual");
   const [editBuffer, setEditBuffer] = useState<{ title: string; text: string }>({ title: "", text: "" });
   /** contentEditable DOM 引用（让 commitEdit 能读到最新 innerText）+ IME composition 标志 */
   const editorElRef = useRef<HTMLDivElement | null>(null);
   const composingRef = useRef(false);
-  /** 进入编辑：初始化 buffer + 平移居中 + 稍微放大（退出时不再复位视口，所以无需保存） */
+  /** 进入编辑：只初始化编辑数据和模式，不改变当前画布视口。 */
   const enterEdit = useCallback(
     (id: string, mode: "manual" | "generate" = "manual") => {
       const n = nodes.find((x) => x.id === id);
@@ -39,15 +45,32 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
               ? (d.fields as Array<{ label: string; value: string }>).map((f) => `${f.label}：${f.value}`).join("\n")
               : "";
       setEditBuffer({ title, text });
-      // 节点居中 + 放大到 2.0（进入编辑时，参考 LibTV 200%）
-      // 用节点实际渲染尺寸计算中心，避免视觉偏移
-      const w = n.measured?.width ?? (typeof d.width === "number" ? d.width : 440);
-      const h = n.measured?.height ?? (typeof d.height === "number" ? d.height : 120);
-      void setCenter(n.position.x + w / 2, n.position.y + h / 2, { zoom: 2, duration: 320 });
       setEditingMode(mode);
       setEditingId(id);
     },
-    [nodes, setCenter, setNodes],
+    [nodes, setNodes],
+  );
+
+  /** 双击聚焦：按节点实际尺寸自适应视口，保证缩放后的节点完整可见。 */
+  const focusNode = useCallback(
+    (id: string) => {
+      const node = nodes.find((item) => item.id === id);
+      if (!node) return;
+      const data = node.data as Record<string, unknown>;
+      /* 文本节点保存的拖拽尺寸优先于 React Flow 可能尚未刷新的 measured。 */
+      const width = typeof data.width === "number" ? data.width : (node.measured?.width ?? 440);
+      const height = typeof data.height === "number" ? data.height : (node.measured?.height ?? 120);
+      const viewport = getViewportForBounds(
+        { x: node.position.x, y: node.position.y, width, height },
+        viewportWidth,
+        viewportHeight,
+        minZoom,
+        Math.min(maxZoom, NODE_FOCUS_MAX_ZOOM),
+        0.16,
+      );
+      void setViewport(viewport, { duration: 320, ease: (progress) => 1 - (1 - progress) ** 3 });
+    },
+    [nodes, viewportWidth, viewportHeight, minZoom, maxZoom, setViewport],
   );
 
   /** 退出编辑：视口保持不动（位置和缩放都不变），只关编辑态 */
@@ -242,11 +265,10 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
       if (target.closest("[data-node-prompt-panel]")) return;
       /** 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
       if (target.closest(`.${toolbarStyles.floatingToolbar}`)) return;
-      e.preventDefault();
-      e.stopPropagation();
+      /* 先保存当前内容，但继续传递 pointerdown，让目标节点可在同一次操作中开始拖动。 */
       commitEdit();
     };
-    /** 用 pointerdown 捕获阶段，抢在画布平移/节点选择之前 */
+    /** 捕获阶段先保存编辑内容，同时保留原事件供画布选择和拖动继续处理。 */
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [editingId, commitEdit]);
@@ -260,6 +282,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
     editorElRef,
     composingRef,
     enterEdit,
+    focusNode,
     exitEdit,
     saveEdit,
     commitEdit,

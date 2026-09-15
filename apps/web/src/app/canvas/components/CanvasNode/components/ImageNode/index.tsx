@@ -35,11 +35,11 @@ function normalizeImageQuality(quality?: string) {
  */
 function ImageCardStatic({
   d,
-  onDoubleClick,
+  onActivate,
   editing = false,
 }: {
   d: ImageNodeData;
-  onDoubleClick?: () => void;
+  onActivate?: () => void;
   editing?: boolean;
 }) {
   const edit = useContext(EnterEditContext);
@@ -70,7 +70,9 @@ function ImageCardStatic({
         data-canvas-node-surface
         className={styles.imageNode}
         style={{ width: w, height: h }}
-        onDoubleClick={onDoubleClick}
+        onClick={(event) => {
+          if (!(event.target as Element).closest(".react-flow__handle")) onActivate?.();
+        }}
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有图则显示真图，否则占位渐变 */}
@@ -107,7 +109,7 @@ export function ImageNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <ImageCardStatic d={d} onDoubleClick={() => edit.enterEdit(id)} />
+      <ImageCardStatic d={d} onActivate={() => edit.enterEdit(id)} />
     </div>
   );
 }
@@ -316,7 +318,7 @@ function ImageNodeEditor({ data }: { data: ImageNodeData }) {
   }, [edit, data]);
 
   return (
-    <div className={styles.imageNodeEditWrap} onDoubleClick={(e) => e.stopPropagation()}>
+    <div className={styles.imageNodeEditWrap}>
       <div className={styles.imageNodeEditCardCol}>
         <ImageCardStatic d={data} editing />
       </div>

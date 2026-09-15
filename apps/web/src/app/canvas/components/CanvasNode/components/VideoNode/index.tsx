@@ -34,11 +34,11 @@ const styles = sharedStyles;
  */
 function VideoCardStatic({
   d,
-  onDoubleClick,
+  onActivate,
   editing = false,
 }: {
   d: VideoNodeData;
-  onDoubleClick?: () => void;
+  onActivate?: () => void;
   editing?: boolean;
 }) {
   const edit = useContext(EnterEditContext);
@@ -70,7 +70,9 @@ function VideoCardStatic({
         data-canvas-node-surface
         className={styles.imageNode}
         style={{ width: w, height: h }}
-        onDoubleClick={onDoubleClick}
+        onClick={(event) => {
+          if (!(event.target as Element).closest(".react-flow__handle")) onActivate?.();
+        }}
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有视频则显示视频预览，否则仅显示中性占位图标。 */}
@@ -106,7 +108,7 @@ export function VideoNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <VideoCardStatic d={d} onDoubleClick={() => edit.enterEdit(id)} />
+      <VideoCardStatic d={d} onActivate={() => edit.enterEdit(id)} />
     </div>
   );
 }
@@ -354,7 +356,6 @@ function VideoNodeEditor({ data }: { data: VideoNodeData }) {
     "div",
     {
       className: styles.imageNodeEditWrap,
-      onDoubleClick: (e) => e.stopPropagation(),
     },
     React.createElement(
       "div",

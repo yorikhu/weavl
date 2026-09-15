@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
+import {
+  Handle,
+  NodeResizeControl,
+  Position,
+  useReactFlow,
+  useStore,
+  type NodeProps,
+  type ResizeParams,
+} from "@xyflow/react";
 import { AlignLeft, FilePenLine, Type as TypeIcon } from "lucide-react";
 import { toast } from "@/hooks/useToast";
 import { jsonBody, studioApi } from "@/lib/studioApi";
@@ -12,6 +20,44 @@ import sharedStyles from "../../index.module.scss";
 import localStyles from "./index.module.scss";
 
 const styles = { ...sharedStyles, ...localStyles };
+
+/** 文本节点右下角缩放柄：悬停时显示，并将拖拽尺寸实时写回节点数据。 */
+function TextNodeResizeHandle({ id }: { id: string }) {
+  const { setNodes } = useReactFlow();
+
+  const resize = useCallback(
+    (_event: unknown, params: ResizeParams) => {
+      setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === id
+            ? {
+                ...node,
+                data: {
+                  ...(node.data as Record<string, unknown>),
+                  width: Math.round(params.width),
+                  height: Math.round(params.height),
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [id, setNodes],
+  );
+
+  return (
+    <NodeResizeControl
+      nodeId={id}
+      position="bottom-right"
+      minWidth={300}
+      minHeight={120}
+      maxWidth={720}
+      maxHeight={560}
+      className={`${styles.textNodeResizeControl} nodrag nopan`}
+      onResize={resize}
+    />
+  );
+}
 
 /**
  * 渲染 React Flow 文本节点，并根据编辑上下文切换展示状态。
@@ -26,11 +72,12 @@ export function TextNode({ data, id }: NodeProps) {
   const isManualNode = d.creationMode === "manual";
 
   if (editing) {
-    return edit.editingMode === "manual" ? <TextNodeEditor data={d} /> : <EmptyTextNodeEditor id={id} data={d} />;
+    return edit.editingMode === "manual" ? <TextNodeEditor id={id} data={d} /> : <EmptyTextNodeEditor id={id} data={d} />;
   }
 
   return (
     <div className={styles.textNodeEditorWrap}>
+      <TextNodeResizeHandle id={id} />
       <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
         <span>{d.title || "文本"}</span>
@@ -43,7 +90,16 @@ export function TextNode({ data, id }: NodeProps) {
             ? { width: d.width ? `${d.width}px` : undefined, height: d.height ? `${d.height}px` : undefined }
             : undefined
         }
-        onDoubleClick={() => edit.enterEdit(id, hasText || isManualNode ? "manual" : "generate")}
+        onClick={(event) => {
+          if (!hasText && !isManualNode && !(event.target as Element).closest(".react-flow__handle")) {
+            edit.enterEdit(id, "generate");
+          }
+        }}
+        onDoubleClick={(event) => {
+          if ((hasText || isManualNode) && !(event.target as Element).closest(".react-flow__handle")) {
+            edit.enterEdit(id, "manual");
+          }
+        }}
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {hasText || isManualNode ? (
@@ -90,6 +146,7 @@ function EmptyTextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
   const edit = useContext(EnterEditContext);
   return (
     <div data-canvas-text-editor className={`${styles.textNodeEditorWrap} nowheel`}>
+      <TextNodeResizeHandle id={id} />
       <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
         <span>{edit.buffer.title || data.title || "文本"}</span>
@@ -211,7 +268,7 @@ export function TextEditPanel() {
  *
  * @param props - 当前文本节点数据。
  */
-function TextNodeEditor({ data }: { data: TextNodeData }) {
+function TextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
   const edit = useContext(EnterEditContext);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -267,22 +324,20 @@ function TextNodeEditor({ data }: { data: TextNodeData }) {
       : undefined;
 
   return (
-    <div
-      data-canvas-text-editor
-      className={`${styles.textNodeEditorWrap} nowheel`}
-      onDoubleClick={(e) => e.stopPropagation()}
-    >
+    <div data-canvas-text-editor className={`${styles.textNodeEditorWrap} nowheel`}>
+      <TextNodeResizeHandle id={id} />
       <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
         <span>{edit.buffer.title || data.title || "文本"}</span>
       </div>
+      {/* 编辑卡片需要 overflow:hidden 才能原生 resize，连接点放到外层以免被裁剪。 */}
+      <Handle type="target" position={Position.Left} className={styles.cardHandle} />
       <div
         data-canvas-node-surface
         ref={containerRef}
         className={`${styles.textNode} ${styles.textNodeEditing} nodrag nopan`}
         style={styleSize}
       >
-        <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         <div
           ref={editorRef}
           className={`${styles.textNodeBodyEdit} nodrag`}
@@ -321,8 +376,8 @@ function TextNodeEditor({ data }: { data: TextNodeData }) {
             e.stopPropagation();
           }}
         />
-        <Handle type="source" position={Position.Right} className={styles.cardHandle} />
       </div>
+      <Handle type="source" position={Position.Right} className={styles.cardHandle} />
     </div>
   );
 }
