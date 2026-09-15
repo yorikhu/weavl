@@ -4,22 +4,31 @@ import type { EditCtx } from "../editContext";
 import type { AnyNodeData, CardField } from "../types/nodes";
 import toolbarStyles from "../components/FloatingToolbar/index.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
-import textNodeStyles from "../components/CanvasNode/components/TextNode/index.module.scss";
 
 /** 节点编辑态及持久化写回，独立于页面菜单与连线交互。 */
 export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateAction<Node[]>>) {
   const { setCenter } = useReactFlow();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingMode, setEditingMode] = useState<"manual" | "generate">("manual");
   const [editBuffer, setEditBuffer] = useState<{ title: string; text: string }>({ title: "", text: "" });
   /** contentEditable DOM 引用（让 commitEdit 能读到最新 innerText）+ IME composition 标志 */
   const editorElRef = useRef<HTMLDivElement | null>(null);
   const composingRef = useRef(false);
   /** 进入编辑：初始化 buffer + 平移居中 + 稍微放大（退出时不再复位视口，所以无需保存） */
   const enterEdit = useCallback(
-    (id: string) => {
+    (id: string, mode: "manual" | "generate" = "manual") => {
       const n = nodes.find((x) => x.id === id);
       if (!n) return;
       const d = n.data as Record<string, unknown>;
+      if (mode === "manual" && d.nodeKind === "text" && d.creationMode !== "manual") {
+        setNodes((current) =>
+          current.map((node) =>
+            node.id === id
+              ? { ...node, data: { ...(node.data as Record<string, unknown>), creationMode: "manual" } }
+              : node,
+          ),
+        );
+      }
       const title = typeof d.title === "string" ? d.title : d.kind === "card" ? "" : "文本";
       const text =
         typeof d.text === "string"
@@ -35,9 +44,10 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
       const w = n.measured?.width ?? (typeof d.width === "number" ? d.width : 440);
       const h = n.measured?.height ?? (typeof d.height === "number" ? d.height : 120);
       void setCenter(n.position.x + w / 2, n.position.y + h / 2, { zoom: 2, duration: 320 });
+      setEditingMode(mode);
       setEditingId(id);
     },
-    [nodes, setCenter],
+    [nodes, setCenter, setNodes],
   );
 
   /** 退出编辑：视口保持不动（位置和缩放都不变），只关编辑态 */
@@ -97,6 +107,8 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         prompt?: string;
         ratio?: string;
         quality?: string;
+        resolution?: string;
+        generationSize?: { width: number; height: number };
         count?: number;
         model?: string;
         url?: string;
@@ -111,6 +123,8 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (payload.prompt !== undefined) d.prompt = payload.prompt;
           if (payload.ratio) d.ratio = payload.ratio;
           if (payload.quality) d.quality = payload.quality;
+          if (payload.resolution) d.resolution = payload.resolution;
+          if (payload.generationSize) d.generationSize = payload.generationSize;
           if (typeof payload.count === "number") d.count = payload.count;
           if (payload.model) d.model = payload.model;
           if (payload.url !== undefined) d.url = payload.url;
@@ -134,6 +148,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         prompt?: string;
         ratio?: string;
         quality?: string;
+        generationSize?: { width: number; height: number };
         duration?: number;
         count?: number;
         model?: string;
@@ -149,6 +164,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (payload.prompt !== undefined) d.prompt = payload.prompt;
           if (payload.ratio) d.ratio = payload.ratio;
           if (payload.quality) d.quality = payload.quality;
+          if (payload.generationSize) d.generationSize = payload.generationSize;
           if (typeof payload.duration === "number") d.duration = payload.duration;
           if (typeof payload.count === "number") d.count = payload.count;
           if (payload.model) d.model = payload.model;
@@ -219,11 +235,11 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       /** 点在文本编辑节点内部（含标题输入框、正文、resize 句柄）→ 不处理 */
-      if (target.closest(`.${textNodeStyles.textNodeEditing}`)) return;
+      if (target.closest("[data-canvas-text-editor]")) return;
       /** 点在图片编辑节点内部（卡片 + 底部编辑栏）→ 不处理 */
       if (target.closest(`.${nodeStyles.imageNodeEditWrap}`)) return;
-      /** 图片/视频编辑栏（Portal 到 body 的 panel）→ 不处理 —— 这里有 prompt 输入框 */
-      if (target.closest(`.${nodeStyles.imageEditPanel}`)) return;
+      /** 节点提示词面板通过 Portal 挂到 body，点击内部不退出编辑态。 */
+      if (target.closest("[data-node-prompt-panel]")) return;
       /** 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
       if (target.closest(`.${toolbarStyles.floatingToolbar}`)) return;
       e.preventDefault();
@@ -237,6 +253,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
 
   return {
     editingId,
+    editingMode,
     setEditingId,
     editBuffer,
     setEditBuffer,

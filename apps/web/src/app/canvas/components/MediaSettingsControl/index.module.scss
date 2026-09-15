@@ -1,0 +1,188 @@
+.wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #c8c8ce;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+
+  > span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  > svg {
+    flex: 0 0 auto;
+    color: #85858d;
+    transition: transform 140ms ease;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f0f0f2;
+  }
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 60;
+  box-sizing: border-box;
+  width: min(430px, calc(100vw - 48px));
+  max-height: min(620px, 72vh);
+  padding: 17px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 16px;
+  background: rgba(32, 32, 34, 0.98);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(18px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.section + .section {
+  margin-top: 16px;
+}
+
+.section h4 {
+  margin: 0 0 9px;
+  color: #97979f;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1;
+}
+
+.choiceGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.choice,
+.ratioChoice {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: transparent;
+  color: #9999a1;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.26);
+    color: #d8d8dd;
+  }
+}
+
+.choice {
+  min-height: 40px;
+  padding: 7px 10px;
+  border-radius: 10px;
+}
+
+.active {
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f1f3;
+}
+
+.ratioGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ratioChoice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  height: 64px;
+  padding: 7px 4px;
+  border-radius: 10px;
+}
+
+.ratioMark {
+  box-sizing: border-box;
+  display: inline-block;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+  color: #9b9ba3;
+}
+
+.ratioMarkCompact {
+  border-width: 1.5px;
+}
+
+.active .ratioMark {
+  color: #f1f1f3;
+}
+
+:global(html:not(.dark)) .trigger {
+  color: #475569;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.055);
+    color: #111827;
+  }
+}
+
+:global(html:not(.dark)) .panel {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(250, 251, 252, 0.98);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.15);
+  scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
+}
+
+:global(html:not(.dark)) .section h4 {
+  color: #667085;
+}
+
+:global(html:not(.dark)) .choice,
+:global(html:not(.dark)) .ratioChoice {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #667085;
+
+  &:hover {
+    border-color: rgba(15, 23, 42, 0.32);
+    color: #1f2937;
+  }
+}
+
+:global(html:not(.dark)) .active {
+  border-color: rgba(15, 23, 42, 0.72);
+  background: rgba(15, 23, 42, 0.075);
+  color: #111827;
+}
+
+:global(html:not(.dark)) .ratioMark {
+  color: #778191;
+}
+
+:global(html:not(.dark)) .active .ratioMark {
+  color: #111827;
+}

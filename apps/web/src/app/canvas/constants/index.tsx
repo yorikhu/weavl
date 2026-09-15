@@ -1,19 +1,4 @@
-import {
-  Crop,
-  Download,
-  Film,
-  Grid3x3,
-  Image,
-  Layers,
-  Music,
-  RefreshCw,
-  Sliders,
-  Sparkles,
-  Sun,
-  Type,
-  Video,
-  Wand2,
-} from "lucide-react";
+import { Image, Type, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { BasicNodeKind, CardField, NodeKind } from "../types/nodes";
 
@@ -90,31 +75,6 @@ export const NODE_LIBRARY: NodeLibraryItem[] = [
     size: { w: 320, h: 180 },
   },
 ];
-
-/** 节点被选中时浮出的工具胶囊（按 kind 分类） */
-export const NODE_TOOLBAR: Record<string, { label: string; icon: React.ReactNode }[]> = {
-  image: [
-    { label: "人像质感调节", icon: <Sliders size={12} /> },
-    { label: "全景", icon: <Crop size={12} /> },
-    { label: "多角度", icon: <Grid3x3 size={12} /> },
-    { label: "打光", icon: <Sun size={12} /> },
-    { label: "九宫格", icon: <Grid3x3 size={12} /> },
-    { label: "HD高清", icon: <Sparkles size={12} /> },
-    { label: "元素编辑", icon: <Wand2 size={12} /> },
-    { label: "图层分离", icon: <Layers size={12} /> },
-    { label: "音轨切分", icon: <Music size={12} /> },
-  ],
-  llm: [
-    { label: "重新生成", icon: <RefreshCw size={12} /> },
-    { label: "复制变体", icon: <Layers size={12} /> },
-    { label: "导出", icon: <Download size={12} /> },
-  ],
-  video: [
-    { label: "运镜控制", icon: <Film size={12} /> },
-    { label: "HD高清", icon: <Sparkles size={12} /> },
-    { label: "导出", icon: <Download size={12} /> },
-  ],
-};
 
 /** 工作流阶段标题（最近任务自动铺时用） */
 export const STAGE_TITLES: Record<string, string> = {

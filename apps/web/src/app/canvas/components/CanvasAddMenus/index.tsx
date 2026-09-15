@@ -1,6 +1,19 @@
 "use client";
 
-import { FileText, Film, Layers, Link2, Music, Sparkles } from "lucide-react";
+import {
+  ClipboardPaste,
+  FileText,
+  Film,
+  FolderInput,
+  Layers,
+  Link2,
+  Music,
+  Plus,
+  Redo2,
+  Sparkles,
+  Undo2,
+  Upload,
+} from "lucide-react";
 import { BASIC_NODE_CHOICES } from "../../constants";
 import type { BasicNodeKind } from "../../types/nodes";
 import type { FlowPosition } from "../../utils/nodeFactory";
@@ -10,6 +23,7 @@ export interface CanvasAddMenuPosition {
   x: number;
   y: number;
   flowPos: FlowPosition;
+  mode: "context" | "add";
 }
 
 export interface CanvasConnectMenuPosition {
@@ -24,7 +38,14 @@ interface CanvasAddMenusProps {
   pendingLineStart: { x: number; y: number } | null;
   onAddBasic: (kind: BasicNodeKind, position: FlowPosition) => void;
   onAddConnected: (kind: BasicNodeKind) => void;
-  onOpenLibrary: () => void;
+  onShowAddMenu: () => void;
+  onUpload: () => void;
+  onSaveToAssets: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onPaste: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export function CanvasAddMenus({
@@ -33,24 +54,59 @@ export function CanvasAddMenus({
   pendingLineStart,
   onAddBasic,
   onAddConnected,
-  onOpenLibrary,
+  onShowAddMenu,
+  onUpload,
+  onSaveToAssets,
+  onUndo,
+  onRedo,
+  onPaste,
+  canUndo,
+  canRedo,
 }: CanvasAddMenusProps) {
   return (
     <>
       {addMenu && (
         <div className={styles.contextMenu} style={{ left: addMenu.x, top: addMenu.y }}>
-          <div className={styles.contextMenuHead}>添加节点</div>
-          {BASIC_NODE_CHOICES.map(({ kind, label, icon: Icon }) => (
-            <button key={kind} className={styles.contextMenuItem} onClick={() => onAddBasic(kind, addMenu.flowPos)}>
-              <Icon size={13} />
-              {label}
-            </button>
-          ))}
-          <div className={styles.contextMenuSep} />
-          <button className={styles.contextMenuItem} onClick={onOpenLibrary}>
-            <Sparkles size={13} />
-            业务能力…
-          </button>
+          {addMenu.mode === "context" ? (
+            <>
+              <button className={styles.contextMenuItem} onClick={onUpload}>
+                <Upload size={14} />
+                上传
+              </button>
+              <button className={styles.contextMenuItem} onClick={onSaveToAssets}>
+                <FolderInput size={14} />
+                保存到我的资产
+              </button>
+              <button className={styles.contextMenuItem} onClick={onShowAddMenu}>
+                <Plus size={14} />
+                添加节点
+              </button>
+              <div className={styles.contextMenuSep} />
+              <button className={styles.contextMenuItem} onClick={onUndo} disabled={!canUndo}>
+                <Undo2 size={14} />
+                撤销
+              </button>
+              <button className={styles.contextMenuItem} onClick={onRedo} disabled={!canRedo}>
+                <Redo2 size={14} />
+                重做
+              </button>
+              <div className={styles.contextMenuSep} />
+              <button className={styles.contextMenuItem} onClick={onPaste}>
+                <ClipboardPaste size={14} />
+                粘贴
+              </button>
+            </>
+          ) : (
+            <>
+              <div className={styles.contextMenuHead}>添加节点</div>
+              {BASIC_NODE_CHOICES.map(({ kind, label, icon: Icon }) => (
+                <button key={kind} className={styles.contextMenuItem} onClick={() => onAddBasic(kind, addMenu.flowPos)}>
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
 
