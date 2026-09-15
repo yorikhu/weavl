@@ -33,7 +33,7 @@
 .contextMenu {
   position: absolute;
   z-index: 30;
-  min-width: 140px;
+  min-width: 188px;
   padding: 4px;
   background: rgba(20, 20, 22, 0.96);
   backdrop-filter: blur(12px);
@@ -100,7 +100,6 @@
   color: var(--foreground);
 }
 
-
 :global(html:not(.dark)) .contextMenu {
   border-color: rgba(15, 23, 42, 0.14);
   background: rgba(255, 255, 255, 0.97);
@@ -119,8 +118,11 @@
   background: rgba(15, 23, 42, 0.12);
 }
 
-
 @keyframes fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

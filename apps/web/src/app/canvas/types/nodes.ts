@@ -39,6 +39,8 @@ export interface ImageNodeData {
   prompt?: string;
   ratio?: string;
   quality?: string;
+  resolution?: string;
+  generationSize?: { width: number; height: number };
   count?: number;
   model?: string;
 }
@@ -47,6 +49,7 @@ export interface TextNodeData {
   nodeKind: "text";
   title: string;
   text: string;
+  creationMode?: "manual" | "generate";
   width?: number;
   height?: number;
 }
@@ -61,6 +64,7 @@ export interface VideoNodeData {
   prompt?: string;
   ratio?: string;
   quality?: string;
+  generationSize?: { width: number; height: number };
   duration?: number;
   count?: number;
   model?: string;

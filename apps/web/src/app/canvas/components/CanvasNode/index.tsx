@@ -5,6 +5,7 @@ import { TextNode } from "./components/TextNode";
 import { VideoNode } from "./components/VideoNode";
 
 export { ImageEditPanel } from "./components/ImageNode";
+export { TextEditPanel } from "./components/TextNode";
 export { VideoEditPanel } from "./components/VideoNode";
 
 /** 统一节点入口；新增类型只需在此注册对应的子组件。 */

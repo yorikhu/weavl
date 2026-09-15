@@ -1,15 +1,31 @@
 "use client";
 
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
-import { ChevronDown, FileText, Film, ImagePlus, Layers, Maximize2, MonitorPlay, RefreshCw, Send, Share2, Sparkles, Tag, Type as TypeGlyph, User as UserIcon, Video as VideoIcon, Volume2, Zap } from "lucide-react";
+import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
+import {
+  ChevronDown,
+  Film,
+  ImagePlus,
+  Layers,
+  Maximize2,
+  RefreshCw,
+  Sparkles,
+  Tag,
+  User as UserIcon,
+  Video as VideoIcon,
+} from "lucide-react";
+import { MediaSettingsControl } from "../../../MediaSettingsControl";
+import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
 import type { VideoNodeData } from "../../../../types/nodes";
+import {
+  getMediaCardSize,
+  getMediaDimensions,
+  type MediaDimensionOption,
+} from "../../../../utils/mediaSizing";
 import sharedStyles from "../../index.module.scss";
-import localStyles from "./index.module.scss";
 
-const styles = { ...sharedStyles, ...localStyles };
+const styles = sharedStyles;
 
 /**
  * 渲染视频节点在浏览态和编辑态共用的卡片主体。
@@ -17,17 +33,11 @@ const styles = { ...sharedStyles, ...localStyles };
  * @param props - 视频数据、预览地址、文件选择回调与编辑状态。
  */
 function VideoCardStatic({
-  id,
   d,
-  overrideUrl,
-  onPickFile,
   onDoubleClick,
   editing = false,
 }: {
-  id: string;
   d: VideoNodeData;
-  overrideUrl?: string;
-  onPickFile?: (f: File | undefined) => void;
   onDoubleClick?: () => void;
   editing?: boolean;
 }) {
@@ -36,21 +46,7 @@ function VideoCardStatic({
   const w = d.size?.w ?? 300;
   const h = d.size?.h ?? 200;
   const displayTitle = d.title || "视频节点";
-  const url = overrideUrl ?? d.url;
-  const fileRef = useRef<HTMLInputElement | null>(null);
-
-  /** 默认态上传视频：直接写回节点 url（不进编辑态） */
-  const pickAndCommit = useCallback(
-    (f: File | undefined) => {
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        edit.commitVideoEdit?.(id, { url: String(reader.result) });
-      };
-      reader.readAsDataURL(f);
-    },
-    [edit, id],
-  );
+  const url = d.url;
 
   return (
     <>
@@ -70,7 +66,12 @@ function VideoCardStatic({
           <span>{displayTitle}</span>
         )}
       </div>
-      <div data-canvas-node-surface className={styles.imageNode} style={{ width: w, height: h }} onDoubleClick={onDoubleClick}>
+      <div
+        data-canvas-node-surface
+        className={styles.imageNode}
+        style={{ width: w, height: h }}
+        onDoubleClick={onDoubleClick}
+      >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
         {/* 已有视频则显示视频预览，否则仅显示中性占位图标。 */}
         {url ? (
@@ -80,35 +81,11 @@ function VideoCardStatic({
         ) : (
           <div className={`${styles.imagePreview} ${styles.emptyMediaPreview}`}>
             <div className={styles.imagePlaceholder}>
-              <VideoIcon size={20} />
+              <VideoIcon size={16} />
             </div>
           </div>
         )}
-        {/* 左下角仅保留首尾帧 / 首帧能力。 */}
-        <div
-          className={`${styles.imageTryChips} nodrag`}
-          style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}
-        >
-          <button className={styles.imageTryChip} title="即将上线：首尾帧生成视频">
-            <Layers size={11} />
-            首尾帧生成视频
-          </button>
-          <button className={styles.imageTryChip} title="即将上线：首帧生成视频">
-            <Sparkles size={11} />
-            首帧生成视频
-          </button>
-        </div>
         <Handle type="source" position={Position.Right} className={styles.cardHandle} />
-        <input
-          ref={fileRef}
-          type="file"
-          accept="video/*"
-          hidden
-          onChange={(e) => {
-            (onPickFile ?? pickAndCommit)(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
       </div>
     </>
   );
@@ -124,12 +101,12 @@ export function VideoNode({ data, id }: NodeProps) {
   const d = data as unknown as VideoNodeData;
 
   if (edit.editingId === id) {
-    return <VideoNodeEditor id={id} data={d} />;
+    return <VideoNodeEditor data={d} />;
   }
 
   return (
     <div className={styles.imageNodeWrap}>
-      <VideoCardStatic id={id} d={d} onDoubleClick={() => edit.enterEdit(id)} />
+      <VideoCardStatic d={d} onDoubleClick={() => edit.enterEdit(id)} />
     </div>
   );
 }
@@ -141,6 +118,7 @@ export function VideoNode({ data, id }: NodeProps) {
  */
 export function VideoEditPanel() {
   const edit = useContext(EnterEditContext);
+  const { setNodes } = useReactFlow();
   const editingId = edit.editingId;
   const node = useStore((s) => (editingId ? (s.nodes.find((n) => n.id === editingId) ?? null) : null));
   const data = (node?.data as unknown as VideoNodeData | undefined) ?? null;
@@ -155,306 +133,199 @@ export function VideoEditPanel() {
   const [model, setModel] = useState(data?.model ?? "Weavl Video");
   const [refType, setRefType] = useState("全能参考");
   const [showRatioMenu, setShowRatioMenu] = useState(false);
-  const [showModelMenu, setShowModelMenu] = useState(false);
   const [showRefMenu, setShowRefMenu] = useState(false);
+  const syncedNodeIdRef = useRef<string | null>(null);
+  const dimensions = getMediaDimensions("video", model);
+  const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
   useEffect(() => {
+    if (!editingId) {
+      syncedNodeIdRef.current = null;
+      return;
+    }
     if (!data) return;
+    if (syncedNodeIdRef.current === editingId) return;
     setPrompt(data.prompt ?? "");
     setRatio(data.ratio ?? "16:9");
     setQuality(data.quality ?? "720P");
     setDuration(data.duration ?? 5);
     setCount(data.count ?? 1);
     setModel(data.model ?? "Weavl Video");
-  }, [edit.editingId, data]);
+    syncedNodeIdRef.current = editingId;
+  }, [editingId, data]);
+  const changeDimension = useCallback(
+    (nextDimension: MediaDimensionOption) => {
+      setRatio(nextDimension.ratio);
+      if (!editingId) return;
+      const nextSize = getMediaCardSize(nextDimension);
+      setNodes((currentNodes) =>
+        currentNodes.map((currentNode) => {
+          if (currentNode.id !== editingId) return currentNode;
+          const currentData = currentNode.data as unknown as VideoNodeData;
+          return {
+            ...currentNode,
+            data: {
+              ...currentData,
+              ratio: nextDimension.ratio,
+              generationSize: { width: nextDimension.width, height: nextDimension.height },
+              size: nextSize,
+            },
+          };
+        }),
+      );
+    },
+    [editingId, setNodes],
+  );
+  const changeModel = useCallback(
+    (nextModel: string) => {
+      setModel(nextModel);
+      const nextDimensions = getMediaDimensions("video", nextModel);
+      if (!nextDimensions.some((item) => item.ratio === ratio) && nextDimensions[0]) {
+        changeDimension(nextDimensions[0]);
+      }
+    },
+    [changeDimension, ratio],
+  );
   useEffect(() => {
-    edit.videoEditStateRef.current = { prompt, ratio, quality, duration, count, model, title: edit.buffer.title };
-  }, [prompt, ratio, quality, duration, count, model, edit]);
+    edit.videoEditStateRef.current = {
+      prompt,
+      ratio,
+      quality,
+      duration,
+      count,
+      model,
+      generationSize: selectedDimension
+        ? { width: selectedDimension.width, height: selectedDimension.height }
+        : undefined,
+      title: edit.buffer.title,
+    };
+  }, [prompt, ratio, quality, duration, count, model, selectedDimension, edit]);
   const onGenerate = useCallback(() => {
     if (!edit.editingId) return;
-    edit.commitVideoEdit?.(edit.editingId, { prompt, ratio, quality, duration, count, model, title: undefined });
-  }, [edit, prompt, ratio, quality, duration, count, model]);
-  const ratioOptions = ["16:9", "9:16", "1:1", "4:3", "3:4"];
+    edit.commitVideoEdit?.(edit.editingId, {
+      prompt,
+      ratio,
+      quality,
+      duration,
+      count,
+      model,
+      generationSize: selectedDimension
+        ? { width: selectedDimension.width, height: selectedDimension.height }
+        : undefined,
+      title: undefined,
+    });
+  }, [edit, prompt, ratio, quality, duration, count, model, selectedDimension]);
   const modelOptions = ["Weavl Video", "Lib Video", "Sora", "Veo"];
   const refOptions = ["全能参考", "人脸参考", "首尾帧", "角色一致性"];
   const cost = count * (quality === "2K" ? 60 : quality === "720P" ? 27 : 18);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const lastLeftRef = useRef(-1);
-  const lastTopRef = useRef(-1);
-  const lastWidthRef = useRef(-1);
-  useEffect(() => {
-    if (!isVideo) return;
-
-    const compute = () => {
-      if (!node || typeof window === "undefined") return;
-      const panelEl = panelRef.current;
-      if (!panelEl) return;
-      const panelW = Math.max(320, Math.min(720, window.innerWidth * 0.4));
-      const panelH = panelEl.offsetHeight || 80;
-      const el = document.querySelector('.react-flow__node[data-id="' + node.id + '"]');
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const centerScreenX = rect.left + rect.width / 2;
-      const rawLeft = centerScreenX - panelW / 2;
-      const clampedLeft = Math.max(16, Math.min(window.innerWidth - panelW - 16, rawLeft));
-      const rawTop = rect.bottom + 16;
-      const maxTop = window.innerHeight - panelH - 16;
-      const clampedTop = Math.min(rawTop, maxTop);
-      if (clampedLeft !== lastLeftRef.current || clampedTop !== lastTopRef.current) {
-        panelEl.style.transform = "translate3d(" + clampedLeft + "px, " + clampedTop + "px, 0)";
-        lastLeftRef.current = clampedLeft;
-        lastTopRef.current = clampedTop;
-      }
-      if (panelW !== lastWidthRef.current) {
-        panelEl.style.width = panelW + "px";
-        lastWidthRef.current = panelW;
-      }
-    };
-    compute();
-    const onResize = () => compute();
-    window.addEventListener("resize", onResize);
-    let raf = 0;
-    const loop = () => {
-      compute();
-      raf = window.requestAnimationFrame(loop);
-    };
-    raf = window.requestAnimationFrame(loop);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.cancelAnimationFrame(raf);
-    };
-  }, [isVideo, node]);
-  /** 移除飞入动画 —— 挂载时透明，首次定位后立即显示（无位移过渡） */
-  useEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    el.style.opacity = "0";
-    let raf = window.requestAnimationFrame(function show() {
-      if (el.style.transform !== "") {
-        el.style.opacity = "1";
-      } else {
-        raf = window.requestAnimationFrame(show);
-      }
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [edit.editingId]);
-  /** 只在编辑视频节点时渲染（early return 必须在所有 hooks 之后） */
   if (!edit.editingId || !isVideo) return null;
-  const panelW = Math.max(320, Math.min(720, typeof window !== "undefined" ? window.innerWidth * 0.4 : 480));
 
-  return createPortal(
-    <div
-      ref={panelRef}
-      className={styles.imageEditPanel}
-      style={{ left: 0, top: 0, width: `${panelW}px` }}
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* 顶部标签行：参考 / 标记 / 特效 / 角色库 / 运镜 */}
-      <div className={styles.imageEditBarHead}>
-        <div className={styles.imageEditBarTags}>
-          <button className={styles.imageEditTag}>
-            <ImagePlus size={11} />
-            参考
-            <RefreshCw size={10} className={styles.imageEditTagIcon} />
-          </button>
-          <button className={styles.imageEditTag}>
-            <Tag size={11} />
-            标记
-          </button>
-          <button className={styles.imageEditTag}>
-            <Sparkles size={11} />
-            特效
-          </button>
-          <button className={styles.imageEditTag}>
-            <UserIcon size={11} />
-            角色库
-            <RefreshCw size={10} className={styles.imageEditTagIcon} />
-          </button>
-          <button className={styles.imageEditTag}>
-            <Film size={11} />
-            运镜
+  return (
+    <NodePromptPanel
+      nodeId={edit.editingId}
+      prompt={prompt}
+      placeholder="描述想生成的视频画面、动作与节奏，或引用已有素材…"
+      model={model}
+      models={modelOptions.map((item) => ({ id: item, label: item }))}
+      modelMenuLabel="视频模型"
+      cost={cost}
+      rows={3}
+      header={
+        <div className={styles.imageEditBarHead}>
+          <div className={styles.imageEditBarTags}>
+            <button className={styles.imageEditTag}>
+              <ImagePlus size={11} />
+              参考
+              <RefreshCw size={10} className={styles.imageEditTagIcon} />
+            </button>
+            <button className={styles.imageEditTag}>
+              <Tag size={11} />
+              标记
+            </button>
+            <button className={styles.imageEditTag}>
+              <Sparkles size={11} />
+              特效
+            </button>
+            <button className={styles.imageEditTag}>
+              <UserIcon size={11} />
+              角色库
+            </button>
+            <button className={styles.imageEditTag}>
+              <Film size={11} />
+              运镜
+            </button>
+          </div>
+          <button className={styles.imageEditExpand} title="放大编辑（即将上线）" aria-label="放大编辑">
+            <Maximize2 size={14} />
           </button>
         </div>
-        <button className={styles.imageEditExpand} title="放大编辑（即将上线）" aria-label="放大编辑">
-          <Maximize2 size={14} />
-        </button>
-      </div>
-
-      {/* 中间输入行：左侧视频附件缩略 + 右侧输入框 */}
-      <div className={styles.videoEditInputRow}>
-        <button className={styles.videoEditAttatchment} title="上传视频素材">
-          <VideoIcon size={11} />
-          <span>1</span>
-        </button>
-        <input
-          className={`${styles.imageEditInput} nodrag`}
-          placeholder="描述你想要生成的画面内容，@引用素材"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === "Enter") {
-              e.preventDefault();
-              onGenerate();
-            }
-            if (e.key === "Escape") {
-              e.preventDefault();
-              edit.exitEdit();
-            }
-          }}
-        />
-      </div>
-
-      {/* 底部参数行：模型 / 全能参考 / 比例·画质·时长·张数 / 工具按钮 / 发送 */}
-      <div className={styles.imageEditParams}>
-        <div className={styles.imageEditModelWrap}>
-          <button
-            className={styles.imageEditModel}
-            onClick={() => {
-              setShowModelMenu((v) => !v);
-              setShowRatioMenu(false);
-              setShowRefMenu(false);
+      }
+      footerMiddle={
+        <>
+          <span className={styles.imageEditParamSep} />
+          <div className={styles.imageEditRatioWrap}>
+            <button
+              className={styles.imageEditParam}
+              onClick={() => {
+                setShowRefMenu((open) => !open);
+                setShowRatioMenu(false);
+              }}
+            >
+              <Layers size={11} />
+              {refType}
+              <ChevronDown size={9} />
+            </button>
+            {showRefMenu && (
+              <div className={styles.imageEditRatioMenu}>
+                <div className={styles.imageEditRatioMenuHead}>参考类型</div>
+                {refOptions.map((item) => (
+                  <button
+                    key={item}
+                    className={`${styles.imageEditRatioItem} ${item === refType ? styles.imageEditRatioItemActive : ""}`}
+                    onClick={() => {
+                      setRefType(item);
+                      setShowRefMenu(false);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <span className={styles.imageEditParamSep} />
+          <MediaSettingsControl
+            open={showRatioMenu}
+            ratio={ratio}
+            dimensions={dimensions}
+            quality={quality}
+            qualities={["480P", "720P", "2K"]}
+            qualityLabel="清晰度"
+            duration={duration}
+            durations={[3, 5, 10]}
+            count={count}
+            counts={[1, 2, 4]}
+            countUnit="个"
+            onOpenChange={(open) => {
+              setShowRatioMenu(open);
+              if (open) setShowRefMenu(false);
             }}
-          >
-            <Sparkles size={11} />
-            {model}
-            <ChevronDown size={10} />
-          </button>
-          {showModelMenu && (
-            <div className={styles.imageEditRatioMenu}>
-              <div className={styles.imageEditRatioMenuHead}>生视频模型</div>
-              {modelOptions.map((m) => (
-                <button
-                  key={m}
-                  className={`${styles.imageEditRatioItem} ${m === model ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => {
-                    setModel(m);
-                    setShowModelMenu(false);
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className={styles.imageEditParamSep} />
-        <div className={styles.imageEditRatioWrap}>
-          <button
-            className={styles.imageEditParam}
-            onClick={() => {
-              setShowRefMenu((v) => !v);
-              setShowModelMenu(false);
-              setShowRatioMenu(false);
-            }}
-          >
-            <Layers size={11} />
-            {refType}
-            <ChevronDown size={9} />
-          </button>
-          {showRefMenu && (
-            <div className={styles.imageEditRatioMenu}>
-              <div className={styles.imageEditRatioMenuHead}>参考类型</div>
-              {refOptions.map((r) => (
-                <button
-                  key={r}
-                  className={`${styles.imageEditRatioItem} ${r === refType ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => {
-                    setRefType(r);
-                    setShowRefMenu(false);
-                  }}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className={styles.imageEditParamSep} />
-        <div className={styles.imageEditRatioWrap}>
-          <button
-            className={styles.imageEditParam}
-            onClick={() => {
-              setShowRatioMenu((v) => !v);
-              setShowModelMenu(false);
-              setShowRefMenu(false);
-            }}
-          >
-            <MonitorPlay size={11} />
-            {ratio} · {quality} · {duration}s · {count}个
-            <ChevronDown size={9} />
-          </button>
-          {showRatioMenu && (
-            <div className={styles.imageEditRatioMenu}>
-              <div className={styles.imageEditRatioMenuHead}>画面比例</div>
-              {ratioOptions.map((r) => (
-                <button
-                  key={r}
-                  className={`${styles.imageEditRatioItem} ${r === ratio ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => {
-                    setRatio(r);
-                  }}
-                >
-                  {r}
-                </button>
-              ))}
-              <div className={styles.imageEditRatioMenuHead}>画质</div>
-              {["480P", "720P", "2K"].map((q) => (
-                <button
-                  key={q}
-                  className={`${styles.imageEditRatioItem} ${q === quality ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => setQuality(q)}
-                >
-                  {q}
-                </button>
-              ))}
-              <div className={styles.imageEditRatioMenuHead}>时长（秒）</div>
-              {[3, 5, 10].map((d) => (
-                <button
-                  key={d}
-                  className={`${styles.imageEditRatioItem} ${d === duration ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => setDuration(d)}
-                >
-                  {d}s
-                </button>
-              ))}
-              <div className={styles.imageEditRatioMenuHead}>张数</div>
-              {[1, 2, 4].map((c) => (
-                <button
-                  key={c}
-                  className={`${styles.imageEditRatioItem} ${c === count ? styles.imageEditRatioItemActive : ""}`}
-                  onClick={() => setCount(c)}
-                >
-                  {c} 个
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className={styles.imageEditParamSep} />
-        <button className={styles.imageEditParamIcon} title="语音输入">
-          <Volume2 size={11} />
-        </button>
-        <button className={styles.imageEditParamIcon} title="脚本">
-          <FileText size={11} />
-        </button>
-        <button className={styles.imageEditParamIcon} title="文字样式">
-          <TypeGlyph size={11} />
-        </button>
-        <button className={styles.imageEditParamIcon} title="分享">
-          <Share2 size={11} />
-        </button>
-        <span className={styles.imageEditCost}>
-          <Zap size={10} />
-          {cost}
-        </span>
-        <button className={styles.videoEditSend} onClick={onGenerate} title="生成（Enter）">
-          <Send size={12} />
-        </button>
-      </div>
-    </div>,
-    document.body,
+            onDimensionChange={changeDimension}
+            onQualityChange={setQuality}
+            onDurationChange={setDuration}
+            onCountChange={setCount}
+          />
+        </>
+      }
+      onPromptChange={setPrompt}
+      onModelChange={changeModel}
+      onModelMenuOpenChange={(open) => {
+        if (!open) return;
+        setShowRatioMenu(false);
+        setShowRefMenu(false);
+      }}
+      onSubmit={onGenerate}
+      onEscape={edit.exitEdit}
+    />
   );
 }
 
@@ -463,7 +334,7 @@ export function VideoEditPanel() {
  *
  * @param props - 当前视频节点标识与数据。
  */
-function VideoNodeEditor({ id, data }: { id: string; data: VideoNodeData }) {
+function VideoNodeEditor({ data }: { data: VideoNodeData }) {
   const edit = useContext(EnterEditContext);
   useEffect(() => {
     if (edit.videoEditStateRef.current == null) {
@@ -488,7 +359,7 @@ function VideoNodeEditor({ id, data }: { id: string; data: VideoNodeData }) {
     React.createElement(
       "div",
       { className: styles.imageNodeEditCardCol },
-      React.createElement(VideoCardStatic, { id: id, d: data, editing: true }),
+      React.createElement(VideoCardStatic, { d: data, editing: true }),
     ),
   );
 }

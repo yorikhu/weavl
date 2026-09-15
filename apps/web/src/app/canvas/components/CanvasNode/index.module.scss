@@ -180,7 +180,6 @@
   }
 }
 
-
 .imageNode {
   position: relative;
   padding: 0;
@@ -191,6 +190,9 @@
   cursor: default;
   user-select: none;
   font-family: inherit;
+  transition:
+    width 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 180ms cubic-bezier(0.22, 1, 0.36, 1);
   /* handle 需要伸到卡片外；实际媒体裁剪下沉到 .imagePreview。 */
   overflow: visible;
 }
@@ -211,8 +213,8 @@
 }
 
 .imagePlaceholder {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   color: var(--canvas-node-muted);
   background: var(--canvas-node-subtle);
@@ -260,45 +262,6 @@
   image-rendering: -webkit-optimize-contrast;
 }
 
-// =============== ImageNode 默认态尝试区（v22：仅保留左下角 chips） ===============
-
-.imageTryChips {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 2;
-}
-
-.imageTryChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: var(--canvas-node-border-width) solid var(--canvas-node-border);
-  background: color-mix(in srgb, var(--canvas-node-background) 92%, transparent);
-  backdrop-filter: blur(8px);
-  color: var(--canvas-node-foreground);
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  svg {
-    color: var(--canvas-node-muted);
-    flex-shrink: 0;
-  }
-  &:hover {
-    border-color: var(--canvas-node-border-selected);
-    background: var(--canvas-node-background);
-    svg {
-      color: var(--canvas-node-foreground);
-    }
-  }
-}
-
-
 // =============== ImageNodeEditor（v22：原卡片不动 + 底部追加编辑栏） ===============
 .imageNodeEditWrap {
   display: flex;
@@ -309,36 +272,6 @@
   /* v34：编辑栏已外置到屏底，这里只渲染卡片本体 */
 }
 
-/* v34.1：图片节点编辑栏 — 由 React Portal 挂到 document.body，position fixed + transform 跟手
-   transition 默认 none（拖动跟手）；编辑节点切换时由组件一次性 200ms 过渡 */
-.imageEditPanel {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 1100;
-  box-sizing: border-box;
-  border-radius: 14px;
-  background: #161618;
-  border: 0.5px solid #27272c;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  padding: 10px 12px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* 拖动中不启用 transition（避免 200ms 粘滞）；切换编辑节点时由 JS 临时启用 200ms */
-  transition: none;
-  /* 启用 GPU 加速，translate3d 写入避免重排 */
-  will-change: transform;
-  font-family: inherit;
-}
-
-/* v34.2：视频版输入行（左侧视频附件占位 + 右侧输入框） */
-
-/* v36：图片版输入行（输入框 + 发送按钮同行） */
-
-
-/* v34.2：视频版发送按钮（白色 —— 与图片版橙色形成视觉区分） */
-
 /* 编辑态卡片列：完全复用默认态卡片尺寸，居中 */
 .imageNodeEditCardCol {
   display: inline-flex;
@@ -347,27 +280,6 @@
 }
 
 /* v22：旧编辑卡样式已删除（卡片复用默认态组件） */
-
-/* v25：视频卡片左下角的「尝试」文字（与 chip 区分） */
-.imageTryRefreshInline {
-  font-size: 11px;
-  color: #6f6f76;
-  pointer-events: none;
-}
-
-// =============== 图片编辑指令栏（v22） ===============
-.imageEditBar {
-  width: 100%;
-  box-sizing: border-box;
-  border-radius: 14px;
-  background: #161618;
-  border: 0.5px solid #27272c;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  padding: 10px 12px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 
 .imageEditBarHead {
   display: flex;
@@ -405,7 +317,7 @@
 
 .imageEditTagIcon {
   margin-left: 2px;
-  color: #7f77dd;
+  color: #8f8f97;
 }
 
 .imageEditExpand {
@@ -424,61 +336,6 @@
     color: #e6e8ec;
     background: rgba(255, 255, 255, 0.05);
     border-color: #3a3a41;
-  }
-}
-
-.imageEditInputWrap {
-  border-radius: 10px;
-}
-
-.imageEditInput {
-  width: 100%;
-  flex: 1;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 0.5px solid #27272c;
-  background: #0d0d0f;
-  color: #e6e8ec;
-  font-size: 11px;
-  font-family: inherit;
-  outline: none;
-  cursor: text;
-  &::placeholder {
-    color: #5e5e66;
-  }
-  &:focus {
-    border-color: color-mix(in srgb, var(--foreground) 40%, transparent);
-  }
-}
-
-.imageEditParams {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.imageEditModelWrap {
-  position: relative;
-}
-
-.imageEditModel {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: #e6e8ec;
-  font-size: 11px;
-  cursor: pointer;
-  &:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
-  svg {
-    color: #d4537e;
   }
 }
 
@@ -502,6 +359,7 @@
   background: transparent;
   color: #e6e8ec;
   font-size: 11px;
+  white-space: nowrap;
   cursor: pointer;
   &:hover {
     background: rgba(255, 255, 255, 0.04);
@@ -555,46 +413,9 @@
   background: var(--accent-soft);
 }
 
-.imageEditParamIcon {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: #a8a8b2;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  &:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #e6e8ec;
-  }
-}
-
-.imageEditCost {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: #a8a8b2;
-  font-size: 11px;
-  svg {
-    color: var(--foreground);
-  }
-}
-
 /* 图片、视频编辑栏通过 Portal 挂在 body，不能继承 .flowRoot 的主题变量。 */
 :global(html:not(.dark)) .imageNodeTitleInput:focus {
   background: rgba(15, 23, 42, 0.055);
-}
-
-:global(html:not(.dark)) .imageEditPanel,
-:global(html:not(.dark)) .imageEditBar {
-  background: rgba(255, 255, 255, 0.98);
-  border-color: rgba(15, 23, 42, 0.16);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  color: #1e293b;
 }
 
 :global(html:not(.dark)) .imageEditTag {
@@ -616,8 +437,7 @@
   color: #64748b;
 }
 
-:global(html:not(.dark)) .imageEditExpand,
-:global(html:not(.dark)) .imageEditParamIcon {
+:global(html:not(.dark)) .imageEditExpand {
   color: #64748b;
 
   &:hover {
@@ -627,21 +447,6 @@
   }
 }
 
-:global(html:not(.dark)) .imageEditInput {
-  background: #f8fafc;
-  border-color: rgba(15, 23, 42, 0.17);
-  color: #0f172a;
-
-  &::placeholder {
-    color: #94a3b8;
-  }
-
-  &:focus {
-    border-color: rgba(15, 23, 42, 0.36);
-  }
-}
-
-:global(html:not(.dark)) .imageEditModel,
 :global(html:not(.dark)) .imageEditParam {
   color: #334155;
 
@@ -664,8 +469,7 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
 }
 
-:global(html:not(.dark)) .imageEditRatioMenuHead,
-:global(html:not(.dark)) .imageEditCost {
+:global(html:not(.dark)) .imageEditRatioMenuHead {
   color: #64748b;
 }
 

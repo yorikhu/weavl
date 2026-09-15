@@ -14,9 +14,10 @@ import { createContext, type MutableRefObject } from "react";
 export interface EditCtx {
   editingId: string | null;
   editingKind: string | null;
+  editingMode: "manual" | "generate";
   buffer: { title: string; text: string };
   setBuffer: (b: { title: string; text: string }) => void;
-  enterEdit: (id: string) => void;
+  enterEdit: (id: string, mode?: "manual" | "generate") => void;
   saveEdit: (id: string, title: string, text: string) => void;
   commitEdit: () => void;
   commitImageEdit:
@@ -26,6 +27,8 @@ export interface EditCtx {
           prompt?: string;
           ratio?: string;
           quality?: string;
+          resolution?: string;
+          generationSize?: { width: number; height: number };
           count?: number;
           model?: string;
           url?: string;
@@ -40,6 +43,7 @@ export interface EditCtx {
           prompt?: string;
           ratio?: string;
           quality?: string;
+          generationSize?: { width: number; height: number };
           duration?: number;
           count?: number;
           model?: string;
@@ -57,6 +61,8 @@ export interface EditCtx {
     prompt?: string;
     ratio?: string;
     quality?: string;
+    resolution?: string;
+    generationSize?: { width: number; height: number };
     count?: number;
     model?: string;
     url?: string;
@@ -66,6 +72,7 @@ export interface EditCtx {
     prompt?: string;
     ratio?: string;
     quality?: string;
+    generationSize?: { width: number; height: number };
     duration?: number;
     count?: number;
     model?: string;
@@ -77,6 +84,7 @@ export interface EditCtx {
 export const EnterEditContext = createContext<EditCtx>({
   editingId: null,
   editingKind: null,
+  editingMode: "manual",
   buffer: { title: "", text: "" },
   setBuffer: () => {},
   enterEdit: () => {},

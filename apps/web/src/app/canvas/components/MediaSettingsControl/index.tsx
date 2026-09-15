@@ -1,0 +1,179 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { ChevronDown } from "lucide-react";
+import { getMediaCardSize, type MediaDimensionOption } from "../../utils/mediaSizing";
+import styles from "./index.module.scss";
+
+interface MediaSettingsControlProps {
+  open: boolean;
+  ratio: string;
+  dimensions: MediaDimensionOption[];
+  quality: string;
+  qualities: string[];
+  qualityLabel?: string;
+  resolution?: string;
+  resolutions?: string[];
+  duration?: number;
+  durations?: number[];
+  count: number;
+  counts: number[];
+  countUnit: "张" | "个";
+  onOpenChange: (open: boolean) => void;
+  onDimensionChange: (value: MediaDimensionOption) => void;
+  onQualityChange: (value: string) => void;
+  onResolutionChange?: (value: string) => void;
+  onDurationChange?: (value: number) => void;
+  onCountChange: (value: number) => void;
+}
+
+function RatioMark({ option, compact = false }: { option: MediaDimensionOption; compact?: boolean }) {
+  const cardSize = getMediaCardSize(option);
+  const scale = (compact ? 14 : 20) / 300;
+
+  return (
+    <span
+      className={`${styles.ratioMark} ${compact ? styles.ratioMarkCompact : ""}`}
+      style={{
+        width: Math.max(compact ? 5 : 7, cardSize.w * scale),
+        height: Math.max(compact ? 5 : 7, cardSize.h * scale),
+      }}
+    />
+  );
+}
+
+function ChoiceGroup({
+  label,
+  values,
+  value,
+  columns = 3,
+  format = (item) => item,
+  onChange,
+}: {
+  label: string;
+  values: string[];
+  value: string;
+  columns?: number;
+  format?: (item: string) => string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <section className={styles.section}>
+      <h4>{label}</h4>
+      <div className={styles.choiceGrid} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        {values.map((item) => (
+          <button
+            key={item}
+            type="button"
+            aria-pressed={item === value}
+            className={`${styles.choice} ${item === value ? styles.active : ""}`}
+            onClick={() => onChange(item)}
+          >
+            {format(item)}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** 图片与视频节点共用的生成尺寸、清晰度和数量设置。 */
+export function MediaSettingsControl({
+  open,
+  ratio,
+  dimensions,
+  quality,
+  qualities,
+  qualityLabel = "画质",
+  resolution,
+  resolutions,
+  duration,
+  durations,
+  count,
+  counts,
+  countUnit,
+  onOpenChange,
+  onDimensionChange,
+  onQualityChange,
+  onResolutionChange,
+  onDurationChange,
+  onCountChange,
+}: MediaSettingsControlProps) {
+  const controlRef = useRef<HTMLDivElement | null>(null);
+  const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  const summary = [
+    ratio,
+    quality,
+    resolution,
+    duration === undefined ? undefined : `${duration}s`,
+    `${count}${countUnit}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !controlRef.current?.contains(target)) onOpenChange(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress, true);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePress, true);
+  }, [open, onOpenChange]);
+
+  return (
+    <div ref={controlRef} className={styles.wrap}>
+      <button type="button" className={styles.trigger} onClick={() => onOpenChange(!open)}>
+        {selectedDimension && <RatioMark option={selectedDimension} compact />}
+        <span>{summary}</span>
+        <ChevronDown size={10} className={open ? styles.chevronOpen : undefined} />
+      </button>
+      {open && (
+        <div className={styles.panel}>
+          <ChoiceGroup label={qualityLabel} values={qualities} value={quality} onChange={onQualityChange} />
+          {resolution && resolutions && onResolutionChange && (
+            <ChoiceGroup
+              label="清晰度"
+              values={resolutions}
+              value={resolution}
+              onChange={onResolutionChange}
+            />
+          )}
+          <section className={styles.section}>
+            <h4>比例</h4>
+            <div className={styles.ratioGrid}>
+              {dimensions.map((item) => (
+                <button
+                  key={`${item.ratio}-${item.width}x${item.height}`}
+                  type="button"
+                  aria-pressed={item.ratio === ratio}
+                  className={`${styles.ratioChoice} ${item.ratio === ratio ? styles.active : ""}`}
+                  onClick={() => onDimensionChange(item)}
+                >
+                  <RatioMark option={item} />
+                  <span>{item.ratio}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+          {duration !== undefined && durations && onDurationChange && (
+            <ChoiceGroup
+              label="视频时长"
+              values={durations.map(String)}
+              value={String(duration)}
+              format={(item) => `${item}秒`}
+              onChange={(item) => onDurationChange(Number(item))}
+            />
+          )}
+          <ChoiceGroup
+            label="生成数量"
+            values={counts.map(String)}
+            value={String(count)}
+            format={(item) => `${item}${countUnit}`}
+            onChange={(item) => onCountChange(Number(item))}
+          />
+        </div>
+      )}
+    </div>
+  );
+}

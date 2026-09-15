@@ -22,37 +22,68 @@ import {
   SelectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { AgentConversation, Asset, CanvasProject, RunView } from "@weavl/shared";
+import type { AgentConversation, Asset, AssetKind, CanvasProject, RunView } from "@weavl/shared";
 import { FolderOpen, X } from "lucide-react";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { EnterEditContext } from "./editContext";
-import { ImageEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNode";
-import { FloatingToolbar } from "./components/FloatingToolbar";
+import { ImageEditPanel, TextEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNode";
 import { CanvasViewportControls } from "./components/CanvasViewportControls";
 import { CanvasProjectHeader } from "./components/CanvasProjectHeader";
 import { CanvasAgentDrawer } from "./components/CanvasAgentDrawer";
-import { CanvasAddMenus } from "./components/CanvasAddMenus";
+import { CanvasAddMenus, type CanvasAddMenuPosition } from "./components/CanvasAddMenus";
 import addMenuStyles from "./components/CanvasAddMenus/index.module.scss";
-import { CanvasNodeLibrary } from "./components/CanvasNodeLibrary";
 import { CanvasEmptyState } from "./components/CanvasEmptyState";
-import { CanvasNodeToolbar } from "./components/CanvasNodeToolbar";
 import { useCanvasEditing } from "./hooks/useCanvasEditing";
 import { useCanvasConnections } from "./hooks/useCanvasConnections";
+import { useCanvasHistory } from "./hooks/useCanvasHistory";
 import type { BasicNodeKind } from "./types/nodes";
-import { NODE_LIBRARY } from "./constants";
 import {
   CANVAS_CONNECTION_RADIUS,
   CANVAS_MAX_ZOOM,
   CANVAS_MIN_ZOOM,
   INITIAL_CANVAS_VIEWPORT,
 } from "./constants/viewport";
-import { createBasicNode, createLibraryNode } from "./utils/nodeFactory";
+import { createBasicNode } from "./utils/nodeFactory";
 import { buildLatestRunGraph } from "./utils/latestRunGraph";
-import { getNodeToolbarKind, selectionIncludesRaisedTitle } from "./utils/nodeSelectors";
+import { selectionIncludesRaisedTitle } from "./utils/nodeSelectors";
 import { assetToCanvasNode } from "@/utils/assetNode";
 import { openCanvasAfter } from "@/utils/openCanvas";
+import { uploadAsset } from "@/utils/uploadAsset";
+
+function nodeAssetPayload(node: Node): { name: string; kind: AssetKind; content: string; mimeType: string } {
+  const data = node.data as Record<string, unknown>;
+  const name = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "画布节点";
+  if (data.nodeKind === "image") {
+    return {
+      name,
+      kind: "image",
+      content: typeof data.url === "string" && data.url ? data.url : JSON.stringify(data),
+      mimeType: typeof data.url === "string" && data.url.startsWith("data:image/") ? "image/*" : "application/json",
+    };
+  }
+  if (data.nodeKind === "video") {
+    return {
+      name,
+      kind: "video",
+      content: typeof data.url === "string" && data.url ? data.url : JSON.stringify(data),
+      mimeType: typeof data.url === "string" && data.url.startsWith("data:video/") ? "video/*" : "application/json",
+    };
+  }
+  const content =
+    typeof data.text === "string"
+      ? data.text
+      : Array.isArray(data.fields)
+        ? data.fields
+            .map((field) => {
+              const item = field as { label?: string; value?: string };
+              return `${item.label ?? ""}：${item.value ?? ""}`;
+            })
+            .join("\n")
+        : JSON.stringify(data, null, 2);
+  return { name, kind: "text", content, mimeType: "text/plain" };
+}
 
 /**
  * 协调 React Flow 状态、节点编辑、连线以及页面级浮层。
@@ -76,7 +107,10 @@ function CanvasInner() {
   const [availableAssets, setAvailableAssets] = useState<Asset[]>([]);
   const [canvasConversationId, setCanvasConversationId] = useState<string | null>(null);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const canvasUploadRef = useRef<HTMLInputElement | null>(null);
+  const uploadPositionRef = useRef({ x: 400, y: 320 });
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
+  const { canUndo, canRedo, undo, redo } = useCanvasHistory(nodes, edges, setNodes, setEdges, canvasReady);
 
   useEffect(() => {
     if (initializingRef.current) return;
@@ -88,19 +122,32 @@ function CanvasInner() {
       try {
         const project = requestedProject
           ? await studioApi<CanvasProject>(`/studio/projects/${requestedProject}`)
-          : await studioApi<CanvasProject>("/studio/projects", { method: "POST", body: jsonBody({ name: "未命名项目" }) });
+          : await studioApi<CanvasProject>("/studio/projects", {
+              method: "POST",
+              body: jsonBody({ name: "未命名项目" }),
+            });
         const canvas = project.canvases.find((item) => item.id === requestedCanvas) || project.canvases[0];
         if (!canvas) throw new Error("画布不存在");
-        setNodes(canvas.nodes as Node[]); setEdges(canvas.edges as Edge[]);
-        setProjectName(project.name); savedNameRef.current = project.name;
-        setProjectId(project.id); setCanvasId(canvas.id);
-        void studioApi<AgentConversation[]>("/studio/conversations").then((conversations) => {
-          const previous = conversations.find((item) => item.projectId === project.id && !item.archived);
-          if (previous) {
-            setCanvasConversationId(previous.id);
-            setAgentMessages(previous.messages.map((message) => ({ role: message.role === "assistant" ? "agent" : "user", text: message.content })));
-          }
-        }).catch(() => {});
+        setNodes(canvas.nodes as Node[]);
+        setEdges(canvas.edges as Edge[]);
+        setProjectName(project.name);
+        savedNameRef.current = project.name;
+        setProjectId(project.id);
+        setCanvasId(canvas.id);
+        void studioApi<AgentConversation[]>("/studio/conversations")
+          .then((conversations) => {
+            const previous = conversations.find((item) => item.projectId === project.id && !item.archived);
+            if (previous) {
+              setCanvasConversationId(previous.id);
+              setAgentMessages(
+                previous.messages.map((message) => ({
+                  role: message.role === "assistant" ? "agent" : "user",
+                  text: message.content,
+                })),
+              );
+            }
+          })
+          .catch(() => {});
         setViewportState(canvas.viewport);
         void setViewport(canvas.viewport);
         if (!requestedProject) router.replace(`/canvas?projectId=${project.id}&canvasId=${canvas.id}`);
@@ -115,10 +162,16 @@ function CanvasInner() {
   useEffect(() => {
     if (!canvasReady || !projectId || !canvasId) return;
     const timer = window.setTimeout(() => {
-      void studioApi(`/studio/projects/${projectId}/canvases/${canvasId}`, { method: "PATCH", body: jsonBody({ nodes, edges, viewport: viewportState }) }).catch(() => toast("画布自动保存失败"));
+      void studioApi(`/studio/projects/${projectId}/canvases/${canvasId}`, {
+        method: "PATCH",
+        body: jsonBody({ nodes, edges, viewport: viewportState }),
+      }).catch(() => toast("画布自动保存失败"));
       if (projectName !== savedNameRef.current) {
         savedNameRef.current = projectName;
-        void studioApi(`/studio/projects/${projectId}`, { method: "PATCH", body: jsonBody({ name: projectName }) }).catch(() => toast("项目名称保存失败"));
+        void studioApi(`/studio/projects/${projectId}`, {
+          method: "PATCH",
+          body: jsonBody({ name: projectName }),
+        }).catch(() => toast("项目名称保存失败"));
       }
     }, 700);
     return () => window.clearTimeout(timer);
@@ -142,7 +195,6 @@ function CanvasInner() {
     );
   }, [setEdges]);
 
-  const [showLibrary, setShowLibrary] = useState(false);
   /** Agent 抽屉（右上角头像展开）+ 气泡消息流 */
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentMessages, setAgentMessages] = useState<{ role: "user" | "agent"; text: string; thumb?: string | null }[]>(
@@ -171,6 +223,7 @@ function CanvasInner() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const {
     editingId,
+    editingMode,
     editBuffer,
     setEditBuffer,
     editorElRef,
@@ -211,14 +264,18 @@ function CanvasInner() {
     if (!window.confirm(`确定删除项目“${projectName}”吗？此操作无法撤销。`)) return;
     setProjectMenuOpen(false);
     if (!projectId) return;
-    void studioApi(`/studio/projects/${projectId}`, { method: "DELETE" }).then(() => { toast("项目已删除", "success"); router.push("/projects"); }).catch((cause) => toast((cause as Error).message));
+    void studioApi(`/studio/projects/${projectId}`, { method: "DELETE" })
+      .then(() => {
+        toast("项目已删除", "success");
+        router.push("/projects");
+      })
+      .catch((cause) => toast((cause as Error).message));
   }, [projectName, projectId, router]);
 
   /** click-outside-to-close —— 给 Agent 抽屉 / 节点库提供 ref，
      在 useClickOutside 里统一判断「pointerdown 在白名单外则关闭」。 */
   const agentDrawerRef = useRef<HTMLDivElement | null>(null);
   const agentBtnRef = useRef<HTMLButtonElement | null>(null);
-  const libraryRef = useRef<HTMLDivElement | null>(null);
 
   /** 选中节点时同步 selectedNode（用于顶部 NodeToolbar 浮出） */
   const onSelectionChange = useCallback(({ nodes: sel }: { nodes: Node[] }) => {
@@ -248,7 +305,6 @@ function CanvasInner() {
 
   /** click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
   useClickOutside(agentOpen, [agentDrawerRef, agentBtnRef], () => setAgentOpen(false));
-  useClickOutside(showLibrary, [libraryRef], () => setShowLibrary(false));
 
   /** 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
@@ -260,18 +316,17 @@ function CanvasInner() {
     [setNodes],
   );
 
-  /** 画布添加菜单状态（右键或双击空白处触发）。 */
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; flowPos: { x: number; y: number } } | null>(
-    null,
-  );
+  /** 右键显示画布操作，双击空白处直接显示添加节点列表。 */
+  const [contextMenu, setContextMenu] = useState<CanvasAddMenuPosition | null>(null);
   const openCanvasAddMenu = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, mode: CanvasAddMenuPosition["mode"] = "add") => {
       const rect = document.querySelector(`.${styles.board}`)?.getBoundingClientRect();
       if (!rect) return;
       setContextMenu({
         x: clientX - rect.left,
         y: clientY - rect.top,
         flowPos: screenToFlowPosition({ x: clientX, y: clientY }),
+        mode,
       });
       setConnectMenu(null);
     },
@@ -280,7 +335,7 @@ function CanvasInner() {
   const onPaneContextMenu = useCallback(
     (e: React.MouseEvent | MouseEvent) => {
       e.preventDefault();
-      openCanvasAddMenu(e.clientX, e.clientY);
+      openCanvasAddMenu(e.clientX, e.clientY, "context");
     },
     [openCanvasAddMenu],
   );
@@ -302,18 +357,71 @@ function CanvasInner() {
     [openCanvasAddMenu],
   );
 
-  /** 节点库添加（业务能力） */
-  const addFromLibrary = useCallback(
-    (idx: number) => {
-      const lib = NODE_LIBRARY[idx];
-      if (!lib) return;
-      const baseX = 400 + Math.random() * 80;
-      const baseY = 320 + Math.random() * 80;
-      setNodes((ns) => [...ns, createLibraryNode(lib, { x: baseX, y: baseY })]);
-      setShowLibrary(false);
+  const startCanvasUpload = useCallback(() => {
+    if (contextMenu) uploadPositionRef.current = contextMenu.flowPos;
+    setContextMenu(null);
+    canvasUploadRef.current?.click();
+  }, [contextMenu]);
+
+  const handleCanvasUpload = useCallback(
+    async (files: FileList | null) => {
+      if (!files?.length) return;
+      try {
+        const assets = await Promise.all(Array.from(files, (file) => uploadAsset(file)));
+        const base = uploadPositionRef.current;
+        setNodes((current) => [
+          ...current,
+          ...assets.map((asset, index) => ({
+            ...assetToCanvasNode(asset, current.length + index),
+            position: { x: base.x + index * 24, y: base.y + index * 24 },
+          })),
+        ]);
+        toast(`${assets.length} 个文件已上传并添加到画布`, "success");
+      } catch (cause) {
+        toast((cause as Error).message || "文件上传失败");
+      }
     },
     [setNodes],
   );
+
+  const saveCanvasSelectionToAssets = useCallback(async () => {
+    const selected = nodes.filter((node) => node.selected);
+    const payloads = selected.length
+      ? selected.map(nodeAssetPayload)
+      : [
+          {
+            name: `${projectName} · 画布`,
+            kind: "file" as const,
+            content: JSON.stringify({ nodes, edges, viewport: viewportState }, null, 2),
+            mimeType: "application/json",
+          },
+        ];
+    setContextMenu(null);
+    try {
+      await Promise.all(
+        payloads.map((payload) => studioApi<Asset>("/studio/assets", { method: "POST", body: jsonBody(payload) })),
+      );
+      toast(selected.length ? `${payloads.length} 个节点已保存到我的资产` : "画布已保存到我的资产", "success");
+    } catch (cause) {
+      toast((cause as Error).message || "保存到资产失败");
+    }
+  }, [edges, nodes, projectName, viewportState]);
+
+  const pasteToCanvas = useCallback(async () => {
+    const position = contextMenu?.flowPos ?? { x: 400, y: 320 };
+    setContextMenu(null);
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        toast("剪贴板中没有可粘贴的文字");
+        return;
+      }
+      const node = createBasicNode("text", position);
+      setNodes((current) => [...current, { ...node, data: { ...node.data, title: "粘贴文本", text } }]);
+    } catch {
+      toast("无法读取剪贴板，请允许浏览器访问剪贴板");
+    }
+  }, [contextMenu, setNodes]);
 
   /** 画布 Agent 与独立会话共用 API；新产物保存到资产库并作为引用加入当前画布。 */
   const submitChat = useCallback(() => {
@@ -326,21 +434,39 @@ function CanvasInner() {
       try {
         let conversationId = canvasConversationId;
         if (!conversationId) {
-          const created = await studioApi<AgentConversation>("/studio/conversations", { method: "POST", body: jsonBody({ title: `${projectName} · 画布助手` }) });
-          conversationId = created.id; setCanvasConversationId(created.id);
-          if (projectId) await studioApi(`/studio/conversations/${created.id}`, { method: "PATCH", body: jsonBody({ projectId }) });
+          const created = await studioApi<AgentConversation>("/studio/conversations", {
+            method: "POST",
+            body: jsonBody({ title: `${projectName} · 画布助手` }),
+          });
+          conversationId = created.id;
+          setCanvasConversationId(created.id);
+          if (projectId)
+            await studioApi(`/studio/conversations/${created.id}`, { method: "PATCH", body: jsonBody({ projectId }) });
         }
         const assetIds: string[] = [];
         const selectedRef = selectedNode?.data.assetRef as { assetId?: string } | undefined;
         if (selectedRef?.assetId) assetIds.push(selectedRef.assetId);
         if (chatThumb) {
-          const uploaded = await studioApi<Asset>("/studio/assets", { method: "POST", body: jsonBody({ name: `画布附件 ${new Date().toLocaleDateString("zh-CN")}.png`, kind: "image", content: chatThumb, mimeType: "image/png" }) });
+          const uploaded = await studioApi<Asset>("/studio/assets", {
+            method: "POST",
+            body: jsonBody({
+              name: `画布附件 ${new Date().toLocaleDateString("zh-CN")}.png`,
+              kind: "image",
+              content: chatThumb,
+              mimeType: "image/png",
+            }),
+          });
           assetIds.push(uploaded.id);
         }
-        const result = await studioApi<{ reply: { content: string }; asset: Asset }>(`/studio/conversations/${conversationId}/messages`, { method: "POST", body: jsonBody({ content: userText || "请参考附件生成内容", assetIds }) });
+        const result = await studioApi<{ reply: { content: string }; asset: Asset }>(
+          `/studio/conversations/${conversationId}/messages`,
+          { method: "POST", body: jsonBody({ content: userText || "请参考附件生成内容", assetIds }) },
+        );
         setAgentMessages((messages) => [...messages, { role: "agent", text: result.reply.content }]);
         setNodes((current) => [...current, assetToCanvasNode(result.asset, current.length)]);
-      } catch (cause) { toast((cause as Error).message || "Agent 生成失败"); }
+      } catch (cause) {
+        toast((cause as Error).message || "Agent 生成失败");
+      }
     })();
   }, [chatInput, chatThumb, canvasConversationId, projectName, projectId, selectedNode, setNodes]);
 
@@ -352,8 +478,6 @@ function CanvasInner() {
     reader.onload = () => setChatThumb(String(reader.result));
   }, []);
 
-  /** 顶部 NodeToolbar：根据选中节点的 kind 决定工具胶囊列表（text 基础节点给编辑类工具） */
-  const selectedKind = getNodeToolbarKind(selectedNode);
   const selectedNodeCount = nodes.reduce((count, node) => count + (node.selected ? 1 : 0), 0);
   const selectionHasRaisedTitle = selectionIncludesRaisedTitle(nodes);
 
@@ -361,6 +485,7 @@ function CanvasInner() {
     <EnterEditContext.Provider
       value={{
         editingId,
+        editingMode,
         editingKind: editingId
           ? (((nodes.find((n) => n.id === editingId)?.data as Record<string, unknown> | undefined)?.nodeKind as
               string | undefined) ?? null)
@@ -382,6 +507,16 @@ function CanvasInner() {
       }}
     >
       <div className={styles.shell}>
+        <input
+          ref={canvasUploadRef}
+          type="file"
+          multiple
+          hidden
+          onChange={(event) => {
+            void handleCanvasUpload(event.target.files);
+            event.target.value = "";
+          }}
+        />
         <CanvasProjectHeader
           projectName={projectName}
           onProjectNameChange={setProjectName}
@@ -395,8 +530,47 @@ function CanvasInner() {
           onToggleAgent={() => setAgentOpen((open) => !open)}
           agentButtonRef={agentBtnRef}
         />
-        <button className={styles.assetPanelTrigger} onClick={() => { setAssetPanelOpen((open) => !open); void studioApi<Asset[]>("/studio/assets").then(setAvailableAssets).catch(() => toast("资产加载失败")); }}><FolderOpen size={14} />资产</button>
-        {assetPanelOpen && <aside className={styles.assetPanel}><div className={styles.assetPanelHead}><strong>从资产库添加</strong><button onClick={() => setAssetPanelOpen(false)}><X size={15} /></button></div>{availableAssets.length === 0 ? <p>资产库为空。可先在资产页上传文件。</p> : availableAssets.map((asset) => <button key={asset.id} className={styles.assetPanelItem} onClick={() => { setNodes((current) => [...current, assetToCanvasNode(asset, current.length)]); setAssetPanelOpen(false); }}><span>{asset.name}</span><small>{asset.source} · {asset.kind}</small></button>)}</aside>}
+        <button
+          className={styles.assetPanelTrigger}
+          onClick={() => {
+            setAssetPanelOpen((open) => !open);
+            void studioApi<Asset[]>("/studio/assets")
+              .then(setAvailableAssets)
+              .catch(() => toast("资产加载失败"));
+          }}
+        >
+          <FolderOpen size={14} />
+          资产
+        </button>
+        {assetPanelOpen && (
+          <aside className={styles.assetPanel}>
+            <div className={styles.assetPanelHead}>
+              <strong>从资产库添加</strong>
+              <button onClick={() => setAssetPanelOpen(false)}>
+                <X size={15} />
+              </button>
+            </div>
+            {availableAssets.length === 0 ? (
+              <p>资产库为空。可先在资产页上传文件。</p>
+            ) : (
+              availableAssets.map((asset) => (
+                <button
+                  key={asset.id}
+                  className={styles.assetPanelItem}
+                  onClick={() => {
+                    setNodes((current) => [...current, assetToCanvasNode(asset, current.length)]);
+                    setAssetPanelOpen(false);
+                  }}
+                >
+                  <span>{asset.name}</span>
+                  <small>
+                    {asset.source} · {asset.kind}
+                  </small>
+                </button>
+              ))
+            )}
+          </aside>
+        )}
         {agentOpen && (
           <CanvasAgentDrawer
             drawerRef={agentDrawerRef}
@@ -411,13 +585,9 @@ function CanvasInner() {
             onClose={() => setAgentOpen(false)}
           />
         )}
-        {selectedNode && !editingId && <CanvasNodeToolbar kind={selectedKind} />}
-
-        {/* 聚焦编辑浮层（顶部格式化工具栏；移除左侧完成/取消面板 —— 点击外部自动保存） */}
-        <FloatingToolbar />
-
         {/* 图片节点编辑栏 — 由 Portal 挂到 body，屏宽 40%，距屏底 16px，水平居中对齐当前编辑节点 */}
         <ImageEditPanel />
+        <TextEditPanel />
         {/* 视频节点编辑栏 — 同款外置方案 + 5 chip + 视频字段 */}
         <VideoEditPanel />
 
@@ -488,10 +658,20 @@ function CanvasInner() {
             pendingLineStart={pendingLineStart}
             onAddBasic={addBasicNode}
             onAddConnected={addNodeFromConnect}
-            onOpenLibrary={() => {
+            onShowAddMenu={() => setContextMenu((menu) => (menu ? { ...menu, mode: "add" } : null))}
+            onUpload={startCanvasUpload}
+            onSaveToAssets={() => void saveCanvasSelectionToAssets()}
+            onUndo={() => {
               setContextMenu(null);
-              setShowLibrary(true);
+              undo();
             }}
+            onRedo={() => {
+              setContextMenu(null);
+              redo();
+            }}
+            onPaste={() => void pasteToCanvas()}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
           {nodes.length === 0 && (
             <CanvasEmptyState
@@ -501,18 +681,6 @@ function CanvasInner() {
             />
           )}
         </div>
-
-        {showLibrary && (
-          <CanvasNodeLibrary
-            libraryRef={libraryRef}
-            onClose={() => setShowLibrary(false)}
-            onAddBasic={(kind) => {
-              addBasicNode(kind);
-              setShowLibrary(false);
-            }}
-            onAddFromLibrary={addFromLibrary}
-          />
-        )}
       </div>
       );
     </EnterEditContext.Provider>
