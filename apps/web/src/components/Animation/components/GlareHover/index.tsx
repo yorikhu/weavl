@@ -1,11 +1,10 @@
 "use client";
 
-// React Bits Glare Hover, styled for the Weavl home hero.
-// https://reactbits.dev/animations/glare-hover
 import React from 'react';
 import './GlareHover.css';
 
-interface GlareHoverProps {
+/** 卡片反光动画的尺寸、颜色、角度与播放参数。 */
+export interface GlareHoverProps {
   width?: string;
   height?: string;
   background?: string;
@@ -22,6 +21,7 @@ interface GlareHoverProps {
   style?: React.CSSProperties;
 }
 
+/** 基于 React Bits Glare Hover 调整的卡片反光容器。 */
 const GlareHover: React.FC<GlareHoverProps> = ({
   width = '500px',
   height = '500px',

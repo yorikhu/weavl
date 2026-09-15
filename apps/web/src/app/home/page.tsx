@@ -1,15 +1,14 @@
 "use client";
 
-import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowUp, AudioLines, Bot, Box, Check, Clapperboard, FileText, FolderOpen, Image, LayoutGrid, Paperclip, Settings2, ShoppingBag, UserRound, Wrench, Workflow } from "lucide-react";
 import type { Asset, MarketEntry } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
-import { ActionPopover } from "@/components/ActionPopover";
+import { Animation } from "@/components/Animation";
+import { Popover } from "@/components/Popover";
 import { AbilityCard } from "./components/AbilityCard";
 import { InlineComposer, type InlineComposerHandle } from "@/components/InlineComposer";
-import GlareHover from "@/components/GlareHover";
 import { studioApi } from "@/lib/studioApi";
 import { useAuth } from "@/provider/AuthProvider";
 import { useTheme } from "@/provider/ThemeProvider";
@@ -18,7 +17,6 @@ import { createTiltCardHandlers } from "@/utils/tiltCard";
 import styles from "./page.module.scss";
 
 const examples = ["把访谈资料整理成 IP 定位", "根据产品资料写一版脚本", "梳理一周进度形成周报"];
-const AeroShards = memo(dynamic(() => import("@/components/AeroShards"), { ssr: false }));
 const heroTiltHandlers = createTiltCardHandlers<HTMLDivElement>(6);
 const models = [
   { id: "text", label: "文本模型", detail: "文案、策划、结构化内容", icon: FileText },
@@ -298,7 +296,7 @@ export default function HomePage() {
       <div className={styles.page}>
         <section ref={heroRef} className={`${styles.hero} ${hideHeroCard ? styles.heroWithoutCard : ""}`}>
           <div className={styles.aeroLayer} aria-hidden="true">
-            <AeroShards
+            <Animation.AeroShards
               backgroundColor={theme === "dark" ? "#161618" : "#FFFFFF"}
               shardColor={theme === "dark" ? "#696973" : "#C2C7D0"}
               accentColor={theme === "dark" ? "#E4E4E7" : "#59606B"}
@@ -340,7 +338,7 @@ export default function HomePage() {
                     const Icon = tool.icon;
                     const active = tool.id === "mode" && mode === "manual";
                     return (
-                      <ActionPopover
+                      <Popover variant="action"
                         key={tool.id}
                         hint={tool.label}
                         open={openTool === tool.id}
@@ -348,12 +346,12 @@ export default function HomePage() {
                         trigger={<button type="button" className={`${styles.toolButton} ${active ? styles.toolButtonActive : ""}`} aria-label={tool.label}><Icon size={15} strokeWidth={1.7} /></button>}
                       >
                         {renderToolContent(tool.id)}
-                      </ActionPopover>
+                      </Popover>
                     );
                   })}
                   <span className={styles.modeLabel}>{mode === "auto" ? "自动" : "手动"} · 模拟</span>
                 </div>
-                <ActionPopover
+                <Popover variant="action"
                   mode="hover"
                   trigger={
                     <button type="button" className={styles.sendButton} onClick={() => begin()} aria-label="开始创作" disabled={uploading}>
@@ -362,7 +360,7 @@ export default function HomePage() {
                   }
                 >
                   开始创作
-                </ActionPopover>
+                </Popover>
               </div>
             </div>
             {composerError && <p className={styles.composerError} role="alert">{composerError}</p>}
@@ -376,13 +374,13 @@ export default function HomePage() {
           </div>
           <div className={styles.heroSide}>
             <div className={styles.heroTilt} {...heroTiltHandlers}>
-              <GlareHover className={styles.artwork} width="100%" height="100%" background="var(--artwork-bg)" borderRadius="14px" borderColor="var(--artwork-border)" glareColor="var(--artwork-glare)" glareAngle={-35} glareSize={185} transitionDuration={850}>
+              <Animation.GlareHover className={styles.artwork} width="100%" height="100%" background="var(--artwork-bg)" borderRadius="14px" borderColor="var(--artwork-border)" glareColor="var(--artwork-glare)" glareAngle={-35} glareSize={185} transitionDuration={850}>
                 <span>IDEA → WORK</span>
                 <div className={styles.artworkShape}>
                   <span>W</span>
                 </div>
                 <small>灵感 / 方法 / 作品</small>
-              </GlareHover>
+              </Animation.GlareHover>
             </div>
           </div>
         </section>
