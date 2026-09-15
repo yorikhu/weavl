@@ -7,7 +7,14 @@ import nodeStyles from "../components/CanvasNode/index.module.scss";
 
 const NODE_FOCUS_MAX_ZOOM = 1.5;
 
-/** 节点编辑态及持久化写回，独立于页面菜单与连线交互。 */
+/**
+ * 管理节点编辑态、聚焦视口和编辑缓冲区的持久化写回。
+ * 编辑状态与页面菜单、节点选中和连线交互保持独立。
+ *
+ * @param nodes - 当前画布节点。
+ * @param setNodes - React Flow 节点状态更新器。
+ * @returns 编辑上下文、进入与退出编辑态的方法及当前编辑节点信息。
+ */
 export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateAction<Node[]>>) {
   const { setViewport } = useReactFlow();
   const viewportWidth = useStore((state) => state.width);

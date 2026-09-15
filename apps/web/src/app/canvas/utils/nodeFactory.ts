@@ -6,6 +6,11 @@ import { getNextCanvasLayer } from "./canvasGroups";
 export type FlowPosition = { x: number; y: number };
 
 let idSequence = 0;
+/**
+ * 生成当前页面会话内唯一的节点标识。
+ *
+ * @returns 带时间戳和递增序号的节点标识。
+ */
 export const nextNodeId = () => `n_${Date.now()}_${++idSequence}`;
 
 type BasicNodeDefinitionMap = {
@@ -75,6 +80,15 @@ function nextNodeTitle(kind: BasicNodeKind, nodes: Node[]) {
   return `${label} ${max + 1}`;
 }
 
+/**
+ * 按基础节点类型创建具备默认数据、唯一名称和正确层级的 React Flow 节点。
+ *
+ * @param kind - 要创建的基础节点类型。
+ * @param position - 节点在画布坐标系中的位置。
+ * @param connected - 是否由拖线操作创建；该状态会选择对应的初始内容。
+ * @param existingNodes - 当前节点集合，用于生成名称和顶层层级。
+ * @returns 可直接加入 React Flow 状态的节点。
+ */
 export function createBasicNode(
   kind: BasicNodeKind,
   position: FlowPosition,
@@ -96,6 +110,13 @@ export function createBasicNode(
   };
 }
 
+/**
+ * 将节点库配置转换为可放置到画布的 React Flow 节点。
+ *
+ * @param item - 节点库中的能力定义。
+ * @param position - 节点在画布坐标系中的位置。
+ * @returns 与能力类型匹配的卡片或媒体节点。
+ */
 export function createLibraryNode(item: NodeLibraryItem, position: FlowPosition): Node {
   if (item.nodeKind === "card") {
     return {

@@ -171,11 +171,10 @@ function CanvasInner() {
   /** handle 位置由 CSS 调整后，刷新 React Flow 缓存的正式边锚点。 */
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      updateNodeInternals(nodes.map((node) => node.id));
+      updateNodeInternals(nodeIdsKey ? nodeIdsKey.split("|") : []);
     });
     return () => window.cancelAnimationFrame(frame);
     // 节点集合不变时无需因拖动位置反复测量 handle。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeIdsKey, updateNodeInternals]);
   /** 挂载时清洗 时代 type:"bezier" 隐形边 → "default"（React Flow 无此内置类型不渲染） */
   useEffect(() => {

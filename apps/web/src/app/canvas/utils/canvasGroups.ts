@@ -42,7 +42,12 @@ function numberValue(...values: unknown[]): number | undefined {
   return values.find((value): value is number => typeof value === "number");
 }
 
-/** 返回高于当前全部节点和分组边框的下一层级。 */
+/**
+ * 计算高于当前全部节点和分组边框的下一层级。
+ *
+ * @param nodes - 当前画布节点。
+ * @returns 新节点或新分组可安全使用的 z-index。
+ */
 export function getNextCanvasLayer(nodes: Node[]): number {
   return (
     nodes.reduce((highest, node) => {
@@ -52,7 +57,12 @@ export function getNextCanvasLayer(nodes: Node[]): number {
   );
 }
 
-/** 返回节点用于画布几何计算的稳定尺寸。 */
+/**
+ * 获取节点用于分组、框选和定位计算的稳定尺寸。
+ *
+ * @param node - 要测量的 React Flow 节点。
+ * @returns 节点宽高；缺少显式尺寸时使用节点类型的默认值。
+ */
 export function getCanvasNodeSize(node: Node) {
   const data = node.data as Record<string, unknown>;
   const mediaSize = data.size as { w?: number; h?: number } | undefined;
@@ -107,7 +117,12 @@ function groupBounds(id: string, name: string, nodes: Node[]): CanvasGroupBounds
   };
 }
 
-/** 单次扫描汇总节点分组及其画布边界。 */
+/**
+ * 单次扫描汇总节点分组及其画布边界。
+ *
+ * @param nodes - 当前画布节点。
+ * @returns 每个分组的名称、成员、边界、层级与批量连接锚点。
+ */
 export function getCanvasGroupBounds(nodes: Node[]): CanvasGroupBounds[] {
   const groups = new Map<string, { name: string; nodes: Node[] }>();
   nodes.forEach((node) => {
@@ -132,7 +147,12 @@ export function isPointInsideCanvasGroup(nodes: Node[], point: { x: number; y: n
   );
 }
 
-/** 加载画布时恢复分组成员不可单独选择的约束。 */
+/**
+ * 加载画布时恢复组成员的 React Flow 选择约束。
+ *
+ * @param nodes - 从持久化数据读取的节点集合。
+ * @returns 带有规范化 selectable 与 selected 状态的节点集合。
+ */
 export function normalizeGroupedNodeSelection(nodes: Node[]): Node[] {
   return nodes.map((node) => {
     const grouped = typeof (node.data as Record<string, unknown>).groupId === "string";
@@ -156,6 +176,13 @@ export function markFocusedGroupMember(nodes: Node[], focusedNodeId: string | nu
   });
 }
 
+/**
+ * 为新分组生成不重复的名称，并优先采用有效的指定名称。
+ *
+ * @param nodes - 当前画布节点，用于收集已有组名。
+ * @param requestedName - 调用方指定的可选组名。
+ * @returns 可安全写入新分组的名称。
+ */
 export function getNextGroupName(nodes: Node[], requestedName?: string): string {
   const explicitName = requestedName?.trim();
   if (explicitName) return explicitName;
@@ -169,6 +196,12 @@ export function getNextGroupName(nodes: Node[], requestedName?: string): string 
   return `Group ${index}`;
 }
 
+/**
+ * 从节点数据副本中移除全部分组字段。
+ *
+ * @param data - 原节点数据。
+ * @returns 不再属于任何分组的新数据对象。
+ */
 export function stripNodeGroup(data: Record<string, unknown>): Record<string, unknown> {
   const next = { ...data };
   delete next.groupId;
@@ -216,6 +249,13 @@ export function inheritSharedSourceGroup(node: Node, sourceIds: string[], nodes:
   };
 }
 
+/**
+ * 判断两个画布坐标矩形是否相交，边界接触也视为相交。
+ *
+ * @param a - 第一个矩形。
+ * @param b - 第二个矩形。
+ * @returns 两个矩形是否相交。
+ */
 export function rectIntersects(a: CanvasRect, b: CanvasRect): boolean {
   return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
 }
@@ -257,7 +297,12 @@ function calculateSelectionInsets(nodes: Node[], selectedNodes: Node[]): CanvasS
   };
 }
 
-/** 汇总页面渲染选择工具栏所需的全部派生状态。 */
+/**
+ * 汇总页面渲染选择工具栏所需的派生状态。
+ *
+ * @param nodes - 当前画布节点及其选中状态。
+ * @returns 选中节点、完整单组判断和工具栏定位内边距。
+ */
 export function getCanvasSelectionState(nodes: Node[]): CanvasSelectionState {
   const selectedNodes = nodes.filter((node) => node.selected);
   const selectedNodeIds = selectedNodes.map((node) => node.id);

@@ -4,7 +4,12 @@ import { STAGE_TITLES } from "../constants";
 
 const STEP_IDS = ["topics", "copywriting", "cover-concept", "cover", "check", "package"] as const;
 
-/** 将最近一次运行的领域数据转换为画布节点和连线。 */
+/**
+ * 将最近一次工作流运行转换为可直接载入画布的节点和连线。
+ *
+ * @param run - 后端返回的工作流运行详情。
+ * @returns 按阶段排列的 React Flow 节点与连线。
+ */
 export function buildLatestRunGraph(run: RunView): { nodes: Node[]; edges: Edge[] } {
   const gateSteps = new Set((run.decisions ?? []).map((decision) => decision.gate));
   const nodes: Node[] = STEP_IDS.map((stepId, index) => {

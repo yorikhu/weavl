@@ -14,7 +14,16 @@ import {
 import styles from "../page.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
 
-/** 连线、磁吸、目标预览与拖线到空白处新建节点的交互。 */
+/**
+ * 管理连线、连接点磁吸、目标预览与拖线到空白处新建节点的交互。
+ * 所有磁吸距离均在屏幕坐标中计算，避免画布缩放改变实际操作热区。
+ *
+ * @param nodes - 当前画布节点。
+ * @param edges - 当前画布连线。
+ * @param setNodes - React Flow 节点状态更新器。
+ * @param setEdges - React Flow 连线状态更新器。
+ * @returns React Flow 事件处理器、连线菜单状态和批量连线方法。
+ */
 export function useCanvasConnections(
   nodes: Node[],
   edges: Edge[],

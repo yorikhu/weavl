@@ -7,12 +7,24 @@ export interface HandleScreenDistance {
   distanceSq: number;
 }
 
-/** 判断连接点是否属于有效卡片；多选与整组屏蔽由调用侧结合完整选择状态处理。 */
+/**
+ * 判断连接点是否属于有效卡片。
+ * 多选与整组屏蔽由调用侧结合完整选择状态处理。
+ *
+ * @param handle - 候选连接点元素。
+ * @returns 连接点是否位于 React Flow 节点内。
+ */
 export function isCardHandleInteractive(handle: HTMLElement): boolean {
   return Boolean(handle.closest<HTMLElement>(".react-flow__node"));
 }
 
-/** 指针从节点或组的可拖动表面按下时，磁吸系统应暂停到本次手势结束。 */
+/**
+ * 判断指针是否从节点或组的可拖动表面按下。
+ * 命中时磁吸系统应暂停到本次移动手势结束。
+ *
+ * @param target - 原生指针事件目标。
+ * @returns 是否属于会触发画布对象移动的目标。
+ */
 export function isCanvasMovePointerTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   if (!target.closest(".react-flow__node, [data-canvas-group]")) return false;
@@ -25,6 +37,9 @@ export function isCanvasMovePointerTarget(target: EventTarget | null): boolean {
  * 判断连接点所在的卡片边缘是否位于最上层。
  * 更高层的组框盖住该边缘时，不允许隐藏在下方的连接点抢占磁吸。
  * 层级由 React Flow 和组图层直接写在 style 上，无需 getComputedStyle 强制刷新布局。
+ *
+ * @param handle - 要检查的卡片连接点元素。
+ * @returns 连接点所在边缘是否未被更高层组框遮挡。
  */
 export function isCardHandleExposed(handle: HTMLElement): boolean {
   const node = handle.closest<HTMLElement>(".react-flow__node");
@@ -55,7 +70,14 @@ function getHandleGeometry(handle: HTMLElement) {
   return { rect, safeScale };
 }
 
-/** 计算卡片连接圆点与指针的屏幕距离；卡片内部不属于吸附区域。 */
+/**
+ * 计算卡片连接圆点与指针的屏幕距离，卡片内部不属于吸附区域。
+ *
+ * @param handle - 卡片连接点元素。
+ * @param pointerX - 指针的视口横坐标。
+ * @param pointerY - 指针的视口纵坐标。
+ * @returns 屏幕距离和安全缩放值；指针位于卡片内部时返回 `null`。
+ */
 export function getCardHandleDistance(
   handle: HTMLElement,
   pointerX: number,
@@ -73,7 +95,14 @@ export function getCardHandleDistance(
   return { safeScale, screenDx, screenDy, distanceSq: screenDx * screenDx + screenDy * screenDy };
 }
 
-/** 计算视觉圆点位于元素中心时与指针的屏幕距离。 */
+/**
+ * 计算视觉圆点位于元素中心时与指针的屏幕距离。
+ *
+ * @param handle - 批量连接点或其他居中连接点元素。
+ * @param pointerX - 指针的视口横坐标。
+ * @param pointerY - 指针的视口纵坐标。
+ * @returns 屏幕距离和安全缩放值。
+ */
 export function getCenteredHandleDistance(
   handle: HTMLElement,
   pointerX: number,

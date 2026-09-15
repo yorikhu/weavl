@@ -33,6 +33,14 @@ export const FALLBACK_MEDIA_CAPABILITIES: MediaCapabilityCatalog = {
   video: { fallback: COMMON_DIMENSIONS, models: {} },
 };
 
+/**
+ * 获取指定媒体模型支持的输出尺寸，模型没有专属配置时回退到通用尺寸。
+ *
+ * @param kind - 图片或视频能力类型。
+ * @param model - 当前模型标识。
+ * @param catalog - 可由后端能力接口替换的模型尺寸目录。
+ * @returns 当前模型可选的真实输出尺寸。
+ */
 export function getMediaDimensions(
   kind: MediaCapabilityKind,
   model: string,
@@ -41,7 +49,13 @@ export function getMediaDimensions(
   return catalog[kind].models[model] ?? catalog[kind].fallback;
 }
 
-/** 按模型真实输出尺寸缩放卡片：1024 方图更紧凑，大尺寸媒体长边不超过 300px。 */
+/**
+ * 按模型真实输出尺寸计算画布卡片大小。
+ * 1024 方图保持紧凑，大尺寸媒体的长边不超过 300px。
+ *
+ * @param option - 模型提供的真实像素尺寸。
+ * @returns 用于节点数据的画布宽高。
+ */
 export function getMediaCardSize(option: MediaDimensionOption) {
   const sourceWidth = Math.max(1, option.width);
   const sourceHeight = Math.max(1, option.height);

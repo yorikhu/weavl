@@ -132,7 +132,13 @@ function createNodeCopyBundle(
   return { nodes: copies, idMap };
 }
 
-/** 管理画布节点与项目资产、全局资产之间的全部交互。 */
+/**
+ * 管理画布节点与项目资产、全局资产之间的全部交互。
+ * 包含上传、保存到资产、复制、创建副本、粘贴和画布文档管理。
+ *
+ * @param options - 当前画布数据、项目上下文及对应状态更新器。
+ * @returns 供页面和资产抽屉调用的资产状态、文件引用与操作方法。
+ */
 export function useCanvasAssets(options: UseCanvasAssetsOptions) {
   const {
     nodes,

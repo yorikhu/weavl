@@ -32,7 +32,13 @@ function getTextContent(data: Record<string, unknown>): string {
     .join("\n");
 }
 
-/** 将任意画布节点转换为可写入全局资产库的数据。 */
+/**
+ * 将任意画布节点转换为可写入全局资产库的请求数据。
+ * 媒体节点优先保留资源地址，文本和结构化节点会转换为可读文本。
+ *
+ * @param node - 要保存的 React Flow 节点。
+ * @returns 资产名称、类型、内容和 MIME 类型。
+ */
 export function nodeAssetPayload(node: Node): NodeAssetPayload {
   const data = node.data as Record<string, unknown>;
   const name = getNodeName(data);

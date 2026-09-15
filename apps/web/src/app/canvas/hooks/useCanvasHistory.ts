@@ -55,7 +55,18 @@ function createSnapshot(nodes: Node[], edges: Edge[]): CanvasSnapshot {
   };
 }
 
-/** 记录画布节点与连线历史，连续拖动会合并为一次操作。 */
+/**
+ * 记录画布节点与连线历史，并将连续拖动合并为一次可撤销操作。
+ * 历史记录按画布隔离，切换画布时会清空旧文档的撤销栈。
+ *
+ * @param nodes - 当前节点快照。
+ * @param edges - 当前连线快照。
+ * @param setNodes - 节点状态更新器。
+ * @param setEdges - 连线状态更新器。
+ * @param enabled - 是否开始记录历史。
+ * @param scopeKey - 用于隔离不同画布历史的稳定标识。
+ * @returns 撤销、重做方法及其可用状态。
+ */
 export function useCanvasHistory(
   nodes: Node[],
   edges: Edge[],
