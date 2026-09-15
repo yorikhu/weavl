@@ -7,9 +7,13 @@
   background: var(--canvas-node-background);
   border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   box-shadow: var(--canvas-node-shadow);
-  cursor: default;
+  cursor: grab;
   user-select: none;
   font-family: inherit;
+
+  &:active {
+    cursor: grabbing;
+  }
 }
 
 .cardAccent {
@@ -79,7 +83,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 
 // =============== 节点内编辑态（双击原地放大） ===============
 .nodeEditor {
@@ -199,7 +202,6 @@
   font-size: 10px;
   color: #5e5e66;
 }
-
 
 .formatBar {
   display: flex;

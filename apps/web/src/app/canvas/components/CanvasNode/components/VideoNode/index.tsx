@@ -17,6 +17,7 @@ import {
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
+import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { VideoNodeData } from "../../../../types/nodes";
 import {
   getMediaCardSize,
@@ -34,10 +35,12 @@ const styles = sharedStyles;
  */
 function VideoCardStatic({
   d,
+  nodeId,
   onActivate,
   editing = false,
 }: {
   d: VideoNodeData;
+  nodeId?: string;
   onActivate?: () => void;
   editing?: boolean;
 }) {
@@ -63,7 +66,7 @@ function VideoCardStatic({
             spellCheck={false}
           />
         ) : (
-          <span>{displayTitle}</span>
+          nodeId ? <EditableNodeTitle nodeId={nodeId} value={d.title} fallback="视频节点" /> : <span>{displayTitle}</span>
         )}
       </div>
       <div
@@ -108,7 +111,7 @@ export function VideoNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <VideoCardStatic d={d} onActivate={() => edit.enterEdit(id)} />
+      <VideoCardStatic d={d} nodeId={id} onActivate={() => edit.enterEdit(id)} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { CheckCircle2, Sparkles, X } from "lucide-react";
 import { toast } from "@/hooks/useToast";
 import { EnterEditContext } from "../../../../editContext";
+import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import { KIND_META } from "../../../../types/kindMeta";
 import type { CardNodeData } from "../../../../types/nodes";
 import sharedStyles from "../../index.module.scss";
@@ -190,7 +191,7 @@ export function CardNode({ data, id }: NodeProps) {
       <Handle type="target" position={Position.Left} className={styles.cardHandle} />
       <div className={styles.cardHead}>
         <span className={styles.cardCategory}>{d.category || meta.badge}</span>
-        <span className={styles.cardType}>{d.title}</span>
+        <EditableNodeTitle nodeId={id} value={d.title} fallback="节点" className={styles.cardType} />
       </div>
       {d.fields?.[0]?.label !== "_title" && (
         <div className={styles.cardFields}>

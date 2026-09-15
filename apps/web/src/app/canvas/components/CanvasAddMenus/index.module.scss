@@ -43,6 +43,11 @@
   animation: fade 0.12s ease;
 }
 
+.portalMenu {
+  position: fixed;
+  z-index: 1200;
+}
+
 .contextMenuHead {
   padding: 6px 10px 4px;
   font-size: 10px;
@@ -76,6 +81,11 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+}
+
+.dangerItem:hover:not(:disabled) {
+  background: rgba(226, 75, 74, 0.1);
+  color: #e86f6b;
 }
 
 .contextMenuSep {

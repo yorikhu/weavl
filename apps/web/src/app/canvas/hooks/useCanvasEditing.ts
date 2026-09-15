@@ -53,21 +53,23 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
 
   /** 双击聚焦：按节点实际尺寸自适应视口，保证缩放后的节点完整可见。 */
   const focusNode = useCallback(
-    (id: string) => {
+    (id: string, options?: { leftInset?: number }) => {
       const node = nodes.find((item) => item.id === id);
       if (!node) return;
       const data = node.data as Record<string, unknown>;
       /* 文本节点保存的拖拽尺寸优先于 React Flow 可能尚未刷新的 measured。 */
       const width = typeof data.width === "number" ? data.width : (node.measured?.width ?? 440);
       const height = typeof data.height === "number" ? data.height : (node.measured?.height ?? 120);
+      const leftInset = Math.max(0, options?.leftInset ?? 0);
       const viewport = getViewportForBounds(
         { x: node.position.x, y: node.position.y, width, height },
-        viewportWidth,
+        Math.max(1, viewportWidth - leftInset),
         viewportHeight,
         minZoom,
         Math.min(maxZoom, NODE_FOCUS_MAX_ZOOM),
         0.16,
       );
+      viewport.x += leftInset;
       void setViewport(viewport, { duration: 320, ease: (progress) => 1 - (1 - progress) ** 3 });
     },
     [nodes, viewportWidth, viewportHeight, minZoom, maxZoom, setViewport],

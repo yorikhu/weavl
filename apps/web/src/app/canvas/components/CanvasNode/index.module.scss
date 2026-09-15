@@ -92,6 +92,7 @@
 /* 悬停节点时立即显露连接点；选中或接收连线时保持可见。 */
 :global(.react-flow__node:hover) .cardHandle::after,
 :global(.react-flow__node.selected) .cardHandle::after,
+:global(.react-flow__node.canvas-group-member-focused) .cardHandle::after,
 .cardHandle:global(.connectingto)::after {
   opacity: 1;
   visibility: visible;
@@ -185,7 +186,11 @@
   background: var(--canvas-node-background);
   border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   box-shadow: var(--canvas-node-shadow);
-  cursor: default;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
   user-select: none;
   font-family: inherit;
   transition:

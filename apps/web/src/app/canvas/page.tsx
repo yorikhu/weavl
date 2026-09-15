@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { toast } from "@/hooks/useToast";
@@ -22,15 +22,19 @@ import {
   SelectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { AgentConversation, Asset, AssetKind, CanvasProject, RunView } from "@weavl/shared";
-import { FolderOpen, X } from "lucide-react";
+import type { AgentConversation, Asset, CanvasDocument, CanvasProject, RunView } from "@weavl/shared";
 import styles from "./page.module.scss";
 import { API } from "@/lib/env";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { EnterEditContext } from "./editContext";
 import { ImageEditPanel, TextEditPanel, VideoEditPanel, nodeTypes } from "./components/CanvasNode";
 import { CanvasViewportControls } from "./components/CanvasViewportControls";
+import { CanvasSelectionToolbar } from "./components/CanvasSelectionToolbar";
+import { CanvasGroupLayer } from "./components/CanvasGroupLayer";
+import { edgeTypes } from "./components/CanvasEdge";
 import { CanvasProjectHeader } from "./components/CanvasProjectHeader";
+import { CanvasProjectToolbar } from "./components/CanvasProjectToolbar";
+import { CanvasAssetDrawer } from "./components/CanvasAssetDrawer";
 import { CanvasAgentDrawer } from "./components/CanvasAgentDrawer";
 import { CanvasAddMenus, type CanvasAddMenuPosition } from "./components/CanvasAddMenus";
 import addMenuStyles from "./components/CanvasAddMenus/index.module.scss";
@@ -38,6 +42,8 @@ import { CanvasEmptyState } from "./components/CanvasEmptyState";
 import { useCanvasEditing } from "./hooks/useCanvasEditing";
 import { useCanvasConnections } from "./hooks/useCanvasConnections";
 import { useCanvasHistory } from "./hooks/useCanvasHistory";
+import { useCanvasGroups } from "./hooks/useCanvasGroups";
+import { useCanvasAssets } from "./hooks/useCanvasAssets";
 import type { BasicNodeKind } from "./types/nodes";
 import {
   CANVAS_CONNECTION_RADIUS,
@@ -47,43 +53,16 @@ import {
 } from "./constants/viewport";
 import { createBasicNode } from "./utils/nodeFactory";
 import { buildLatestRunGraph } from "./utils/latestRunGraph";
-import { selectionIncludesRaisedTitle } from "./utils/nodeSelectors";
+import {
+  isPointInsideCanvasGroup,
+  markFocusedGroupMember,
+  normalizeGroupedNodeSelection,
+  type CanvasGroupBounds,
+} from "./utils/canvasGroups";
+import { isCanvasBackgroundTarget } from "./utils/canvasEvents";
+import { getEditingNodeKind, normalizeLegacyEdges } from "./utils/nodeSelectors";
 import { assetToCanvasNode } from "@/utils/assetNode";
 import { openCanvasAfter } from "@/utils/openCanvas";
-import { uploadAsset } from "@/utils/uploadAsset";
-
-function nodeAssetPayload(node: Node): { name: string; kind: AssetKind; content: string; mimeType: string } {
-  const data = node.data as Record<string, unknown>;
-  const name = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "画布节点";
-  if (data.nodeKind === "image") {
-    return {
-      name,
-      kind: "image",
-      content: typeof data.url === "string" && data.url ? data.url : JSON.stringify(data),
-      mimeType: typeof data.url === "string" && data.url.startsWith("data:image/") ? "image/*" : "application/json",
-    };
-  }
-  if (data.nodeKind === "video") {
-    return {
-      name,
-      kind: "video",
-      content: typeof data.url === "string" && data.url ? data.url : JSON.stringify(data),
-      mimeType: typeof data.url === "string" && data.url.startsWith("data:video/") ? "video/*" : "application/json",
-    };
-  }
-  const content =
-    typeof data.text === "string"
-      ? data.text
-      : Array.isArray(data.fields)
-        ? data.fields
-            .map((field) => {
-              const item = field as { label?: string; value?: string };
-              return `${item.label ?? ""}：${item.value ?? ""}`;
-            })
-            .join("\n")
-        : JSON.stringify(data, null, 2);
-  return { name, kind: "text", content, mimeType: "text/plain" };
-}
 
 /**
  * 协调 React Flow 状态、节点编辑、连线以及页面级浮层。
@@ -99,16 +78,15 @@ function CanvasInner() {
   const [projectName, setProjectName] = useState("未命名项目");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [canvasId, setCanvasId] = useState<string | null>(null);
+  const [canvases, setCanvases] = useState<CanvasDocument[]>([]);
   const [canvasReady, setCanvasReady] = useState(false);
   const [viewportState, setViewportState] = useState(INITIAL_CANVAS_VIEWPORT);
   const initializingRef = useRef(false);
   const savedNameRef = useRef("未命名项目");
   const [assetPanelOpen, setAssetPanelOpen] = useState(false);
-  const [availableAssets, setAvailableAssets] = useState<Asset[]>([]);
   const [canvasConversationId, setCanvasConversationId] = useState<string | null>(null);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const canvasUploadRef = useRef<HTMLInputElement | null>(null);
-  const uploadPositionRef = useRef({ x: 400, y: 320 });
+  const [contextMenu, setContextMenu] = useState<CanvasAddMenuPosition | null>(null);
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
   const { canUndo, canRedo, undo, redo } = useCanvasHistory(nodes, edges, setNodes, setEdges, canvasReady);
 
@@ -128,12 +106,13 @@ function CanvasInner() {
             });
         const canvas = project.canvases.find((item) => item.id === requestedCanvas) || project.canvases[0];
         if (!canvas) throw new Error("画布不存在");
-        setNodes(canvas.nodes as Node[]);
+        setNodes(normalizeGroupedNodeSelection(canvas.nodes as Node[]));
         setEdges(canvas.edges as Edge[]);
         setProjectName(project.name);
         savedNameRef.current = project.name;
         setProjectId(project.id);
         setCanvasId(canvas.id);
+        setCanvases(project.canvases);
         void studioApi<AgentConversation[]>("/studio/conversations")
           .then((conversations) => {
             const previous = conversations.find((item) => item.projectId === project.id && !item.archived);
@@ -150,7 +129,9 @@ function CanvasInner() {
           .catch(() => {});
         setViewportState(canvas.viewport);
         void setViewport(canvas.viewport);
-        if (!requestedProject) router.replace(`/canvas?projectId=${project.id}&canvasId=${canvas.id}`);
+        if (requestedProject !== project.id || requestedCanvas !== canvas.id) {
+          router.replace(`/canvas?projectId=${project.id}&canvasId=${canvas.id}`);
+        }
         setCanvasReady(true);
       } catch (cause) {
         toast((cause as Error).message || "画布加载失败");
@@ -188,11 +169,7 @@ function CanvasInner() {
   }, [nodeIdsKey, updateNodeInternals]);
   /** 挂载时清洗 时代 type:"bezier" 隐形边 → "default"（React Flow 无此内置类型不渲染） */
   useEffect(() => {
-    setEdges((es) =>
-      es.some((e) => e.type === "bezier")
-        ? es.map((e) => (e.type === "bezier" ? ({ ...e, type: "default" } as Edge) : e))
-        : es,
-    );
+    setEdges(normalizeLegacyEdges);
   }, [setEdges]);
 
   /** Agent 抽屉（右上角头像展开）+ 气泡消息流 */
@@ -239,15 +216,184 @@ function CanvasInner() {
     imageEditStateRef,
     videoEditStateRef,
   } = useCanvasEditing(nodes, setNodes);
+  const clearCanvasSelection = useCallback(() => setSelectedNode(null), []);
+  const {
+    selection,
+    focusedGroupId,
+    focusedGroupMemberId,
+    focusedGroupNodeIds,
+    focusedGroupActionTopInset,
+    clearFocusedGroup,
+    clearFocusedGroupMember,
+    focusGroup,
+    focusGroupedNode,
+    groupNodes,
+    renameGroup,
+    ungroupNodes,
+    startMarqueeSelection,
+    completeMarqueeSelection,
+    startNodeDrag,
+    dragNodeGroup,
+    stopNodeGroupDrag,
+    startBackgroundDrag,
+    moveBackgroundDrag,
+    stopBackgroundDrag,
+    isBackgroundDragging,
+  } = useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClearSelection: clearCanvasSelection });
+  const {
+    availableAssets,
+    setAvailableAssets,
+    canvasUploadRef,
+    startCanvasUpload,
+    handleCanvasUpload,
+    saveNodesToAssets,
+    selectNodeFromAssets,
+    duplicateNode,
+    copyNodes,
+    duplicateNodesWithUpstream,
+    renameNode,
+    deleteNode,
+    deleteNodes,
+    moveNodeToCanvas,
+    pasteToCanvas,
+  } = useCanvasAssets({
+    nodes,
+    edges,
+    viewport: viewportState,
+    projectName,
+    projectId,
+    canvasId,
+    canvases,
+    contextMenu,
+    setContextMenu,
+    setNodes,
+    setEdges,
+    setCanvases,
+  });
+
+  const persistCurrentCanvas = useCallback(async () => {
+    if (!projectId || !canvasId) return;
+    const updatedAt = new Date().toISOString();
+    await studioApi(`/studio/projects/${projectId}/canvases/${canvasId}`, {
+      method: "PATCH",
+      body: jsonBody({ nodes, edges, viewport: viewportState }),
+    });
+    setCanvases((current) =>
+      current.map((canvas) =>
+        canvas.id === canvasId ? { ...canvas, nodes, edges, viewport: viewportState, updatedAt } : canvas,
+      ),
+    );
+    if (projectName !== savedNameRef.current) {
+      await studioApi(`/studio/projects/${projectId}`, {
+        method: "PATCH",
+        body: jsonBody({ name: projectName.trim() || "未命名项目" }),
+      });
+      savedNameRef.current = projectName.trim() || "未命名项目";
+    }
+  }, [canvasId, edges, nodes, projectId, projectName, viewportState]);
+
+  const activateCanvas = useCallback(
+    (canvas: CanvasDocument) => {
+      exitEdit();
+      setSelectedNode(null);
+      setContextMenu(null);
+      setNodes(normalizeGroupedNodeSelection(canvas.nodes as Node[]));
+      setEdges(canvas.edges as Edge[]);
+      setViewportState(canvas.viewport);
+      void setViewport(canvas.viewport);
+      setCanvasId(canvas.id);
+      if (projectId) router.replace(`/canvas?projectId=${projectId}&canvasId=${canvas.id}`);
+      window.requestAnimationFrame(() => setCanvasReady(true));
+    },
+    [exitEdit, projectId, router, setEdges, setNodes, setViewport],
+  );
+
+  const switchCanvas = useCallback(
+    async (canvas: CanvasDocument) => {
+      if (canvas.id === canvasId || !canvasReady) return;
+      setCanvasReady(false);
+      try {
+        await persistCurrentCanvas();
+        activateCanvas(canvas);
+      } catch (cause) {
+        setCanvasReady(true);
+        toast((cause as Error).message || "画布切换失败");
+      }
+    },
+    [activateCanvas, canvasId, canvasReady, persistCurrentCanvas],
+  );
+
+  const createCanvas = useCallback(
+    async (requestedName?: string) => {
+      if (!projectId || !canvasReady) return;
+      const name = requestedName?.trim() || `画布 ${canvases.length + 1}`;
+      setCanvasReady(false);
+      try {
+        await persistCurrentCanvas();
+        const canvas = await studioApi<CanvasDocument>(`/studio/projects/${projectId}/canvases`, {
+          method: "POST",
+          body: jsonBody({ name }),
+        });
+        setCanvases((current) => [...current, canvas]);
+        activateCanvas(canvas);
+        toast(`已新建“${canvas.name}”`, "success");
+      } catch (cause) {
+        setCanvasReady(true);
+        toast((cause as Error).message || "新建画布失败");
+      }
+    },
+    [activateCanvas, canvasReady, canvases.length, persistCurrentCanvas, projectId],
+  );
+
+  const renameCanvas = useCallback(
+    async (canvas: CanvasDocument, name: string) => {
+      if (!projectId) throw new Error("项目尚未加载");
+      try {
+        const updated = await studioApi<CanvasDocument>(`/studio/projects/${projectId}/canvases/${canvas.id}`, {
+          method: "PATCH",
+          body: jsonBody({ name }),
+        });
+        setCanvases((current) => current.map((item) => (item.id === canvas.id ? updated : item)));
+        toast(`已重命名为“${updated.name}”`, "success");
+      } catch (cause) {
+        toast((cause as Error).message || "画布重命名失败");
+        throw cause;
+      }
+    },
+    [projectId],
+  );
+
+  const deleteCanvas = useCallback(
+    async (canvas: CanvasDocument) => {
+      if (!projectId) throw new Error("项目尚未加载");
+      const remainingCanvases = canvases.filter((item) => item.id !== canvas.id);
+      if (!remainingCanvases.length) throw new Error("项目至少需要保留一张画布");
+      const deletingCurrentCanvas = canvas.id === canvasId;
+      if (deletingCurrentCanvas) setCanvasReady(false);
+      try {
+        await studioApi(`/studio/projects/${projectId}/canvases/${canvas.id}`, { method: "DELETE" });
+        setCanvases(remainingCanvases);
+        if (deletingCurrentCanvas) activateCanvas(remainingCanvases[0]!);
+        toast(`已删除“${canvas.name}”`, "success");
+      } catch (cause) {
+        if (deletingCurrentCanvas) setCanvasReady(true);
+        toast((cause as Error).message || "画布删除失败");
+        throw cause;
+      }
+    },
+    [activateCanvas, canvasId, canvases, projectId],
+  );
   const {
     connectMenu,
     setConnectMenu,
-    pendingLineStart,
+    pendingLineStarts,
     isValidConnection,
     onConnect,
     onConnectStart,
     onConnectEnd,
     addNodeFromConnect,
+    addEdgesDedup,
+    openBatchConnectMenu,
   } = useCanvasConnections(nodes, edges, setNodes, setEdges);
 
   const createProject = useCallback(() => {
@@ -278,9 +424,13 @@ function CanvasInner() {
   const agentBtnRef = useRef<HTMLButtonElement | null>(null);
 
   /** 选中节点时同步 selectedNode（用于顶部 NodeToolbar 浮出） */
-  const onSelectionChange = useCallback(({ nodes: sel }: { nodes: Node[] }) => {
-    setSelectedNode(sel[0] ?? null);
-  }, []);
+  const onSelectionChange = useCallback(
+    ({ nodes: sel }: { nodes: Node[] }) => {
+      setSelectedNode(sel[0] ?? null);
+      if (sel.length) clearFocusedGroup();
+    },
+    [clearFocusedGroup],
+  );
 
   /** 从最近任务自动铺：图像步骤用 image 节点，文字步骤用 card 节点 */
   const loadFromLatest = useCallback(async () => {
@@ -305,28 +455,31 @@ function CanvasInner() {
 
   /** click-outside-to-close — 抽到 useClickOutside，三个弹窗独立监听 */
   useClickOutside(agentOpen, [agentDrawerRef, agentBtnRef], () => setAgentOpen(false));
+  /* 仅关闭 Portal 中的右键菜单；监听器不拦截事件，左键 Popover 仍会正常收到同一次点击。 */
+  useClickOutside(Boolean(contextMenu), [`.${addMenuStyles.portalMenu}`], () => setContextMenu(null));
 
   /** 添加基础节点（文本/图片/视频）—— 右键菜单 & 工具栏 & 节点库基础区共用 */
   const addBasicNode = useCallback(
     (kind: BasicNodeKind, position?: { x: number; y: number }) => {
       const pos = position ?? { x: 400 + Math.random() * 80, y: 320 + Math.random() * 80 };
-      setNodes((ns) => [...ns, createBasicNode(kind, pos)]);
+      setNodes((ns) => [...ns, createBasicNode(kind, pos, false, ns)]);
       setContextMenu(null);
     },
     [setNodes],
   );
 
   /** 右键显示画布操作，双击空白处直接显示添加节点列表。 */
-  const [contextMenu, setContextMenu] = useState<CanvasAddMenuPosition | null>(null);
   const openCanvasAddMenu = useCallback(
-    (clientX: number, clientY: number, mode: CanvasAddMenuPosition["mode"] = "add") => {
+    (clientX: number, clientY: number, mode: CanvasAddMenuPosition["mode"] = "add", nodeIds?: string[]) => {
       const rect = document.querySelector(`.${styles.board}`)?.getBoundingClientRect();
       if (!rect) return;
       setContextMenu({
         x: clientX - rect.left,
         y: clientY - rect.top,
         flowPos: screenToFlowPosition({ x: clientX, y: clientY }),
+        clientPos: { x: clientX, y: clientY },
         mode,
+        nodeIds,
       });
       setConnectMenu(null);
     },
@@ -339,91 +492,43 @@ function CanvasInner() {
     },
     [openCanvasAddMenu],
   );
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.preventDefault();
+      event.stopPropagation();
+      exitEdit();
+      focusGroupedNode(node.id);
+      openCanvasAddMenu(event.clientX, event.clientY, "node", [node.id]);
+    },
+    [exitEdit, focusGroupedNode, openCanvasAddMenu],
+  );
+  const onGroupContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>, group: CanvasGroupBounds) => {
+      event.preventDefault();
+      event.stopPropagation();
+      focusGroup(group.id);
+      openCanvasAddMenu(
+        event.clientX,
+        event.clientY,
+        "node",
+        group.members.map((member) => member.id),
+      );
+    },
+    [focusGroup, openCanvasAddMenu],
+  );
   const onBoardDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.closest(
-          ".react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, button, input, textarea, [contenteditable='true']",
-        ) ||
-        target.closest(`.${addMenuStyles.contextMenu}`)
-      ) {
-        return;
-      }
+      if (!isCanvasBackgroundTarget(e.target, addMenuStyles.contextMenu)) return;
+      const flowPoint = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      if (isPointInsideCanvasGroup(nodes, flowPoint)) return;
       e.preventDefault();
       e.stopPropagation();
       openCanvasAddMenu(e.clientX, e.clientY);
     },
-    [openCanvasAddMenu],
+    [nodes, openCanvasAddMenu, screenToFlowPosition],
   );
 
-  const startCanvasUpload = useCallback(() => {
-    if (contextMenu) uploadPositionRef.current = contextMenu.flowPos;
-    setContextMenu(null);
-    canvasUploadRef.current?.click();
-  }, [contextMenu]);
-
-  const handleCanvasUpload = useCallback(
-    async (files: FileList | null) => {
-      if (!files?.length) return;
-      try {
-        const assets = await Promise.all(Array.from(files, (file) => uploadAsset(file)));
-        const base = uploadPositionRef.current;
-        setNodes((current) => [
-          ...current,
-          ...assets.map((asset, index) => ({
-            ...assetToCanvasNode(asset, current.length + index),
-            position: { x: base.x + index * 24, y: base.y + index * 24 },
-          })),
-        ]);
-        toast(`${assets.length} 个文件已上传并添加到画布`, "success");
-      } catch (cause) {
-        toast((cause as Error).message || "文件上传失败");
-      }
-    },
-    [setNodes],
-  );
-
-  const saveCanvasSelectionToAssets = useCallback(async () => {
-    const selected = nodes.filter((node) => node.selected);
-    const payloads = selected.length
-      ? selected.map(nodeAssetPayload)
-      : [
-          {
-            name: `${projectName} · 画布`,
-            kind: "file" as const,
-            content: JSON.stringify({ nodes, edges, viewport: viewportState }, null, 2),
-            mimeType: "application/json",
-          },
-        ];
-    setContextMenu(null);
-    try {
-      await Promise.all(
-        payloads.map((payload) => studioApi<Asset>("/studio/assets", { method: "POST", body: jsonBody(payload) })),
-      );
-      toast(selected.length ? `${payloads.length} 个节点已保存到我的资产` : "画布已保存到我的资产", "success");
-    } catch (cause) {
-      toast((cause as Error).message || "保存到资产失败");
-    }
-  }, [edges, nodes, projectName, viewportState]);
-
-  const pasteToCanvas = useCallback(async () => {
-    const position = contextMenu?.flowPos ?? { x: 400, y: 320 };
-    setContextMenu(null);
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text) {
-        toast("剪贴板中没有可粘贴的文字");
-        return;
-      }
-      const node = createBasicNode("text", position);
-      setNodes((current) => [...current, { ...node, data: { ...node.data, title: "粘贴文本", text } }]);
-    } catch {
-      toast("无法读取剪贴板，请允许浏览器访问剪贴板");
-    }
-  }, [contextMenu, setNodes]);
-
-  /** 画布 Agent 与独立会话共用 API；新产物保存到资产库并作为引用加入当前画布。 */
+  /** 画布 Agent 与独立会话共用 API；新产物只加入当前画布，用户可再手动保存到全局资产。 */
   const submitChat = useCallback(() => {
     if (!chatInput.trim() && !chatThumb) return;
     const userText = chatInput.trim();
@@ -454,6 +559,7 @@ function CanvasInner() {
               kind: "image",
               content: chatThumb,
               mimeType: "image/png",
+              inLibrary: false,
             }),
           });
           assetIds.push(uploaded.id);
@@ -478,18 +584,20 @@ function CanvasInner() {
     reader.onload = () => setChatThumb(String(reader.result));
   }, []);
 
-  const selectedNodeCount = nodes.reduce((count, node) => count + (node.selected ? 1 : 0), 0);
-  const selectionHasRaisedTitle = selectionIncludesRaisedTitle(nodes);
+  const { selectedNodeCount, selectedNodeIds, selectedGroupId, insets: selectionInsets, actionTopInset } = selection;
+  const editingKind = getEditingNodeKind(nodes, editingId);
+  /** 组成员聚焦是独立交互状态，不能依赖 React Flow 对不可选节点的 selected 清理逻辑。 */
+  const renderedNodes = useMemo(
+    () => markFocusedGroupMember(nodes, focusedGroupMemberId),
+    [focusedGroupMemberId, nodes],
+  );
 
   return (
     <EnterEditContext.Provider
       value={{
         editingId,
         editingMode,
-        editingKind: editingId
-          ? (((nodes.find((n) => n.id === editingId)?.data as Record<string, unknown> | undefined)?.nodeKind as
-              string | undefined) ?? null)
-          : null,
+        editingKind,
         buffer: editBuffer,
         setBuffer: setEditBuffer,
         enterEdit,
@@ -519,59 +627,73 @@ function CanvasInner() {
           }}
         />
         <CanvasProjectHeader
-          projectName={projectName}
-          onProjectNameChange={setProjectName}
-          projectMenuOpen={projectMenuOpen}
-          onProjectMenuOpenChange={setProjectMenuOpen}
-          onHome={() => router.push("/home")}
-          onProjects={() => router.push("/projects")}
-          onCreateProject={createProject}
-          onDeleteProject={deleteProject}
+          toolbar={
+            !assetPanelOpen ? (
+              <CanvasProjectToolbar
+                projectName={projectName}
+                onProjectNameChange={setProjectName}
+                projectMenuOpen={projectMenuOpen}
+                onProjectMenuOpenChange={setProjectMenuOpen}
+                onHome={() => router.push("/home")}
+                onProjects={() => router.push("/projects")}
+                onCreateProject={createProject}
+                onDeleteProject={deleteProject}
+                canvases={canvases}
+                currentCanvasId={canvasId}
+                onSelectCanvas={(canvas) => void switchCanvas(canvas)}
+                onCreateCanvas={(name) => void createCanvas(name)}
+                onRenameCanvas={renameCanvas}
+                onDeleteCanvas={deleteCanvas}
+              />
+            ) : undefined
+          }
           agentOpen={agentOpen}
           onToggleAgent={() => setAgentOpen((open) => !open)}
           agentButtonRef={agentBtnRef}
         />
-        <button
-          className={styles.assetPanelTrigger}
-          onClick={() => {
-            setAssetPanelOpen((open) => !open);
-            void studioApi<Asset[]>("/studio/assets")
-              .then(setAvailableAssets)
-              .catch(() => toast("资产加载失败"));
-          }}
-        >
-          <FolderOpen size={14} />
-          资产
-        </button>
-        {assetPanelOpen && (
-          <aside className={styles.assetPanel}>
-            <div className={styles.assetPanelHead}>
-              <strong>从资产库添加</strong>
-              <button onClick={() => setAssetPanelOpen(false)}>
-                <X size={15} />
-              </button>
-            </div>
-            {availableAssets.length === 0 ? (
-              <p>资产库为空。可先在资产页上传文件。</p>
-            ) : (
-              availableAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  className={styles.assetPanelItem}
-                  onClick={() => {
-                    setNodes((current) => [...current, assetToCanvasNode(asset, current.length)]);
-                    setAssetPanelOpen(false);
-                  }}
-                >
-                  <span>{asset.name}</span>
-                  <small>
-                    {asset.source} · {asset.kind}
-                  </small>
-                </button>
-              ))
-            )}
-          </aside>
-        )}
+        <CanvasAssetDrawer
+          open={assetPanelOpen}
+          header={
+            <CanvasProjectToolbar
+              variant="drawer"
+              projectName={projectName}
+              onProjectNameChange={setProjectName}
+              projectMenuOpen={projectMenuOpen}
+              onProjectMenuOpenChange={setProjectMenuOpen}
+              onHome={() => router.push("/home")}
+              onProjects={() => router.push("/projects")}
+              onCreateProject={createProject}
+              onDeleteProject={deleteProject}
+              canvases={canvases}
+              currentCanvasId={canvasId}
+              onSelectCanvas={(canvas) => void switchCanvas(canvas)}
+              onCreateCanvas={(name) => void createCanvas(name)}
+              onRenameCanvas={renameCanvas}
+              onDeleteCanvas={deleteCanvas}
+            />
+          }
+          nodes={nodes}
+          assets={availableAssets}
+          canvases={canvases}
+          currentCanvasId={canvasId}
+          onClose={() => setAssetPanelOpen(false)}
+          onSelectNode={selectNodeFromAssets}
+          onLocateNode={(nodeId) =>
+            focusNode(nodeId, { leftInset: Math.max(0, Math.min(360, window.innerWidth - 220)) })
+          }
+          onAddAsset={(asset) => setNodes((current) => [...current, assetToCanvasNode(asset, current.length)])}
+          onAssetAdded={(asset) =>
+            setAvailableAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)])
+          }
+          onAssetUpdated={(asset) =>
+            setAvailableAssets((current) => current.map((item) => (item.id === asset.id ? asset : item)))
+          }
+          onAssetRemoved={(assetId) => setAvailableAssets((current) => current.filter((asset) => asset.id !== assetId))}
+          onDuplicateNode={duplicateNode}
+          onMoveNode={moveNodeToCanvas}
+          onRenameNode={renameNode}
+          onDeleteNode={deleteNode}
+        />
         {agentOpen && (
           <CanvasAgentDrawer
             drawerRef={agentDrawerRef}
@@ -593,21 +715,42 @@ function CanvasInner() {
         <VideoEditPanel />
 
         {/* 画布主区 */}
-        <div className={styles.board} onDoubleClick={onBoardDoubleClick}>
+        <div
+          className={styles.board}
+          onDoubleClick={onBoardDoubleClick}
+          onPointerDownCapture={startBackgroundDrag}
+          onPointerMoveCapture={(event) => {
+            if (!isBackgroundDragging()) return;
+            event.preventDefault();
+            event.stopPropagation();
+            moveBackgroundDrag(event);
+          }}
+          onPointerUpCapture={stopBackgroundDrag}
+          onPointerCancelCapture={stopBackgroundDrag}
+        >
           <ReactFlow
-            nodes={nodes}
+            nodes={renderedNodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onSelectionChange={onSelectionChange}
+            onSelectionStart={startMarqueeSelection}
+            onSelectionEnd={completeMarqueeSelection}
+            onNodeDragStart={(_, node) => startNodeDrag(node)}
+            onNodeDrag={(_, node) => dragNodeGroup(node)}
+            onNodeDragStop={stopNodeGroupDrag}
+            onNodeClick={(_, node) => focusGroupedNode(node.id)}
             onNodeDoubleClick={(event, node) => {
               event.stopPropagation();
               focusNode(node.id);
             }}
+            onNodeContextMenu={onNodeContextMenu}
             onPaneContextMenu={onPaneContextMenu}
             onPaneClick={() => {
               setContextMenu(null);
               setConnectMenu(null);
+              clearFocusedGroup();
+              clearFocusedGroupMember();
             }}
             onMoveStart={() => {
               setContextMenu(null);
@@ -623,13 +766,14 @@ function CanvasInner() {
             connectionMode={ConnectionMode.Strict}
             connectionRadius={CANVAS_CONNECTION_RADIUS}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             /** 默认箭头框选；按住空格才允许鼠标拖动画布。 */
             panOnDrag={false}
             panActivationKeyCode="Space"
             selectionOnDrag
             selectionKeyCode={null}
             selectionMode={SelectionMode.Partial}
-            multiSelectionKeyCode="Shift"
+            multiSelectionKeyCode={null}
             defaultViewport={INITIAL_CANVAS_VIEWPORT}
             minZoom={CANVAS_MIN_ZOOM}
             maxZoom={CANVAS_MAX_ZOOM}
@@ -641,23 +785,71 @@ function CanvasInner() {
             zoomOnDoubleClick={false}
             /** 连接线样式由全局 :global(.react-flow__connection-path) 控制（默认 connectable 态） */
             proOptions={{ hideAttribution: true }}
-            className={`${styles.flowRoot} ${selectionHasRaisedTitle ? (styles.selectionIncludesTitle ?? "") : ""} ${selectedNodeCount > 1 ? (styles.hasMultiSelection ?? "") : ""}`}
+            className={`${styles.flowRoot} ${selectedNodeCount > 1 ? (styles.hasMultiSelection ?? "") : ""} ${selectedGroupId ? (styles.groupSelected ?? "") : ""} ${focusedGroupMemberId ? (styles.groupMemberFocused ?? "") : ""}`}
+            style={
+              {
+                "--canvas-selection-top-inset": `${selectionInsets.top}px`,
+                "--canvas-selection-right-inset": `${selectionInsets.right}px`,
+                "--canvas-selection-bottom-inset": `${selectionInsets.bottom}px`,
+                "--canvas-selection-left-inset": `${selectionInsets.left}px`,
+              } as React.CSSProperties
+            }
           >
             <Background variant={BackgroundVariant.Dots} gap={12} size={1} className={styles.bg} />
+            <CanvasGroupLayer
+              focusedGroupId={focusedGroupId}
+              selectedNodeIds={selectedNodeIds}
+              selectedGroupId={selectedGroupId}
+              selectionInsets={selectionInsets}
+              pendingBatchSourceIds={connectMenu?.sourceNodeIds}
+              onRenameGroup={renameGroup}
+              onGroupContextMenu={onGroupContextMenu}
+              onBatchConnect={addEdgesDedup}
+              onBatchCreate={openBatchConnectMenu}
+            />
+            <CanvasSelectionToolbar
+              nodeIds={selectedNodeIds}
+              topInset={actionTopInset}
+              groupId={selectedGroupId}
+              onGroup={groupNodes}
+              onUngroup={ungroupNodes}
+            />
+            {focusedGroupId && (
+              <CanvasSelectionToolbar
+                nodeIds={focusedGroupNodeIds}
+                topInset={focusedGroupActionTopInset}
+                groupId={focusedGroupId}
+                onGroup={groupNodes}
+                onUngroup={ungroupNodes}
+              />
+            )}
             <MiniMap pannable zoomable className={styles.minimap} maskColor="rgba(13, 13, 15, 0.7)" />
           </ReactFlow>
 
-          <CanvasViewportControls />
+          <CanvasViewportControls
+            assetOpen={assetPanelOpen}
+            onToggleAssets={() => {
+              setProjectMenuOpen(false);
+              setAssetPanelOpen((open) => !open);
+              void studioApi<Asset[]>("/studio/assets")
+                .then(setAvailableAssets)
+                .catch(() => toast("资产加载失败"));
+            }}
+          />
 
           <CanvasAddMenus
             addMenu={contextMenu}
             connectMenu={connectMenu}
-            pendingLineStart={pendingLineStart}
+            pendingLineStarts={pendingLineStarts}
             onAddBasic={addBasicNode}
             onAddConnected={addNodeFromConnect}
             onShowAddMenu={() => setContextMenu((menu) => (menu ? { ...menu, mode: "add" } : null))}
             onUpload={startCanvasUpload}
-            onSaveToAssets={() => void saveCanvasSelectionToAssets()}
+            onSaveToAssets={() => void saveNodesToAssets()}
+            onSaveNodeToAssets={(nodeIds) => void saveNodesToAssets(nodeIds)}
+            onCopyNode={copyNodes}
+            onDuplicateNode={duplicateNodesWithUpstream}
+            onDeleteNode={deleteNodes}
             onUndo={() => {
               setContextMenu(null);
               undo();

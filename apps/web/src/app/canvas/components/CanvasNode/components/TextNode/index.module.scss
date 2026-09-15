@@ -8,7 +8,7 @@
   background: var(--canvas-node-background);
   border: var(--canvas-node-border-width) solid var(--canvas-node-border);
   box-shadow: var(--canvas-node-shadow);
-  cursor: default;
+  cursor: grab;
   user-select: none;
   font-family: inherit;
   /* v9：退出编辑后框大小与编辑态一致 —— 同样 flex 列布局 + 定高时正文填充 */
@@ -16,6 +16,10 @@
   flex-direction: column;
   /* 正文自身负责滚动/截断，这里放开以显示卡片外侧连接点。 */
   overflow: visible;
+
+  &:active {
+    cursor: grabbing;
+  }
 }
 
 .textNodeHead {
@@ -146,16 +150,15 @@
   translate: none !important;
   border: 0 !important;
   border-radius: 0 !important;
-  background:
-    linear-gradient(
-        135deg,
-        transparent 0 52%,
-        var(--canvas-node-muted) 52% 60%,
-        transparent 60% 70%,
-        var(--canvas-node-muted) 70% 78%,
-        transparent 78% 100%
-      )
-      center / 10px 10px no-repeat !important;
+  background: linear-gradient(
+      135deg,
+      transparent 0 52%,
+      var(--canvas-node-muted) 52% 60%,
+      transparent 60% 70%,
+      var(--canvas-node-muted) 70% 78%,
+      transparent 78% 100%
+    )
+    center / 10px 10px no-repeat !important;
   opacity: 0;
   pointer-events: none;
   cursor: nwse-resize;

@@ -98,7 +98,6 @@ export function NodePromptPanel({
         className={`${styles.input} nodrag`}
         value={prompt}
         rows={rows}
-        autoFocus
         placeholder={placeholder}
         onChange={(event) => onPromptChange(event.target.value)}
         onKeyDown={(event) => {

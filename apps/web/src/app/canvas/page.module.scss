@@ -18,16 +18,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.assetPanelTrigger { position: absolute; top: 68px; right: 18px; z-index: 18; display: flex; align-items: center; gap: 6px; padding: 8px 11px; border: 1px solid var(--surface-border); border-radius: 9px; background: var(--surface); color: var(--foreground); font-size: 11px; box-shadow: 0 4px 16px rgba(0,0,0,.07); }
-.assetPanel { position: absolute; top: 105px; right: 18px; width: 270px; max-height: 390px; overflow-y: auto; z-index: 19; padding: 12px; border: 1px solid var(--surface-border); border-radius: 12px; background: var(--surface); color: var(--foreground); box-shadow: 0 18px 50px rgba(0,0,0,.13); }
-.assetPanelHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 4px 12px; font-size: 12px; }
-.assetPanel p { padding: 12px 4px; color: var(--muted-foreground); font-size: 11px; line-height: 1.6; }
-.assetPanelItem { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; padding: 9px; border-radius: 8px; text-align: left; font-size: 11px; }
-.assetPanelItem:hover { background: var(--subcard); }
-.assetPanelItem small { color: var(--faint-foreground); font-size: 10px; }
-
-
-
 // =============== 画布主区 ===============
 .board {
   position: relative;
@@ -48,14 +38,20 @@
   background: #f5f6f8;
 }
 
-
 /* 画布默认是箭头选择模式；只有按住 Space 时 React Flow 才添加 draggable。 */
 .flowRoot :global(.react-flow__pane),
 .flowRoot :global(.react-flow__pane.selection),
-.flowRoot :global(.react-flow__node),
-.flowRoot :global(.react-flow__node.draggable),
 .flowRoot :global(.react-flow__nodesselection-rect) {
   cursor: default;
+}
+
+.flowRoot :global(.react-flow__node),
+.flowRoot :global(.react-flow__node.draggable) {
+  cursor: grab;
+}
+
+.flowRoot :global(.react-flow__node.dragging) {
+  cursor: grabbing;
 }
 
 .flowRoot :global(.react-flow__pane.draggable) {
@@ -85,7 +81,8 @@
     content: "";
     position: absolute;
     /* 圆球最外缘约 15px，再留 10px 呼吸空间。 */
-    inset: -10px -25px -18px;
+    inset: calc(-1 * var(--canvas-selection-top-inset, 10px)) calc(-1 * var(--canvas-selection-right-inset, 25px))
+      calc(-1 * var(--canvas-selection-bottom-inset, 18px)) calc(-1 * var(--canvas-selection-left-inset, 25px));
     border: 1px solid var(--canvas-selection-border);
     border-radius: 18px;
     box-shadow: 0 0 0 1px var(--canvas-selection-halo);
@@ -100,19 +97,52 @@
   }
 }
 
-/* 标题位于节点盒子上方：18px 标题 + 8px 间距 + 12px 顶部留白。 */
-.selectionIncludesTitle :global(.react-flow__nodesselection-rect)::before {
-  inset: -38px -25px -18px;
-}
-
 /* 单选只展示节点自身的选中边框，不出现 React Flow 的组选框。 */
 .flowRoot:not(.hasMultiSelection) :global(.react-flow__nodesselection) {
   display: none;
 }
 
-/* 多选框内圆球仅作位置提示，暂时关闭热区与磁吸。 */
+.groupSelected :global(.react-flow__node.selected [data-canvas-node-surface]) {
+  border-color: var(--canvas-node-border) !important;
+}
+
+/* 单个组与单张卡片一致：仅高亮自身边框，不显示 React Flow 的多节点选框。 */
+.groupSelected :global(.react-flow__nodesselection) {
+  display: none;
+}
+
+/* 整组聚焦只展示组右侧的批量连接点，隐藏成员自身的连接圆点。 */
+.groupSelected :global(.react-flow__node.selected .react-flow__handle),
+.groupSelected :global(.react-flow__node.selected .react-flow__handle)::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* 组成员默认隐藏连接点；悬停或独立聚焦后恢复单卡连接能力。 */
+.flowRoot
+  :global(
+    .react-flow__node:not(.selectable):not(:hover):not(.canvas-group-member-focused):not(
+        :has([data-card-handle-magnet-active])
+      )
+      .react-flow__handle
+  ),
+.flowRoot
+  :global(
+    .react-flow__node:not(.selectable):not(:hover):not(.canvas-group-member-focused):not(
+        :has([data-card-handle-magnet-active])
+      )
+      .react-flow__handle::after
+  ) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 多选时只保留选区级批量连接球，避免成员圆球与它靠近后产生视觉和操作歧义。 */
 .hasMultiSelection :global(.react-flow__node.selected .react-flow__handle),
-.hasMultiSelection :global(.react-flow__node.selected .react-flow__handle)::before {
+.hasMultiSelection :global(.react-flow__node.selected .react-flow__handle)::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
 }
 
@@ -131,6 +161,10 @@
   --canvas-handle-fill: #bdc8d5;
   --canvas-handle-border: #96a3b2;
   --canvas-handle-active-fill: #a6b2c1;
+  --canvas-group-handle-fill: #ffffff;
+  --canvas-group-handle-border: rgba(30, 41, 59, 0.92);
+  --canvas-group-handle-dot: #334155;
+  --canvas-group-handle-halo: rgba(51, 65, 85, 0.18);
   --canvas-node-target-background: #f1f3f6;
   --canvas-node-target-filter: brightness(0.94);
 }
@@ -150,6 +184,10 @@
   --canvas-handle-fill: #9a9aa3;
   --canvas-handle-border: #b6b8c2;
   --canvas-handle-active-fill: #e6e8ec;
+  --canvas-group-handle-fill: #25272b;
+  --canvas-group-handle-border: rgba(255, 255, 255, 0.92);
+  --canvas-group-handle-dot: #f4f5f6;
+  --canvas-group-handle-halo: rgba(214, 218, 224, 0.18);
   --canvas-node-target-background: #232326;
   --canvas-node-target-filter: brightness(1.16);
 }
@@ -164,6 +202,17 @@
   border-color: var(--canvas-node-border-selected) !important;
   border-width: var(--canvas-node-border-width);
 }
+
+/* 框选组选中时隐藏成员白边，但明确保留用户直接聚焦的组内卡片。 */
+.flowRoot
+  :global(.react-flow__node.selected:not(.selectable):not(.canvas-group-member-focused) [data-canvas-node-surface]) {
+  border-color: var(--canvas-node-border) !important;
+}
+
+/* 组内卡片使用独立聚焦标记，避免不可选节点被 React Flow 清除 selected 后丢失反馈。 */
+.flowRoot.groupMemberFocused :global(.react-flow__node.canvas-group-member-focused [data-canvas-node-surface]) {
+  border-color: var(--canvas-node-border-selected) !important;
+}
 .bg :global(.react-flow__background-pattern.dots) {
   fill: rgba(255, 255, 255, 0.12);
 }
@@ -172,7 +221,6 @@
   fill: rgba(15, 23, 42, 0.13);
 }
 
-
 .minimap {
   background: rgba(20, 20, 22, 0.72);
   border: 0.5px solid #232326;
@@ -180,7 +228,6 @@
   overflow: hidden;
   backdrop-filter: blur(12px);
 }
-
 
 /* v32：拖线三态预览 */
 .flowRoot :global(.react-flow__connection-path) {
@@ -282,7 +329,8 @@
 }
 
 .flowRoot :global(.react-flow__nodes) {
-  z-index: 1;
+  /* 与 ViewportPortal 中的组框共享层叠上下文，使组框能位于外部卡片与自身成员之间。 */
+  z-index: auto !important;
 }
 
 /* 拖动中的 React Flow 临时连线也从卡片下方经过。 */
@@ -299,7 +347,6 @@
   stroke-width: 1.8;
 }
 
-
 /* v18：节点选中态默认样式统一为无边框高亮 */
 .flowRoot :global(.react-flow__node.selected) {
   /* 去掉 React Flow 默认的选中轮廓 */
@@ -308,20 +355,6 @@
 .flowRoot :global(.react-flow__node.selected .react-flow__handle) {
   opacity: 1;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // =============== 亮色主题：画布主界面 ===============
 :global(html:not(.dark)) .shell {
@@ -333,11 +366,9 @@
   background: #f5f6f8;
 }
 
-
 :global(html:not(.dark)) .shell .bg :global(.react-flow__background-pattern.dots) {
   fill: rgba(15, 23, 42, 0.13);
 }
-
 
 :global(html:not(.dark)) .shell .minimap {
   border-color: rgba(15, 23, 42, 0.14);

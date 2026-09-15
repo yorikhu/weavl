@@ -13,6 +13,7 @@ import {
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
+import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { ImageNodeData } from "../../../../types/nodes";
 import {
   getMediaCardSize,
@@ -35,10 +36,12 @@ function normalizeImageQuality(quality?: string) {
  */
 function ImageCardStatic({
   d,
+  nodeId,
   onActivate,
   editing = false,
 }: {
   d: ImageNodeData;
+  nodeId?: string;
   onActivate?: () => void;
   editing?: boolean;
 }) {
@@ -63,7 +66,7 @@ function ImageCardStatic({
             spellCheck={false}
           />
         ) : (
-          <span>{displayTitle}</span>
+          nodeId ? <EditableNodeTitle nodeId={nodeId} value={d.title} fallback="图片节点" /> : <span>{displayTitle}</span>
         )}
       </div>
       <div
@@ -109,7 +112,7 @@ export function ImageNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <ImageCardStatic d={d} onActivate={() => edit.enterEdit(id)} />
+      <ImageCardStatic d={d} nodeId={id} onActivate={() => edit.enterEdit(id)} />
     </div>
   );
 }

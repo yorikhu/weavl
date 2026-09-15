@@ -1,29 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useReactFlow, type Connection, type Edge, type Node } from "@xyflow/react";
 import type { BasicNodeKind } from "../types/nodes";
+import { CANVAS_HANDLE_MAGNET_RADIUS } from "../constants/viewport";
 import { createBasicNode } from "../utils/nodeFactory";
+import {
+  getCardHandleDistance,
+  getCenteredHandleDistance,
+  isCardHandleExposed,
+  isCardHandleInteractive,
+} from "../utils/handleMagnet";
 import styles from "../page.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
-
-const HANDLE_VISUAL_OFFSET = 15;
-const HANDLE_MAGNET_RADIUS = 40;
-
-function getHandleDistance(handle: HTMLElement, pointerX: number, pointerY: number) {
-  const rect = handle.getBoundingClientRect();
-  const scale = handle.offsetWidth > 0 ? rect.width / handle.offsetWidth : 1;
-  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  const isLeft = handle.classList.contains("react-flow__handle-left");
-  const surface = handle.closest(".react-flow__node")?.querySelector<HTMLElement>("[data-canvas-node-surface]");
-  const surfaceRect = surface?.getBoundingClientRect();
-
-  /* 吸附区只存在于卡片左右外侧；指针进入卡片内部后立即失效。 */
-  if (surfaceRect && (isLeft ? pointerX >= surfaceRect.left : pointerX <= surfaceRect.right)) return null;
-
-  const visualOffsetX = (isLeft ? -HANDLE_VISUAL_OFFSET : HANDLE_VISUAL_OFFSET) * safeScale;
-  const screenDx = pointerX - (rect.left + rect.width / 2 + visualOffsetX);
-  const screenDy = pointerY - (rect.top + rect.height / 2);
-  return { safeScale, screenDx, screenDy, distanceSq: screenDx * screenDx + screenDy * screenDy };
-}
 
 /** 连线、磁吸、目标预览与拖线到空白处新建节点的交互。 */
 export function useCanvasConnections(
@@ -57,13 +44,18 @@ export function useCanvasConnections(
         `.react-flow__node[data-id="${connection.target}"] .${nodeStyles.cardHandle}.react-flow__handle-left`,
       );
       if (!targetHandle) return false;
-      const distance = getHandleDistance(targetHandle, pointerRef.current.x, pointerRef.current.y);
+      const distance = getCardHandleDistance(targetHandle, pointerRef.current.x, pointerRef.current.y);
       const duplicate = edges.some(
         (edge) =>
           (edge.source === connection.source && edge.target === connection.target) ||
           (edge.source === connection.target && edge.target === connection.source),
       );
-      return Boolean(distance && distance.distanceSq <= HANDLE_MAGNET_RADIUS ** 2 && !duplicate);
+      return Boolean(
+        distance &&
+        distance.distanceSq <= CANVAS_HANDLE_MAGNET_RADIUS ** 2 &&
+        isCardHandleExposed(targetHandle) &&
+        !duplicate,
+      );
     },
     [edges],
   );
@@ -98,6 +90,56 @@ export function useCanvasConnections(
     [setEdges],
   );
 
+  /** 将多个源节点一次连接到同一目标；已有连接和目标自身会被跳过。 */
+  const addEdgesDedup = useCallback(
+    (sourceIds: string[], target: string) => {
+      const additions = [...new Set(sourceIds)]
+        .filter(
+          (source) =>
+            source !== target &&
+            !edges.some(
+              (edge) =>
+                (edge.source === source && edge.target === target) ||
+                (edge.source === target && edge.target === source),
+            ),
+        )
+        .map(
+          (source) =>
+            ({
+              id: `e_${crypto.randomUUID()}`,
+              source,
+              target,
+              type: "default",
+              className: "success-draw",
+              style: { stroke: "#b5d4f4", strokeWidth: 1.8 },
+            }) as Edge,
+        );
+      if (!additions.length) return;
+      setEdges((current) => [
+        ...current,
+        ...additions.filter(
+          (addition) =>
+            !current.some(
+              (edge) =>
+                (edge.source === addition.source && edge.target === addition.target) ||
+                (edge.source === addition.target && edge.target === addition.source),
+            ),
+        ),
+      ]);
+      const additionIds = new Set(additions.map((edge) => edge.id));
+      window.setTimeout(() => {
+        setEdges((current) =>
+          current.map((edge) =>
+            additionIds.has(edge.id)
+              ? { ...edge, className: "", style: { stroke: "#9a9aa3", strokeWidth: 1.8 } }
+              : edge,
+          ),
+        );
+      }, 360);
+    },
+    [edges, setEdges],
+  );
+
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target || connection.source === connection.target) return;
@@ -129,10 +171,35 @@ export function useCanvasConnections(
   /** 拖线连接状态：可连接时强调边框，重复连接时覆盖蒙层。 */
   const [connectMenu, setConnectMenu] = useState<{
     sourceNodeId: string;
+    sourceNodeIds?: string[];
     flowPos: { x: number; y: number };
+    dropPos: { x: number; y: number };
     clientPos: { x: number; y: number };
   } | null>(null);
-  const [pendingLineStart, setPendingLineStart] = useState<{ x: number; y: number } | null>(null);
+
+  /** 批量连接拖到空白处时，复用普通连线的节点创建菜单。 */
+  const openBatchConnectMenu = useCallback(
+    (sourceNodeIds: string[], flowPos: { x: number; y: number }, clientPos: { x: number; y: number }) => {
+      const sourceNodeId = sourceNodeIds[0];
+      if (!sourceNodeId) return;
+      const board = document.querySelector(`.${styles.board}`) as HTMLElement | null;
+      const boardRect = board?.getBoundingClientRect();
+      const localX = clientPos.x - (boardRect?.left ?? 0);
+      const localY = clientPos.y - (boardRect?.top ?? 0);
+      setConnectMenu({
+        sourceNodeId,
+        sourceNodeIds,
+        flowPos,
+        dropPos: { x: localX, y: localY },
+        clientPos: {
+          x: Math.max(8, Math.min(localX + 14, (boardRect?.width ?? localX + 242) - 228)),
+          y: Math.max(8, Math.min(localY - 20, (boardRect?.height ?? localY + 360) - 352)),
+        },
+      });
+    },
+    [],
+  );
+  const [pendingLineStarts, setPendingLineStarts] = useState<Array<{ id: string; x: number; y: number }>>([]);
   /** 拖线中悬停的目标节点（用来高亮） */
   const [hoverTargetId, setHoverTargetId] = useState<string | null>(null);
   /** 拖线中是否在合法位置上 —— true: 可连 / false: 不可连 / null: 拖到 pane */
@@ -150,6 +217,7 @@ export function useCanvasConnections(
 
     const resetHandle = (handle: HTMLElement) => {
       handle.classList.remove(handleMagnetClass);
+      handle.removeAttribute("data-card-handle-magnet-active");
       handle.style.removeProperty("--handle-pull-x");
       handle.style.removeProperty("--handle-pull-y");
       handle.style.removeProperty("--handle-hit-size");
@@ -170,6 +238,7 @@ export function useCanvasConnections(
 
       /* 先集中读取布局，避免在循环里交替读写样式导致强制同步布局。 */
       for (const handle of handles) {
+        if (!isCardHandleInteractive(handle)) continue;
         if (multiSelectionActive && handle.closest(".react-flow__node.selected")) continue;
         /* 拖线开始后源节点不再参与磁吸，避免位移复位时圆球短暂闪回锚点。 */
         if (handle.classList.contains("connectingfrom") || handle.closest(`.${connectionSourceActiveClass}`)) {
@@ -177,10 +246,11 @@ export function useCanvasConnections(
         }
         /* 拖线期间只允许左侧 target 圆球参与吸附。 */
         if (connectStartRef.current.nodeId && !handle.classList.contains("react-flow__handle-left")) continue;
-        const distance = getHandleDistance(handle, pointerX, pointerY);
+        const distance = getCardHandleDistance(handle, pointerX, pointerY);
         if (
           distance &&
-          distance.distanceSq <= HANDLE_MAGNET_RADIUS ** 2 &&
+          distance.distanceSq <= CANVAS_HANDLE_MAGNET_RADIUS ** 2 &&
+          isCardHandleExposed(handle) &&
           (!nearest || distance.distanceSq < nearest.distanceSq)
         ) {
           nearest = {
@@ -188,9 +258,23 @@ export function useCanvasConnections(
             pullX: distance.screenDx / distance.safeScale,
             pullY: distance.screenDy / distance.safeScale,
             /* 反算画布缩放，使外侧命中区始终保持 80px 直径。 */
-            hitSize: (HANDLE_MAGNET_RADIUS * 2) / distance.safeScale,
+            hitSize: (CANVAS_HANDLE_MAGNET_RADIUS * 2) / distance.safeScale,
             distanceSq: distance.distanceSq,
           };
+        }
+      }
+
+      /* 组批量连接点与卡片连接点靠近时只激活距离更近者，距离相同优先组。 */
+      if (nearest) {
+        const groupHandles = board.querySelectorAll<HTMLElement>("[data-batch-connect-handle]");
+        for (const groupHandle of groupHandles) {
+          const boundary = groupHandle.closest<HTMLElement>("[data-batch-connect-boundary]");
+          if (!boundary || pointerX <= boundary.getBoundingClientRect().right) continue;
+          const distance = getCenteredHandleDistance(groupHandle, pointerX, pointerY);
+          if (distance.distanceSq <= CANVAS_HANDLE_MAGNET_RADIUS ** 2 && distance.distanceSq <= nearest.distanceSq) {
+            nearest = null;
+            break;
+          }
         }
       }
 
@@ -199,6 +283,7 @@ export function useCanvasConnections(
         activeHandle = nearest?.handle ?? null;
         if (activeHandle) {
           activeHandle.classList.add(handleMagnetClass);
+          activeHandle.setAttribute("data-card-handle-magnet-active", "true");
           /* 先提交圆球原位样式，再写入位移，让吸附呈现一次极短滑动。 */
           void activeHandle.offsetWidth;
         }
@@ -249,26 +334,32 @@ export function useCanvasConnections(
     };
   }, [connectionSourceActiveClass]);
 
-  /** 菜单出现后计算源节点右侧 handle，临时连线从这里接到菜单左边缘。 */
+  /** 菜单出现后计算全部源节点的右侧 handle，临时连线共同接到菜单左边缘。 */
   useLayoutEffect(() => {
     if (!connectMenu) {
-      setPendingLineStart(null);
+      setPendingLineStarts([]);
       return;
     }
     const board = document.querySelector(`.${styles.board}`) as HTMLElement | null;
-    const sourceNode = document.querySelector(
-      `.react-flow__node[data-id="${connectMenu.sourceNodeId}"]`,
-    ) as HTMLElement | null;
-    const sourceHandle = sourceNode?.querySelector(".react-flow__handle-right") as HTMLElement | null;
-    if (!board || !sourceNode || !sourceHandle) return;
+    if (!board) return;
     const boardRect = board.getBoundingClientRect();
-    const nodeRect = sourceNode.getBoundingClientRect();
-    const handleRect = sourceHandle.getBoundingClientRect();
-    setPendingLineStart({
-      /* 临时虚线从卡片外轮廓起笔，不复用压进卡片内部的正式边锚点。 */
-      x: nodeRect.right - boardRect.left,
-      y: handleRect.top + handleRect.height / 2 - boardRect.top,
+    const sourceIds = connectMenu.sourceNodeIds?.length ? connectMenu.sourceNodeIds : [connectMenu.sourceNodeId];
+    const starts = sourceIds.flatMap((id) => {
+      const sourceNode = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+      const sourceHandle = sourceNode?.querySelector<HTMLElement>(".react-flow__handle-right");
+      if (!sourceNode || !sourceHandle) return [];
+      const nodeRect = sourceNode.getBoundingClientRect();
+      const handleRect = sourceHandle.getBoundingClientRect();
+      return [
+        {
+          id,
+          /* 临时虚线从卡片外轮廓起笔，不复用压进卡片内部的正式边锚点。 */
+          x: nodeRect.right - boardRect.left,
+          y: handleRect.top + handleRect.height / 2 - boardRect.top,
+        },
+      ];
     });
+    setPendingLineStarts(starts);
   }, [connectMenu, nodes]);
 
   /** 判断某节点是否可作为连线目标（用于 hover 状态判定） */
@@ -302,14 +393,18 @@ export function useCanvasConnections(
         return;
       }
       let nearest: { id: string; distanceSq: number } | null = null;
+      const multiSelectionActive = board.querySelectorAll(".react-flow__node.selected").length > 1;
       const handles = board.querySelectorAll<HTMLElement>(`.${nodeStyles.cardHandle}.react-flow__handle-left`);
       for (const handle of handles) {
+        if (!isCardHandleInteractive(handle)) continue;
+        if (multiSelectionActive && handle.closest(".react-flow__node.selected")) continue;
         const nodeId = handle.closest<HTMLElement>(".react-flow__node")?.dataset.id;
         if (!nodeId || nodeId === connectStartRef.current.nodeId) continue;
-        const distance = getHandleDistance(handle, pointer.clientX, pointer.clientY);
+        const distance = getCardHandleDistance(handle, pointer.clientX, pointer.clientY);
         if (
           distance &&
-          distance.distanceSq <= HANDLE_MAGNET_RADIUS ** 2 &&
+          distance.distanceSq <= CANVAS_HANDLE_MAGNET_RADIUS ** 2 &&
+          isCardHandleExposed(handle) &&
           (!nearest || distance.distanceSq < nearest.distanceSq)
         ) {
           nearest = { id: nodeId, distanceSq: distance.distanceSq };
@@ -388,9 +483,7 @@ export function useCanvasConnections(
       }
 
       /* 卡片内部不参与磁吸动画，但松手落在卡片上仍可直接连接。 */
-      const droppedNode = document
-        .elementFromPoint(clientX, clientY)
-        ?.closest<HTMLElement>(".react-flow__node");
+      const droppedNode = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>(".react-flow__node");
       const droppedNodeId = droppedNode?.dataset.id;
       if (droppedNodeId && droppedNodeId !== start.nodeId) {
         /* connectStartRef 已清理，使用本次结束事件保存下来的源节点校验。 */
@@ -412,51 +505,51 @@ export function useCanvasConnections(
       setConnectMenu({
         sourceNodeId: start.nodeId,
         flowPos,
+        dropPos: { x: localX, y: localY },
         clientPos: {
           x: Math.max(8, Math.min(localX + 14, (boardRect?.width ?? localX + 242) - 228)),
           y: Math.max(8, Math.min(localY - 20, (boardRect?.height ?? localY + 360) - 352)),
         },
       });
     },
-    [
-      screenToFlowPosition,
-      hoverTargetId,
-      previewState,
-      addEdgeDedup,
-      isValidTarget,
-      connectionSourceActiveClass,
-    ],
+    [screenToFlowPosition, hoverTargetId, previewState, addEdgeDedup, isValidTarget, connectionSourceActiveClass],
   );
 
   /** 从「引用该节点生成」菜单中挑一个类型创建节点并连线 */
   const addNodeFromConnect = useCallback(
     (kind: BasicNodeKind) => {
       if (!connectMenu) return;
-      const { flowPos, sourceNodeId } = connectMenu;
-      const newNode = createBasicNode(kind, { x: flowPos.x, y: flowPos.y - 60 }, true);
+      const { flowPos, sourceNodeId, sourceNodeIds } = connectMenu;
+      const sources = sourceNodeIds?.length ? sourceNodeIds : [sourceNodeId];
+      const newNode = createBasicNode(kind, { x: flowPos.x, y: flowPos.y - 60 }, true, nodes);
       setNodes((ns) => [...ns, newNode]);
       setEdges((es) => [
         ...es,
-        {
-          id: `e_${Date.now()}`,
-          source: sourceNodeId,
-          target: newNode.id,
-          type: "default",
-          style: { stroke: "#7f7f86", strokeWidth: 1.6 },
-        },
+        ...sources.map(
+          (source) =>
+            ({
+              id: `e_${crypto.randomUUID()}`,
+              source,
+              target: newNode.id,
+              type: "default",
+              style: { stroke: "#7f7f86", strokeWidth: 1.6 },
+            }) as Edge,
+        ),
       ]);
       setConnectMenu(null);
     },
-    [connectMenu, setNodes, setEdges],
+    [connectMenu, nodes, setNodes, setEdges],
   );
   return {
     connectMenu,
     setConnectMenu,
-    pendingLineStart,
+    pendingLineStarts,
     isValidConnection,
     onConnect,
     onConnectStart,
     onConnectEnd,
     addNodeFromConnect,
+    addEdgesDedup,
+    openBatchConnectMenu,
   };
 }

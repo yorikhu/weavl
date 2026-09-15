@@ -15,6 +15,7 @@ import { toast } from "@/hooks/useToast";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
+import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { TextNodeData } from "../../../../types/nodes";
 import sharedStyles from "../../index.module.scss";
 import localStyles from "./index.module.scss";
@@ -80,7 +81,7 @@ export function TextNode({ data, id }: NodeProps) {
       <TextNodeResizeHandle id={id} />
       <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
-        <span>{d.title || "文本"}</span>
+        <EditableNodeTitle nodeId={id} value={d.title} fallback="文本" />
       </div>
       <div
         data-canvas-node-surface

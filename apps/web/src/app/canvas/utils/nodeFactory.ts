@@ -58,13 +58,39 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
   },
 };
 
-export function createBasicNode(kind: BasicNodeKind, position: FlowPosition, connected = false): Node {
+const NODE_KIND_LABELS: Record<BasicNodeKind, string> = { text: "文本", image: "图片", video: "视频" };
+
+/** 按同类节点现有最大序号生成名称，避免当前画布出现同名基础节点。 */
+function nextNodeTitle(kind: BasicNodeKind, nodes: Node[]) {
+  const label = NODE_KIND_LABELS[kind];
+  const pattern = new RegExp(`^${label}(?:\\s*(\\d+))?$`);
+  const max = nodes.reduce((current, node) => {
+    const data = node.data as Record<string, unknown>;
+    if (data.nodeKind !== kind || typeof data.title !== "string") return current;
+    const match = data.title.match(pattern);
+    if (!match) return current;
+    return Math.max(current, Number(match[1] || 1));
+  }, 0);
+  return `${label} ${max + 1}`;
+}
+
+export function createBasicNode(
+  kind: BasicNodeKind,
+  position: FlowPosition,
+  connected = false,
+  existingNodes: Node[] = [],
+): Node {
   const definition = BASIC_NODE_DEFINITIONS[kind];
+  const data = structuredClone(connected ? definition.connectedData : definition.data) as unknown as Record<
+    string,
+    unknown
+  >;
+  data.title = nextNodeTitle(kind, existingNodes);
   return {
     id: nextNodeId(),
     type: definition.type,
     position,
-    data: structuredClone(connected ? definition.connectedData : definition.data) as unknown as Record<string, unknown>,
+    data,
   };
 }
 
