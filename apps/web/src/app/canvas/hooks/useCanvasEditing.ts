@@ -17,13 +17,16 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingMode, setEditingMode] = useState<"manual" | "generate">("manual");
   const [editBuffer, setEditBuffer] = useState<{ title: string; text: string }>({ title: "", text: "" });
+  /* 拖动只改变节点位置；编辑操作通过 ref 读取最新节点，避免回调随每一帧位置变化。 */
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   /** contentEditable DOM 引用（让 commitEdit 能读到最新 innerText）+ IME composition 标志 */
   const editorElRef = useRef<HTMLDivElement | null>(null);
   const composingRef = useRef(false);
   /** 进入编辑：只初始化编辑数据和模式，不改变当前画布视口。 */
   const enterEdit = useCallback(
     (id: string, mode: "manual" | "generate" = "manual") => {
-      const n = nodes.find((x) => x.id === id);
+      const n = nodesRef.current.find((x) => x.id === id);
       if (!n) return;
       const d = n.data as Record<string, unknown>;
       if (mode === "manual" && d.nodeKind === "text" && d.creationMode !== "manual") {
@@ -48,13 +51,13 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
       setEditingMode(mode);
       setEditingId(id);
     },
-    [nodes, setNodes],
+    [setNodes],
   );
 
   /** 双击聚焦：按节点实际尺寸自适应视口，保证缩放后的节点完整可见。 */
   const focusNode = useCallback(
     (id: string, options?: { leftInset?: number }) => {
-      const node = nodes.find((item) => item.id === id);
+      const node = nodesRef.current.find((item) => item.id === id);
       if (!node) return;
       const data = node.data as Record<string, unknown>;
       /* 文本节点保存的拖拽尺寸优先于 React Flow 可能尚未刷新的 measured。 */
@@ -72,7 +75,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
       viewport.x += leftInset;
       void setViewport(viewport, { duration: 320, ease: (progress) => 1 - (1 - progress) ** 3 });
     },
-    [nodes, viewportWidth, viewportHeight, minZoom, maxZoom, setViewport],
+    [viewportWidth, viewportHeight, minZoom, maxZoom, setViewport],
   );
 
   /** 退出编辑：视口保持不动（位置和缩放都不变），只关编辑态 */
@@ -207,7 +210,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
      视频节点编辑态时改走 commitVideoEdit */
   const commitEdit = useCallback(() => {
     if (!editingId) return;
-    const editingNode = nodes.find((n) => n.id === editingId);
+    const editingNode = nodesRef.current.find((n) => n.id === editingId);
     const editingKind = (editingNode?.data as Record<string, unknown> | undefined)?.nodeKind;
     if (editingKind === "image") {
       const payload = imageEditStateRef.current;
@@ -230,7 +233,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         : undefined;
     writeNodeData(editingId, editBuffer.title, finalText, size);
     exitEdit();
-  }, [editingId, editBuffer, writeNodeData, exitEdit, nodes, commitImageEdit, commitVideoEdit]);
+  }, [editingId, editBuffer, writeNodeData, exitEdit, commitImageEdit, commitVideoEdit]);
 
   /** 工具栏格式化命令：作用于当前 contentEditable 焦点 */
   const onApplyFormat = useCallback((cmd: string, value?: string) => {

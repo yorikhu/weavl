@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Node } from "@xyflow/react";
 import type { Asset, CanvasDocument, Folder as AssetFolder } from "@weavl/shared";
 import {
@@ -110,7 +110,7 @@ interface TabFilterState {
 }
 
 /** 画布项目资产管理器：统一浏览画布节点与全局资产，并同步节点选择和定位。 */
-export function CanvasAssetDrawer({
+function CanvasAssetDrawerView({
   open,
   header,
   nodes,
@@ -811,3 +811,6 @@ export function CanvasAssetDrawer({
     </>
   );
 }
+
+/** 抽屉关闭时忽略画布逐帧的位置变化，避免隐藏列表跟随节点拖动反复渲染。 */
+export const CanvasAssetDrawer = memo(CanvasAssetDrawerView, (previous, next) => !previous.open && !next.open);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useStore } from "@xyflow/react";
 import { ChevronDown, Coins, Send, Sparkles } from "lucide-react";
 import styles from "./index.module.scss";
 
@@ -30,6 +31,52 @@ interface NodePromptPanelProps {
   onEscape: () => void;
 }
 
+interface PromptAnchor {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function selectPromptAnchor(nodeId: string) {
+  return (state: {
+    transform: [number, number, number];
+    nodeLookup: Map<
+      string,
+      {
+        measured: { width?: number; height?: number };
+        width?: number;
+        height?: number;
+        internals: {
+          positionAbsolute: { x: number; y: number };
+          bounds?: { width?: number | null; height?: number | null };
+        };
+      }
+    >;
+  }): PromptAnchor | null => {
+    const node = state.nodeLookup.get(nodeId);
+    if (!node) return null;
+    const [viewportX, viewportY, zoom] = state.transform;
+    return {
+      left: viewportX + node.internals.positionAbsolute.x * zoom,
+      top: viewportY + node.internals.positionAbsolute.y * zoom,
+      width: (node.measured.width ?? node.width ?? node.internals.bounds?.width ?? 300) * zoom,
+      height: (node.measured.height ?? node.height ?? node.internals.bounds?.height ?? 180) * zoom,
+    };
+  };
+}
+
+function samePromptAnchor(previous: PromptAnchor | null, next: PromptAnchor | null): boolean {
+  if (previous === next) return true;
+  if (!previous || !next) return false;
+  return (
+    previous.left === next.left &&
+    previous.top === next.top &&
+    previous.width === next.width &&
+    previous.height === next.height
+  );
+}
+
 /** 图片、视频与文本节点共用的提示词生成面板。 */
 export function NodePromptPanel({
   nodeId,
@@ -50,34 +97,60 @@ export function NodePromptPanel({
   onEscape,
 }: NodePromptPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const panelHeightRef = useRef(140);
+  const anchor = useStore(selectPromptAnchor(nodeId), samePromptAnchor);
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const selectedModel = models.find((item) => item.id === model) ?? models[0];
 
-  useEffect(() => {
-    const compute = () => {
-      const panel = panelRef.current;
-      const node = document.querySelector(`.react-flow__node[data-id="${nodeId}"]`) as HTMLElement | null;
-      if (!panel || !node) return;
-      const width = Math.max(360, Math.min(560, window.innerWidth * 0.4));
-      const rect = node.getBoundingClientRect();
-      const left = Math.max(16, Math.min(window.innerWidth - width - 16, rect.left + rect.width / 2 - width / 2));
-      const top = Math.min(rect.bottom + 16, window.innerHeight - panel.offsetHeight - 16);
-      panel.style.width = `${width}px`;
-      panel.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-    };
-    compute();
-    let frame = 0;
-    const follow = () => {
-      compute();
-      frame = window.requestAnimationFrame(follow);
-    };
-    frame = window.requestAnimationFrame(follow);
-    window.addEventListener("resize", compute);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", compute);
-    };
+  const positionPanel = useCallback(() => {
+    const panel = panelRef.current;
+    const currentAnchor = anchorRef.current;
+    if (!panel || !currentAnchor) return;
+    const node = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(nodeId)}"]`);
+    const surface = node?.querySelector<HTMLElement>("[data-canvas-node-surface]");
+    const surfaceRect = surface?.getBoundingClientRect();
+    const visibleAnchor = surfaceRect
+      ? {
+          left: surfaceRect.left,
+          top: surfaceRect.top,
+          width: surfaceRect.width,
+          height: surfaceRect.height,
+        }
+      : currentAnchor;
+    const width = Math.max(360, Math.min(560, window.innerWidth * 0.4));
+    const left = Math.max(
+      16,
+      Math.min(window.innerWidth - width - 16, visibleAnchor.left + visibleAnchor.width / 2 - width / 2),
+    );
+    const panelHeight = panelHeightRef.current;
+    const gap = 16;
+    const viewportInset = 16;
+    const belowTop = visibleAnchor.top + visibleAnchor.height + gap;
+    /* 面板永远从卡片下方出现；仅视口底部不足时才向上收回并允许覆盖卡片边界。 */
+    const top = Math.max(viewportInset, Math.min(belowTop, window.innerHeight - panelHeight - viewportInset));
+    panel.style.width = `${width}px`;
+    panel.style.transform = `translate3d(${left}px, ${top}px, 0)`;
   }, [nodeId]);
+
+  useLayoutEffect(positionPanel, [anchor, positionPanel]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      panelHeightRef.current = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+      positionPanel();
+    });
+    observer.observe(panel);
+    window.addEventListener("resize", positionPanel);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", positionPanel);
+    };
+  }, [positionPanel]);
 
   function changeModelMenu(open: boolean) {
     setModelMenuOpen(open);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReactFlow, useStore, ViewportPortal, type Node } from "@xyflow/react";
 import {
   getCanvasGroupBounds,
@@ -21,6 +21,21 @@ interface CanvasGroupLayerProps {
   onGroupContextMenu: (event: React.MouseEvent<HTMLDivElement>, group: CanvasGroupBounds) => void;
   onBatchConnect: (sourceIds: string[], targetId: string) => void;
   onBatchCreate: (sourceIds: string[], flowPos: { x: number; y: number }, clientPos: { x: number; y: number }) => void;
+}
+
+function groupIdOf(node: Node): string | undefined {
+  const groupId = (node.data as Record<string, unknown>).groupId;
+  return typeof groupId === "string" ? groupId : undefined;
+}
+
+/** 单节点拖动无需刷新组覆盖层；分组成员和临时多选才订阅位置变化。 */
+function selectOverlayNodes(state: { nodes: Node[] }): Node[] {
+  const selectedCount = state.nodes.reduce((count, node) => count + Number(Boolean(node.selected)), 0);
+  return state.nodes.filter((node) => Boolean(groupIdOf(node)) || (selectedCount > 1 && Boolean(node.selected)));
+}
+
+function sameNodeReferences(previous: Node[], next: Node[]): boolean {
+  return previous.length === next.length && previous.every((node, index) => node === next[index]);
 }
 
 /** 在节点图层中绘制持久分组边界，并支持双击组名行内重命名。 */
@@ -62,7 +77,7 @@ function getSelectionBatchSource(
   };
 }
 
-export function CanvasGroupLayer({
+function CanvasGroupLayerView({
   focusedGroupId,
   selectedNodeIds,
   selectedGroupId,
@@ -73,7 +88,7 @@ export function CanvasGroupLayer({
   onBatchConnect,
   onBatchCreate,
 }: CanvasGroupLayerProps) {
-  const nodes = useStore((state) => state.nodes);
+  const nodes = useStore(selectOverlayNodes, sameNodeReferences);
   const { screenToFlowPosition } = useReactFlow();
   const groups = useMemo(() => getCanvasGroupBounds(nodes), [nodes]);
   const selectionBatchSource = useMemo(
@@ -214,6 +229,32 @@ export function CanvasGroupLayer({
     </ViewportPortal>
   );
 }
+
+function sameStrings(previous?: string[], next?: string[]): boolean {
+  if (previous === next) return true;
+  if (!previous || !next || previous.length !== next.length) return false;
+  return previous.every((value, index) => value === next[index]);
+}
+
+function sameLayerProps(previous: CanvasGroupLayerProps, next: CanvasGroupLayerProps): boolean {
+  return (
+    previous.focusedGroupId === next.focusedGroupId &&
+    previous.selectedGroupId === next.selectedGroupId &&
+    sameStrings(previous.selectedNodeIds, next.selectedNodeIds) &&
+    sameStrings(previous.pendingBatchSourceIds, next.pendingBatchSourceIds) &&
+    previous.selectionInsets.top === next.selectionInsets.top &&
+    previous.selectionInsets.right === next.selectionInsets.right &&
+    previous.selectionInsets.bottom === next.selectionInsets.bottom &&
+    previous.selectionInsets.left === next.selectionInsets.left &&
+    previous.onRenameGroup === next.onRenameGroup &&
+    previous.onGroupContextMenu === next.onGroupContextMenu &&
+    previous.onBatchConnect === next.onBatchConnect &&
+    previous.onBatchCreate === next.onBatchCreate
+  );
+}
+
+/** 分组覆盖层仅在分组、多选或交互参数实际变化时更新。 */
+export const CanvasGroupLayer = memo(CanvasGroupLayerView, sameLayerProps);
 
 function GroupRegion({
   group,
