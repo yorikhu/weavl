@@ -4,7 +4,7 @@ import { useToastStream } from "@/hooks/useToast";
 
 import styles from "./index.module.scss";
 
-/** 全局 toast 渲染宿主——挂在根 layout 里，每页都会自动有 */
+/** 全局轻提示渲染宿主；挂载一次即可显示 useToast 发布的消息，并在悬停时暂停消失。 */
 export function ToastHost() {
   const { items, pause, resume } = useToastStream();
 
