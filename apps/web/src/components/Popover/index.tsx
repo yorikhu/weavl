@@ -27,6 +27,7 @@ export interface PopoverProps {
   hintAlign?: Align;
   preserveOpenOnOutsideSelector?: string;
   autoFocusOnOpen?: boolean;
+  openWhen?: (element: HTMLElement) => boolean;
 }
 
 const classes = (...names: Array<string | undefined>) => names.filter(Boolean).join(" ");
@@ -52,6 +53,7 @@ export function Popover({
   hintAlign = align,
   preserveOpenOnOutsideSelector,
   autoFocusOnOpen = true,
+  openWhen,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [internalClickOpen, setInternalClickOpen] = useState(false);
@@ -62,7 +64,10 @@ export function Popover({
         <TooltipPrimitive.Root open={hoverOpen} disableHoverableContent>
           <TooltipPrimitive.Trigger
             asChild
-            onPointerEnter={() => setHoverOpen(true)}
+            onPointerEnter={(event) => {
+              const element = event.currentTarget as HTMLElement;
+              setHoverOpen(openWhen ? openWhen(element) : true);
+            }}
             onPointerLeave={() => setHoverOpen(false)}
           >
             {trigger}

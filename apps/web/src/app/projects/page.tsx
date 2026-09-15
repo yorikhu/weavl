@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Folder, FolderPlus, Layers, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Folder, FolderPlus, Layers, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import type { CanvasProject, ProjectFolder } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
 import { ActionPopover } from "@/components/ActionPopover";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { Form } from "@/components/Form";
+import { Modal } from "@/components/Modal";
+import { toast } from "@/hooks/useToast";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { canvasHref, openCanvasAfter } from "@/utils/openCanvas";
 import { ProjectCard, type ProjectAction } from "./components/ProjectCard";
@@ -18,6 +21,37 @@ type Dialog = {
   project?: CanvasProject;
   folder?: ProjectFolder;
 };
+type Confirmation =
+  { kind: "deleteFolder"; folder: ProjectFolder } | { kind: "deleteProjectPermanently"; project: CanvasProject };
+const dialogTitles: Record<Dialog["kind"], string> = {
+  create: "新建项目",
+  folder: "新建文件夹",
+  renameFolder: "重命名文件夹",
+  move: "移动项目",
+};
+
+function getEmptyMessage(query: string, view: View) {
+  if (query.trim()) return "没有找到匹配的项目。";
+  if (view === "trash") return "回收站是空的。";
+  return "这里还没有项目，开始一次新的创作吧。";
+}
+
+const isOverflowing = (element: HTMLElement) => element.scrollWidth > element.clientWidth;
+
+function getConfirmationCopy(confirmation: Confirmation) {
+  if (confirmation.kind === "deleteFolder") {
+    return {
+      title: `删除文件夹「${confirmation.folder.name}」？`,
+      description: "文件夹内的项目会移至未分类，项目内容不会被删除。",
+      confirmLabel: "删除文件夹",
+    };
+  }
+  return {
+    title: `彻底删除「${confirmation.project.name}」？`,
+    description: "项目及其中的画布将被永久删除，此操作无法撤销。",
+    confirmLabel: "彻底删除",
+  };
+}
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<CanvasProject[]>([]);
@@ -26,12 +60,13 @@ export default function ProjectsPage() {
   const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [dialogValue, setDialogValue] = useState("");
   const [folderMenuOpen, setFolderMenuOpen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const coverInputRef = useRef<HTMLInputElement>(null);
   const coverTargetRef = useRef<string | null>(null);
 
@@ -67,7 +102,6 @@ export default function ProjectsPage() {
 
   function openDialog(kind: Dialog["kind"], project?: CanvasProject, folder?: ProjectFolder) {
     setError("");
-    setNotice("");
     setDialog({ kind, project, folder });
     setDialogValue(kind === "move" ? project?.folderId || "" : kind === "renameFolder" ? folder?.name || "" : "");
   }
@@ -89,25 +123,26 @@ export default function ProjectsPage() {
           return { projectId: project.id, canvasId: project.canvases[0]!.id };
         });
         if (view === "trash") setView("all");
+        toast("项目已创建。", "success");
       } else if (dialog.kind === "folder") {
         const folder = await studioApi<ProjectFolder>("/studio/projects/folders", {
           method: "POST",
           body: jsonBody({ name: dialogValue.trim() }),
         });
         setView(`folder:${folder.id}`);
-        setNotice("文件夹已创建。");
+        toast("文件夹已创建。", "success");
       } else if (dialog.kind === "renameFolder" && dialog.folder) {
         await studioApi(`/studio/projects/folders/${dialog.folder.id}`, {
           method: "PATCH",
           body: jsonBody({ name: dialogValue.trim() }),
         });
-        setNotice("文件夹名称已更新。");
+        toast("文件夹名称已更新。", "success");
       } else if (dialog.project) {
         await studioApi(`/studio/projects/${dialog.project.id}`, {
           method: "PATCH",
           body: jsonBody({ folderId: dialogValue || null }),
         });
-        setNotice("项目已移动。");
+        toast("项目已移动。", "success");
       }
       setDialog(null);
       await refresh();
@@ -122,20 +157,30 @@ export default function ProjectsPage() {
     setError("");
     await studioApi(`/studio/projects/${project.id}`, { method: "PATCH", body: jsonBody({ name }) });
     await refresh();
-    setNotice("项目名称已更新。");
+    toast("项目名称已更新。", "success");
   }
 
-  async function removeFolder(folder: ProjectFolder) {
-    setFolderMenuOpen(null);
-    if (!window.confirm(`删除文件夹「${folder.name}」？其中的项目会移至未分类。`)) return;
+  async function confirmDestructiveAction() {
+    if (!confirmation) return;
+    setConfirmBusy(true);
     setError("");
     try {
-      await studioApi(`/studio/projects/folders/${folder.id}`, { method: "DELETE" });
-      if (view === `folder:${folder.id}`) setView("unfiled");
+      let successMessage = "项目已彻底删除。";
+      if (confirmation.kind === "deleteFolder") {
+        const { folder } = confirmation;
+        await studioApi(`/studio/projects/folders/${folder.id}`, { method: "DELETE" });
+        if (view === `folder:${folder.id}`) setView("unfiled");
+        successMessage = "文件夹已删除，项目已移至未分类。";
+      } else {
+        await studioApi(`/studio/projects/${confirmation.project.id}/permanent`, { method: "DELETE" });
+      }
       await refresh();
-      setNotice("文件夹已删除，项目已移至未分类。");
+      setConfirmation(null);
+      toast(successMessage, "success");
     } catch (cause) {
-      setError((cause as Error).message);
+      toast((cause as Error).message);
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -145,7 +190,7 @@ export default function ProjectsPage() {
     coverTargetRef.current = null;
     if (coverInputRef.current) coverInputRef.current.value = "";
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 2_000_000) {
-      setError("封面仅支持 2 MB 以内的 PNG、JPEG 或 WebP 图片。");
+      toast("封面仅支持 2 MB 以内的 PNG、JPEG 或 WebP 图片。");
       return;
     }
     setError("");
@@ -158,15 +203,14 @@ export default function ProjectsPage() {
       });
       await studioApi(`/studio/projects/${targetId}`, { method: "PATCH", body: jsonBody({ coverUrl }) });
       await refresh();
-      setNotice("项目封面已更新。");
+      toast("项目封面已更新。", "success");
     } catch (cause) {
-      setError((cause as Error).message);
+      toast((cause as Error).message);
     }
   }
 
   async function handleAction(action: ProjectAction, project: CanvasProject) {
     setError("");
-    setNotice("");
     if (action === "open") {
       const canvas = project.canvases[0];
       if (canvas)
@@ -182,26 +226,27 @@ export default function ProjectsPage() {
       coverInputRef.current?.click();
       return;
     }
-    if (action === "permanent" && !window.confirm(`彻底删除「${project.name}」？此操作无法撤销。`)) return;
+    if (action === "permanent") {
+      setConfirmation({ kind: "deleteProjectPermanently", project });
+      return;
+    }
     try {
       if (action === "duplicate") {
         await studioApi(`/studio/projects/${project.id}/duplicate`, { method: "POST" });
-        setNotice("项目副本已创建。");
+        toast("项目副本已创建。", "success");
       } else if (action === "clearCover") {
         await studioApi(`/studio/projects/${project.id}`, { method: "PATCH", body: jsonBody({ coverUrl: null }) });
+        toast("项目封面已移除。", "success");
       } else if (action === "delete") {
         await studioApi(`/studio/projects/${project.id}`, { method: "DELETE" });
-        setNotice("项目已移入回收站。");
+        toast("项目已移入回收站。", "success");
       } else if (action === "restore") {
         await studioApi(`/studio/projects/${project.id}/restore`, { method: "POST" });
-        setNotice("项目已恢复。");
-      } else if (action === "permanent") {
-        await studioApi(`/studio/projects/${project.id}/permanent`, { method: "DELETE" });
-        setNotice("项目已彻底删除。");
+        toast("项目已恢复。", "success");
       }
       await refresh();
     } catch (cause) {
-      setError((cause as Error).message);
+      toast((cause as Error).message);
     }
   }
 
@@ -258,7 +303,14 @@ export default function ProjectsPage() {
                   onClick={() => setView(`folder:${folder.id}`)}
                 >
                   <Folder size={16} />
-                  <span title={folder.name}>{folder.name}</span>
+                  <ActionPopover
+                    mode="hover"
+                    openWhen={isOverflowing}
+                    contentClassName={styles.namePopover}
+                    trigger={<span>{folder.name}</span>}
+                  >
+                    {folder.name}
+                  </ActionPopover>
                   <small>{projects.filter((project) => project.folderId === folder.id).length}</small>
                 </button>
                 <ActionPopover
@@ -285,7 +337,14 @@ export default function ProjectsPage() {
                       <Pencil size={15} />
                       重命名
                     </button>
-                    <button type="button" className={styles.dangerItem} onClick={() => void removeFolder(folder)}>
+                    <button
+                      type="button"
+                      className={styles.dangerItem}
+                      onClick={() => {
+                        setFolderMenuOpen(null);
+                        setConfirmation({ kind: "deleteFolder", folder });
+                      }}
+                    >
                       <Trash2 size={15} />
                       删除文件夹
                     </button>
@@ -319,8 +378,7 @@ export default function ProjectsPage() {
                 />
               </div>
             </div>
-            {error && <p className={ui.error}>{error}</p>}
-            {notice && <p className={styles.notice}>{notice}</p>}
+            {!dialog && error && <p className={ui.error}>{error}</p>}
             {loading ? (
               <div className={styles.empty}>正在加载项目…</div>
             ) : visible.length ? (
@@ -336,13 +394,7 @@ export default function ProjectsPage() {
                 ))}
               </div>
             ) : (
-              <div className={styles.empty}>
-                {query.trim()
-                  ? "没有找到匹配的项目。"
-                  : view === "trash"
-                    ? "回收站是空的。"
-                    : "这里还没有项目，开始一次新的创作吧。"}
-              </div>
+              <div className={styles.empty}>{getEmptyMessage(query, view)}</div>
             )}
           </section>
         </div>
@@ -354,62 +406,59 @@ export default function ProjectsPage() {
           onChange={(event) => void updateCover(event.target.files?.[0])}
         />
         {dialog && (
-          <div className={styles.overlay} onClick={() => !busy && setDialog(null)}>
-            <section className={styles.dialog} onClick={(event) => event.stopPropagation()}>
-              <div className={styles.dialogHead}>
-                <div>
-                  <span className={ui.eyebrow}>PROJECTS</span>
-                  <h2>
-                    {dialog.kind === "create"
-                      ? "新建项目"
-                      : dialog.kind === "folder"
-                        ? "新建文件夹"
-                        : dialog.kind === "renameFolder"
-                          ? "重命名文件夹"
-                          : "移动项目"}
-                  </h2>
-                </div>
-                <button type="button" onClick={() => setDialog(null)} aria-label="关闭" disabled={busy}>
-                  <X size={18} />
-                </button>
-              </div>
-              <Form
-                values={{ value: dialogValue }}
-                onValuesChange={(values) => setDialogValue(values.value)}
-                onFinish={submitDialog}
-                className={styles.dialogForm}
-              >
-                {dialog.kind === "move" ? (
-                  <Form.Select name="value" label="目标文件夹">
-                    <option value="">未分类</option>
-                    {folders.map((folder) => (
-                      <option key={folder.id} value={folder.id}>
-                        {folder.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                ) : (
-                  <Form.Input
-                    name="value"
-                    label={dialog.kind === "folder" || dialog.kind === "renameFolder" ? "文件夹名称" : "项目名称"}
-                    placeholder={dialog.kind === "create" ? "为项目起一个名字" : undefined}
-                    maxLength={80}
-                    required={dialog.kind !== "create"}
-                    autoFocus
-                  />
-                )}
-                {error && <p className={ui.error}>{error}</p>}
-                <div className={styles.dialogActions}>
-                  <button type="button" className={ui.buttonQuiet} onClick={() => setDialog(null)} disabled={busy}>
-                    取消
-                  </button>
-                  <button type="submit" className={ui.button} disabled={busy}>
-                    {busy ? "处理中…" : dialog.kind === "create" ? "创建并打开" : "确认"}
-                  </button>
-                </div>
-              </Form>
-            </section>
-          </div>
+          <Modal
+            open
+            title={dialogTitles[dialog.kind]}
+            eyebrow="PROJECTS"
+            busy={busy}
+            onOpenChange={(open) => !open && setDialog(null)}
+          >
+            <Form
+              values={{ value: dialogValue }}
+              onValuesChange={(values) => setDialogValue(values.value)}
+              onFinish={submitDialog}
+              className={styles.dialogForm}
+            >
+              {dialog.kind === "move" ? (
+                <Form.Select name="value" label="目标文件夹">
+                  <option value="">未分类</option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              ) : (
+                <Form.Input
+                  name="value"
+                  label={dialog.kind === "folder" || dialog.kind === "renameFolder" ? "文件夹名称" : "项目名称"}
+                  placeholder={dialog.kind === "create" ? "为项目起一个名字" : undefined}
+                  maxLength={80}
+                  required={dialog.kind !== "create"}
+                  autoFocus
+                />
+              )}
+              {error && <p className={ui.error}>{error}</p>}
+              <Modal.Footer>
+                <Modal.Button type="button" variant="quiet" onClick={() => setDialog(null)} disabled={busy}>
+                  取消
+                </Modal.Button>
+                <Modal.Button type="submit" disabled={busy}>
+                  {busy ? "处理中…" : dialog.kind === "create" ? "创建并打开" : "确认"}
+                </Modal.Button>
+              </Modal.Footer>
+            </Form>
+          </Modal>
+        )}
+        {confirmation && (
+          <ConfirmModal
+            open
+            {...getConfirmationCopy(confirmation)}
+            danger
+            busy={confirmBusy}
+            onOpenChange={(open) => !open && setConfirmation(null)}
+            onConfirm={confirmDestructiveAction}
+          />
         )}
       </div>
     </AppShell>

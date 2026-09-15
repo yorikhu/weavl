@@ -13,6 +13,7 @@ import styles from "../../page.module.scss";
 export type ProjectAction =
   "open" | "rename" | "cover" | "clearCover" | "duplicate" | "move" | "delete" | "restore" | "permanent";
 const tiltHandlers = createTiltCardHandlers<HTMLElement>();
+const isOverflowing = (element: HTMLElement) => element.scrollWidth > element.clientWidth;
 
 function DefaultCover() {
   const id = useId();
@@ -166,7 +167,7 @@ export function ProjectCard({
       </div>
       <div className={styles.cardFooter}>
         <div className={styles.cardInfo}>
-          <h2 className={editing ? styles.nameEditing : undefined} title={editing ? undefined : `${project.name} · 双击重命名`}>
+          <h2 className={editing ? styles.nameEditing : undefined}>
             {editing ? (
               <Form.Input
                 className={styles.nameInput}
@@ -188,7 +189,19 @@ export function ProjectCard({
                 disabled={saving}
               />
             ) : (
-              <span onDoubleClick={startRename}>{project.name}</span>
+              <ActionPopover
+                mode="hover"
+                side="top"
+                openWhen={isOverflowing}
+                contentClassName={styles.namePopover}
+                trigger={
+                  <span className={styles.projectName} onDoubleClick={startRename}>
+                    {project.name}
+                  </span>
+                }
+              >
+                {project.name}
+              </ActionPopover>
             )}
           </h2>
           {renameError && <span className={styles.renameError}>{renameError}</span>}
