@@ -1,0 +1,75 @@
+.folder {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.18));
+}
+
+.small {
+  width: 30px;
+  height: 24px;
+}
+
+.medium {
+  width: 48px;
+  height: 39px;
+}
+
+.back {
+  fill: #65666a;
+  stroke: rgba(255, 255, 255, 0.17);
+  stroke-width: 1;
+}
+
+.front {
+  fill: #95969a;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1;
+}
+
+.closed {
+  fill: #8f9094;
+  stroke: rgba(255, 255, 255, 0.19);
+  stroke-width: 1;
+}
+
+.closedHighlight {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.highlight {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+:global(html:not(.dark)) .folder {
+  filter: drop-shadow(0 3px 5px rgba(20, 25, 34, 0.15));
+}
+
+:global(html:not(.dark)) .back {
+  fill: #a1a3a8;
+  stroke: rgba(35, 40, 49, 0.16);
+}
+
+:global(html:not(.dark)) .front {
+  fill: #c8c9cc;
+  stroke: rgba(35, 40, 49, 0.16);
+}
+
+:global(html:not(.dark)) .closed {
+  fill: #c3c5c9;
+  stroke: rgba(35, 40, 49, 0.16);
+}
+
+:global(html:not(.dark)) .closedHighlight {
+  stroke: rgba(255, 255, 255, 0.5);
+}
+
+:global(html:not(.dark)) .highlight {
+  stroke: rgba(255, 255, 255, 0.52);
+}

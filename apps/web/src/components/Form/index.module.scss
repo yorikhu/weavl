@@ -39,6 +39,14 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--foreground) 7%, transparent);
 }
 
+.bareControl,
+.bareControl:focus {
+  border-color: transparent;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .control:disabled {
   opacity: 0.55;
   cursor: not-allowed;
