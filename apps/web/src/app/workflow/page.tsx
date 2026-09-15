@@ -915,8 +915,7 @@ export default function WorkflowPage() {
       next[e.id] = { x1, y1, x2, y2, d: smoothstepPath(x1, y1, x2, y2) };
     });
     setEdgePaths(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, positions, view.scale, view.x, view.y, edges, selectorConfigs]);
+  }, [currentEdges, initialPos, nodes, positions, selectorConfigs]);
 
   /* 当前选中的节点（用于右侧抽屉） */
   const selectedNode = useMemo(() => {
