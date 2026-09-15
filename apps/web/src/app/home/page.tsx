@@ -151,7 +151,7 @@ export default function HomePage() {
     setComposerError("");
     try {
       for (const file of Array.from(files)) {
-        const asset = await uploadAsset(file);
+        const asset = await uploadAsset(file, null, false);
         setAssets((current) => [asset, ...current]);
         setAssetIds((current) => [...current, asset.id]);
         composerRef.current?.insertToken({ type: "asset", id: asset.id, label: asset.name });

@@ -64,6 +64,8 @@ export interface Asset {
   kind: AssetKind;
   source: AssetSource;
   sourceId?: string;
+  /** 是否展示在用户的全局资产库；生成中的项目/会话产物默认不进入资产库。 */
+  inLibrary?: boolean;
   versions: AssetVersion[];
   deletedAt?: string;
   createdAt: string;

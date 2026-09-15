@@ -62,7 +62,7 @@ export default function WorkflowsWorkspace() {
       const [definitions, history, files, projectItems] = await Promise.all([
         studioApi<WorkflowDefinition[]>("/studio/workflows"),
         studioApi<WorkflowRunRecord[]>("/studio/workflows/runs"),
-        studioApi<Asset[]>("/studio/assets"),
+        studioApi<Asset[]>("/studio/assets?includeGenerated=1"),
         studioApi<CanvasProject[]>("/studio/projects"),
       ]);
       setWorkflows(definitions);
@@ -441,7 +441,7 @@ export default function WorkflowsWorkspace() {
                       <Form.Select name={field.id} label={field.label} required={field.required}>
                         <option value="">请选择</option>
                         {field.type === "asset"
-                          ? assets.map((asset) => (
+                          ? assets.filter((asset) => asset.inLibrary !== false).map((asset) => (
                               <option key={asset.id} value={asset.id}>
                                 {asset.name} · {asset.source}
                               </option>

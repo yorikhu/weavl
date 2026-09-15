@@ -231,6 +231,7 @@ export class WorkflowsController {
           kind: "text",
           source: "workflow",
           sourceId: run.id,
+          inLibrary: false,
           content: text,
         });
         stage.assetRefs.push({ assetId: asset.id, versionId: asset.versions[0]!.id });
