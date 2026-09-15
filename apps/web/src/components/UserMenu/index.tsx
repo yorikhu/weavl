@@ -1,7 +1,6 @@
 "use client";
 
 import { Switch as SwitchPrimitive } from "radix-ui";
-import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CreditCard, Crown, LogOut, Moon, Terminal, User, UserCircle2 } from "lucide-react";
 import { Popover, type PopoverProps } from "@/components/Popover";
@@ -9,6 +8,9 @@ import { useTheme } from "@/provider/ThemeProvider";
 import { useAuth } from "@/provider/AuthProvider";
 import { useAccount } from "@/provider/AccountProvider";
 import { formatNumber } from "@/utils/formatNumber";
+import { AvatarTrigger } from "./components/AvatarTrigger";
+import { HeaderTrigger } from "./components/HeaderTrigger";
+import { SidebarTrigger } from "./components/SidebarTrigger";
 import styles from "./index.module.scss";
 
 const Switch = SwitchPrimitive.Root;
@@ -16,40 +18,55 @@ const SwitchThumb = SwitchPrimitive.Thumb;
 const storageLabel = (bytes: number) =>
   bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 
-interface UserMenuProps {
-  trigger?: ReactElement;
+/** 用户菜单的触发器形态及浮层定位属性。 */
+export interface UserMenuProps {
+  variant?: "avatar" | "sidebar" | "header";
+  collapsed?: boolean;
+  className?: string;
   side?: PopoverProps["side"];
   align?: PopoverProps["align"];
 }
 
-/** 头像下拉菜单：会员/积分/存储/个人中心/订阅发票/CLI/通知/主题 Switch/退出 */
-export function UserMenu({ trigger, side = "bottom", align = "end" }: UserMenuProps = {}) {
+/**
+ * 全局用户菜单，统一会员、积分、存储、账户设置和主题切换。
+ * variant 只改变入口外观，菜单内容与账户数据保持一致。
+ */
+export function UserMenu({
+  variant = "avatar",
+  collapsed = false,
+  className,
+  side,
+  align,
+}: UserMenuProps = {}) {
   const router = useRouter();
   const { theme, toggle } = useTheme();
   const { user, logout } = useAuth();
   const { account } = useAccount();
   const isDark = theme === "dark";
+  const plan = account?.plan ?? "Free";
+  const credits = account?.credits ?? 0;
+  const trigger =
+    variant === "sidebar" ? (
+      <SidebarTrigger plan={plan} credits={credits} collapsed={collapsed} className={className} aria-label="用户菜单" />
+    ) : variant === "header" ? (
+      <HeaderTrigger plan={plan} credits={credits} className={className} aria-label="用户菜单" />
+    ) : (
+      <AvatarTrigger className={className} aria-label="用户菜单" />
+    );
+  const resolvedSide = side ?? (variant === "sidebar" ? (collapsed ? "right" : "top") : "bottom");
+  const resolvedAlign = align ?? (variant === "sidebar" ? (collapsed ? "end" : "start") : "end");
 
   return (
     <Popover
       mode="click"
-      side={side}
-      align={align}
+      side={resolvedSide}
+      align={resolvedAlign}
       sideOffset={8}
       ariaLabel="用户菜单"
       contentRole="menu"
       showArrow={false}
       contentClassName={`${styles.content} glass-strong glass-sheen`}
-      trigger={
-        trigger ?? (
-          <button className={styles.trigger} aria-label="用户菜单">
-            <span className={styles.avatar}>
-              <User size={16} />
-            </span>
-            <span className={styles.avatarDot} />
-          </button>
-        )
-      }
+      trigger={trigger}
     >
       <>
         {/* 会员头卡 */}

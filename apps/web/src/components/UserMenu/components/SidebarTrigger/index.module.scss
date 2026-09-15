@@ -1,9 +1,9 @@
 .root {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   width: 100%;
-  justify-content: flex-start;
   min-height: 42px;
   padding: 5px 7px;
   border: 1px solid transparent;
@@ -18,16 +18,16 @@
   &:hover,
   &:focus-visible,
   &[data-state="open"] {
-    background: var(--nav-hover);
     border-color: var(--sider-border);
     outline: none;
+    background: var(--nav-hover);
   }
 }
 
 .credits {
   display: inline-flex;
-  align-items: center;
   flex: none;
+  align-items: center;
   gap: 4px;
   color: var(--muted-foreground);
   font-size: 11px;
@@ -36,9 +36,9 @@
 
 .avatar {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  flex: none;
   width: 29px;
   height: 29px;
   border-radius: 9px;
@@ -59,9 +59,9 @@
 
 .collapsed {
   flex-direction: column-reverse;
+  gap: 11px;
   width: 40px;
   padding: 7px 2px;
-  gap: 11px;
 
   .plan {
     padding: 3px 4px;

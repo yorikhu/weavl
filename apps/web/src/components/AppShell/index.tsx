@@ -14,12 +14,9 @@ import {
   Workflow,
   FolderOpen,
 } from "lucide-react";
-import { StarburstLogo } from "@/components/StarburstLogo";
 import { WeavlBrand } from "@/components/WeavlBrand";
 import { Popover } from "@/components/Popover";
 import { UserMenu } from "@/components/UserMenu";
-import { SidebarAccountTrigger } from "@/components/SidebarAccountTrigger";
-import { useAccount } from "@/provider/AccountProvider";
 import styles from "./index.module.scss";
 import { useAuth } from "@/provider/AuthProvider";
 
@@ -34,11 +31,11 @@ const NAV_ITEMS = [
 const SIDEBAR_STATE_KEY = "weavl:sidebar-state";
 const SIDEBAR_NARROW_QUERY = "(max-width: 1180px)";
 
+/** 应用主框架，负责全局侧栏、导航、登录入口以及侧栏响应式收起状态。 */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAgentPage = pathname === "/agent" || pathname.startsWith("/agent/");
   const { user, loading } = useAuth();
-  const { account } = useAccount();
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarReady, setSidebarReady] = useState(false);
 
@@ -94,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <span className={styles.logoSlotRoot}>
                 <span className={styles.logoLayer}>
-                  <StarburstLogo size={22} />
+                  <WeavlBrand variant="icon" iconSize={22} />
                 </span>
                 <span className={styles.expandLayer}>
                   <PanelLeftOpen size={18} />
@@ -154,18 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!loading && (
           <div className={styles.siderBottom}>
             {user ? (
-              <UserMenu
-                side={collapsed ? "right" : "top"}
-                align={collapsed ? "end" : "start"}
-                trigger={
-                  <SidebarAccountTrigger
-                    credits={account?.credits ?? 0}
-                    plan={account?.plan ?? "Free"}
-                    collapsed={collapsed}
-                    aria-label="用户菜单"
-                  />
-                }
-              />
+              <UserMenu variant="sidebar" collapsed={collapsed} />
             ) : collapsed ? (
               <Popover
                 mode="hover"

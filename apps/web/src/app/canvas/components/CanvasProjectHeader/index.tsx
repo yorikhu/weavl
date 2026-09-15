@@ -3,11 +3,9 @@
 import type { RefObject } from "react";
 import { Bot, ChevronDown, Home, Layers, Plus, Trash2 } from "lucide-react";
 import { Popover } from "@/components/Popover";
-import { StarburstLogo } from "@/components/StarburstLogo";
+import { WeavlBrand } from "@/components/WeavlBrand";
 import { UserMenu } from "@/components/UserMenu";
 import { HeaderCapsule } from "@/components/HeaderCapsule";
-import { AccountHeaderCapsule } from "@/components/AccountHeaderCapsule";
-import { useAccount } from "@/provider/AccountProvider";
 import styles from "./index.module.scss";
 
 interface CanvasProjectHeaderProps {
@@ -37,7 +35,6 @@ export function CanvasProjectHeader({
   onToggleAgent,
   agentButtonRef,
 }: CanvasProjectHeaderProps) {
-  const { account } = useAccount();
   return (
     <div className={styles.topbar}>
       <div className={styles.topbarLeft}>
@@ -60,7 +57,7 @@ export function CanvasProjectHeader({
                 aria-label="打开项目菜单"
                 aria-expanded={projectMenuOpen}
               >
-                <StarburstLogo size={19} />
+                <WeavlBrand variant="icon" iconSize={19} />
                 <ChevronDown
                   size={13}
                   className={`${styles.projectMenuChevron} ${projectMenuOpen ? styles.projectMenuChevronOpen : ""}`}
@@ -105,16 +102,7 @@ export function CanvasProjectHeader({
         </div>
       </div>
       <div className={styles.topbarRight}>
-        <UserMenu
-          trigger={
-            <AccountHeaderCapsule
-              amount={account?.credits ?? 0}
-              plan={account?.plan ?? "Free"}
-              className={styles.canvasHeaderCapsule}
-              aria-label="用户菜单"
-            />
-          }
-        />
+        <UserMenu variant="header" className={styles.canvasHeaderCapsule} />
         <HeaderCapsule
           ref={agentButtonRef}
           className={styles.canvasHeaderCapsule}

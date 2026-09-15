@@ -1,0 +1,35 @@
+.trigger {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: linear-gradient(to top right, #6b6b74, #8a8a92);
+  color: #fff;
+  transition: box-shadow 0.2s;
+}
+
+.trigger[data-state="open"] .avatar,
+.trigger:hover .avatar {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+
+.dot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--background);
+  border-radius: 999px;
+  background: var(--success);
+}
