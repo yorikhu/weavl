@@ -5,6 +5,26 @@ import { createBasicNode } from "../utils/nodeFactory";
 import styles from "../page.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
 
+const HANDLE_VISUAL_OFFSET = 15;
+const HANDLE_MAGNET_RADIUS = 40;
+
+function getHandleDistance(handle: HTMLElement, pointerX: number, pointerY: number) {
+  const rect = handle.getBoundingClientRect();
+  const scale = handle.offsetWidth > 0 ? rect.width / handle.offsetWidth : 1;
+  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const isLeft = handle.classList.contains("react-flow__handle-left");
+  const surface = handle.closest(".react-flow__node")?.querySelector<HTMLElement>("[data-canvas-node-surface]");
+  const surfaceRect = surface?.getBoundingClientRect();
+
+  /* 吸附区只存在于卡片左右外侧；指针进入卡片内部后立即失效。 */
+  if (surfaceRect && (isLeft ? pointerX >= surfaceRect.left : pointerX <= surfaceRect.right)) return null;
+
+  const visualOffsetX = (isLeft ? -HANDLE_VISUAL_OFFSET : HANDLE_VISUAL_OFFSET) * safeScale;
+  const screenDx = pointerX - (rect.left + rect.width / 2 + visualOffsetX);
+  const screenDy = pointerY - (rect.top + rect.height / 2);
+  return { safeScale, screenDx, screenDy, distanceSq: screenDx * screenDx + screenDy * screenDy };
+}
+
 /** 连线、磁吸、目标预览与拖线到空白处新建节点的交互。 */
 export function useCanvasConnections(
   nodes: Node[],
@@ -22,6 +42,7 @@ export function useCanvasConnections(
   });
   /** 标记当前这次拖线是否已由 React Flow 成功连接，防止 onConnectEnd 再按画布空白处理。 */
   const connectSucceededRef = useRef(false);
+  const pointerRef = useRef({ x: 0, y: 0 });
   /** 连接已存在节点 —— source handle 拖到 target handle 直接建边
      校验必须落在 target handle 上才建边（避免松手在任意节点上误连） */
   const isValidConnection = useCallback(
@@ -30,8 +51,21 @@ export function useCanvasConnections(
       target?: string | null;
       sourceHandle?: string | null;
       targetHandle?: string | null;
-    }) => Boolean(connection.target && connection.source && connection.target !== connection.source),
-    [],
+    }) => {
+      if (!connection.target || !connection.source || connection.target === connection.source) return false;
+      const targetHandle = document.querySelector<HTMLElement>(
+        `.react-flow__node[data-id="${connection.target}"] .${nodeStyles.cardHandle}.react-flow__handle-left`,
+      );
+      if (!targetHandle) return false;
+      const distance = getHandleDistance(targetHandle, pointerRef.current.x, pointerRef.current.y);
+      const duplicate = edges.some(
+        (edge) =>
+          (edge.source === connection.source && edge.target === connection.target) ||
+          (edge.source === connection.target && edge.target === connection.source),
+      );
+      return Boolean(distance && distance.distanceSq <= HANDLE_MAGNET_RADIUS ** 2 && !duplicate);
+    },
+    [edges],
   );
   /** 连接 helper —— 先移除同节点对的旧边（含隐形残留），再添加带 success 动画的新边 */
   const addEdgeDedup = useCallback(
@@ -88,12 +122,11 @@ export function useCanvasConnections(
       /** 开始拖线，重置 hover/preview/error 状态 */
       setHoverTargetId(null);
       setPreviewState(null);
-      setConnectError(null);
     },
     [connectionSourceActiveClass],
   );
 
-  /** 拖线连接状态 —— 三态预览 + 成功动效 + 失败 toast */
+  /** 拖线连接状态：可连接时强调边框，重复连接时覆盖蒙层。 */
   const [connectMenu, setConnectMenu] = useState<{
     sourceNodeId: string;
     flowPos: { x: number; y: number };
@@ -104,16 +137,12 @@ export function useCanvasConnections(
   const [hoverTargetId, setHoverTargetId] = useState<string | null>(null);
   /** 拖线中是否在合法位置上 —— true: 可连 / false: 不可连 / null: 拖到 pane */
   const [previewState, setPreviewState] = useState<"connectable" | "blocked" | null>(null);
-  /** 连接失败 toast */
-  const [connectError, setConnectError] = useState<string | null>(null);
-  const connectErrorTimerRef = useRef<number | null>(null);
 
   /** 鼠标靠近 handle 时，让最近的圆点显现并跟随指针。 */
   useEffect(() => {
     const board = document.querySelector(`.${styles.board}`);
     const handleMagnetClass = nodeStyles.handleMagnetActive;
-    const handleProximityClass = nodeStyles.handleProximityActive;
-    if (!board || !handleMagnetClass || !handleProximityClass) return;
+    if (!board || !handleMagnetClass) return;
     let activeHandle: HTMLElement | null = null;
     let animationFrameId: number | null = null;
     let pointerX = 0;
@@ -146,22 +175,21 @@ export function useCanvasConnections(
         if (handle.classList.contains("connectingfrom") || handle.closest(`.${connectionSourceActiveClass}`)) {
           continue;
         }
-        const rect = handle.getBoundingClientRect();
-        /* rect 是屏幕坐标，而伪元素位移处于会被 React Flow 缩放的画布坐标系。 */
-        const scale = handle.offsetWidth > 0 ? rect.width / handle.offsetWidth : 1;
-        const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-        const visualOffsetX = (handle.classList.contains("react-flow__handle-left") ? -15 : 15) * safeScale;
-        const screenDx = pointerX - (rect.left + rect.width / 2 + visualOffsetX);
-        const screenDy = pointerY - (rect.top + rect.height / 2);
-        const distanceSq = screenDx * screenDx + screenDy * screenDy;
-        if (distanceSq <= 40 * 40 && (!nearest || distanceSq < nearest.distanceSq)) {
+        /* 拖线期间只允许左侧 target 圆球参与吸附。 */
+        if (connectStartRef.current.nodeId && !handle.classList.contains("react-flow__handle-left")) continue;
+        const distance = getHandleDistance(handle, pointerX, pointerY);
+        if (
+          distance &&
+          distance.distanceSq <= HANDLE_MAGNET_RADIUS ** 2 &&
+          (!nearest || distance.distanceSq < nearest.distanceSq)
+        ) {
           nearest = {
             handle,
-            pullX: screenDx / safeScale,
-            pullY: screenDy / safeScale,
-            /* 反算画布缩放，使 80px 热区和屏幕坐标下 40px 的吸附半径严格一致。 */
-            hitSize: 80 / safeScale,
-            distanceSq,
+            pullX: distance.screenDx / distance.safeScale,
+            pullY: distance.screenDy / distance.safeScale,
+            /* 反算画布缩放，使外侧命中区始终保持 80px 直径。 */
+            hitSize: (HANDLE_MAGNET_RADIUS * 2) / distance.safeScale,
+            distanceSq: distance.distanceSq,
           };
         }
       }
@@ -169,13 +197,13 @@ export function useCanvasConnections(
       if (activeHandle !== nearest?.handle) {
         if (activeHandle) resetHandle(activeHandle);
         activeHandle = nearest?.handle ?? null;
-        activeHandle?.classList.add(handleMagnetClass);
+        if (activeHandle) {
+          activeHandle.classList.add(handleMagnetClass);
+          /* 先提交圆球原位样式，再写入位移，让吸附呈现一次极短滑动。 */
+          void activeHandle.offsetWidth;
+        }
       }
-      if (!nearest) {
-        board.classList.remove(handleProximityClass);
-        return;
-      }
-      board.classList.add(handleProximityClass);
+      if (!nearest) return;
       /* 换算回画布坐标，保证任意缩放比例下圆心都落在鼠标正下方。 */
       nearest.handle.style.setProperty("--handle-pull-x", `${nearest.pullX}px`);
       nearest.handle.style.setProperty("--handle-pull-y", `${nearest.pullY}px`);
@@ -184,8 +212,19 @@ export function useCanvasConnections(
 
     const onPointerMove = (event: Event) => {
       const pointer = event as PointerEvent;
+      const boardRect = board.getBoundingClientRect();
+      if (
+        pointer.clientX < boardRect.left ||
+        pointer.clientX > boardRect.right ||
+        pointer.clientY < boardRect.top ||
+        pointer.clientY > boardRect.bottom
+      ) {
+        onPointerLeave();
+        return;
+      }
       pointerX = pointer.clientX;
       pointerY = pointer.clientY;
+      pointerRef.current = { x: pointerX, y: pointerY };
       if (animationFrameId === null) {
         animationFrameId = window.requestAnimationFrame(updateNearestHandle);
       }
@@ -199,13 +238,13 @@ export function useCanvasConnections(
         resetHandle(activeHandle);
         activeHandle = null;
       }
-      board.classList.remove(handleProximityClass);
     };
-    board.addEventListener("pointermove", onPointerMove);
-    board.addEventListener("pointerleave", onPointerLeave);
+    /* 捕获阶段监听，保证指针位于 React Flow 连接线之上时仍能更新圆球吸附。 */
+    window.addEventListener("pointermove", onPointerMove, true);
+    window.addEventListener("blur", onPointerLeave);
     return () => {
-      board.removeEventListener("pointermove", onPointerMove);
-      board.removeEventListener("pointerleave", onPointerLeave);
+      window.removeEventListener("pointermove", onPointerMove, true);
+      window.removeEventListener("blur", onPointerLeave);
       onPointerLeave();
     };
   }, [connectionSourceActiveClass]);
@@ -234,70 +273,74 @@ export function useCanvasConnections(
 
   /** 判断某节点是否可作为连线目标（用于 hover 状态判定） */
   const isValidTarget = useCallback(
-    (targetId: string): { ok: boolean; reason?: string } => {
-      const sourceId = connectStartRef.current.nodeId;
-      if (!sourceId) return { ok: false, reason: "未在拖线状态" };
-      if (targetId === sourceId) return { ok: false, reason: "不能连到自身" };
+    (targetId: string, sourceId = connectStartRef.current.nodeId): boolean => {
+      if (!sourceId || targetId === sourceId) return false;
       /** 重复边校验 */
       const dup = edges.some(
         (e) => (e.source === sourceId && e.target === targetId) || (e.source === targetId && e.target === sourceId),
       );
-      if (dup) return { ok: false, reason: "已存在连线" };
-      return { ok: true };
+      return !dup;
     },
     [edges],
   );
 
-  /** 节点 hover 同步 + pane 兜底：通过 mouseover/mouseout 监听 board */
+  /** 外侧连接点负责磁吸，卡片本体只负责目标视觉反馈。 */
   useEffect(() => {
     const board = document.querySelector(`.${styles.board}`);
     if (!board) return;
-    const onMouseOver: EventListener = (e) => {
+    const onPointerMove = (event: Event) => {
       if (!connectStartRef.current.nodeId) return;
-      const t = e.target as HTMLElement | null;
-      if (!t) return;
-      const nodeEl = t.closest(".react-flow__node") as HTMLElement | null;
-      if (nodeEl?.dataset?.id) {
-        const targetId = nodeEl.dataset.id;
-        setHoverTargetId(targetId);
-        const v = isValidTarget(targetId);
-        setPreviewState(v.ok ? "connectable" : "blocked");
-        if (!v.ok) {
-          setConnectError(v.reason ?? null);
-        } else {
-          setConnectError(null);
+      const pointer = event as PointerEvent;
+      const boardRect = board.getBoundingClientRect();
+      if (
+        pointer.clientX < boardRect.left ||
+        pointer.clientX > boardRect.right ||
+        pointer.clientY < boardRect.top ||
+        pointer.clientY > boardRect.bottom
+      ) {
+        clearTarget();
+        return;
+      }
+      let nearest: { id: string; distanceSq: number } | null = null;
+      const handles = board.querySelectorAll<HTMLElement>(`.${nodeStyles.cardHandle}.react-flow__handle-left`);
+      for (const handle of handles) {
+        const nodeId = handle.closest<HTMLElement>(".react-flow__node")?.dataset.id;
+        if (!nodeId || nodeId === connectStartRef.current.nodeId) continue;
+        const distance = getHandleDistance(handle, pointer.clientX, pointer.clientY);
+        if (
+          distance &&
+          distance.distanceSq <= HANDLE_MAGNET_RADIUS ** 2 &&
+          (!nearest || distance.distanceSq < nearest.distanceSq)
+        ) {
+          nearest = { id: nodeId, distanceSq: distance.distanceSq };
         }
+      }
+
+      const nodeUnderPointer = document
+        .elementsFromPoint(pointer.clientX, pointer.clientY)
+        .map((element) => element.closest<HTMLElement>(".react-flow__node"))
+        .find((element) => Boolean(element?.dataset.id && element.dataset.id !== connectStartRef.current.nodeId));
+      const targetId = nearest?.id ?? nodeUnderPointer?.dataset.id;
+
+      if (targetId) {
+        setHoverTargetId(targetId);
+        setPreviewState(isValidTarget(targetId) ? "connectable" : "blocked");
       } else {
         setHoverTargetId(null);
         setPreviewState(null);
-        setConnectError(null);
       }
     };
-    const onMouseOut: EventListener = (e) => {
-      if (!connectStartRef.current.nodeId) return;
-      const me = e as MouseEvent;
-      const related = me.relatedTarget as HTMLElement | null;
-      const stillInNode = related?.closest(".react-flow__node");
-      if (!stillInNode) {
-        setHoverTargetId(null);
-        setPreviewState(null);
-        setConnectError(null);
-      }
+    const clearTarget = () => {
+      setHoverTargetId(null);
+      setPreviewState(null);
     };
-    board.addEventListener("mouseover", onMouseOver);
-    board.addEventListener("mouseout", onMouseOut);
+    window.addEventListener("pointermove", onPointerMove, true);
+    window.addEventListener("blur", clearTarget);
     return () => {
-      board.removeEventListener("mouseover", onMouseOver);
-      board.removeEventListener("mouseout", onMouseOut);
+      window.removeEventListener("pointermove", onPointerMove, true);
+      window.removeEventListener("blur", clearTarget);
     };
   }, [isValidTarget]);
-
-  /** 连接失败时短暂显示 toast */
-  const showConnectError = useCallback((msg: string) => {
-    setConnectError(msg);
-    if (connectErrorTimerRef.current) window.clearTimeout(connectErrorTimerRef.current);
-    connectErrorTimerRef.current = window.setTimeout(() => setConnectError(null), 1800);
-  }, []);
 
   /** 根据 previewState 给目标节点加 .connectable-target / .blocked-target class */
   useEffect(() => {
@@ -323,11 +366,9 @@ export function useCanvasConnections(
       connectSucceededRef.current = false;
       const wasHoverId = hoverTargetId;
       const wasPreview = previewState;
-      const wasError = connectError;
-      /** 拖线结束，重置 hover/preview/error 状态 */
+      /** 拖线结束，重置目标预览状态。 */
       setHoverTargetId(null);
       setPreviewState(null);
-      setConnectError(null);
       /* onConnect 已经完成本次连接时，不能再根据松手 DOM 位置弹出创建菜单。 */
       if (!start.nodeId || didConnect) return;
       const target = event.target as HTMLElement | null;
@@ -338,12 +379,6 @@ export function useCanvasConnections(
 
       /** 根据 previewState 决定行为 */
       if (wasPreview === "blocked" && wasHoverId) {
-        /** 不可连：— 若只是"已存在连线"（多半是隐形旧边），直接替换修复；其他原因弹 toast */
-        if (wasHoverId && wasError === "已存在连线") {
-          addEdgeDedup(start.nodeId!, wasHoverId);
-          return;
-        }
-        showConnectError(wasError ?? "无法连接到该节点");
         return;
       }
       if (wasPreview === "connectable" && wasHoverId) {
@@ -352,32 +387,20 @@ export function useCanvasConnections(
         return;
       }
 
-      /** 检测松手点是否压到任意节点 —— 通过 :hover 取得 React Flow 已缓存的命中节点 */
-      const hovered = document.querySelectorAll(".react-flow__node:hover");
-      let targetNodeId: string | null = null;
-      hovered.forEach((el) => {
-        const nodeEl = el as HTMLElement;
-        /** 排除源节点本身 */
-        if (!nodeEl.dataset?.id) return;
-        if (nodeEl.dataset.id === start.nodeId) return;
-        targetNodeId = nodeEl.dataset.id;
-      });
-      /** 兜底：如果 :hover 没拿到，用 document.elementFromPoint 找 */
-      if (!targetNodeId) {
-        const underEl = document.elementFromPoint(clientX, clientY);
-        if (underEl) {
-          const nodeEl = underEl.closest(".react-flow__node") as HTMLElement | null;
-          if (nodeEl?.dataset?.id && nodeEl.dataset.id !== start.nodeId) {
-            targetNodeId = nodeEl.dataset.id;
-          }
+      /* 卡片内部不参与磁吸动画，但松手落在卡片上仍可直接连接。 */
+      const droppedNode = document
+        .elementFromPoint(clientX, clientY)
+        ?.closest<HTMLElement>(".react-flow__node");
+      const droppedNodeId = droppedNode?.dataset.id;
+      if (droppedNodeId && droppedNodeId !== start.nodeId) {
+        /* connectStartRef 已清理，使用本次结束事件保存下来的源节点校验。 */
+        const validity = isValidTarget(droppedNodeId, start.nodeId);
+        if (validity) {
+          addEdgeDedup(start.nodeId, droppedNodeId);
         }
-      }
-
-      if (targetNodeId) {
-        /** 落在已有节点上 → 直接连（绕开 strict + connectionRadius 的 18px 限制；dedup 修复隐形旧边） */
-        addEdgeDedup(start.nodeId!, targetNodeId);
         return;
       }
+      if (droppedNodeId === start.nodeId) return;
 
       /** 落在 pane 上 → 弹菜单让用户挑新建节点类型 */
       const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
@@ -399,9 +422,8 @@ export function useCanvasConnections(
       screenToFlowPosition,
       hoverTargetId,
       previewState,
-      connectError,
-      showConnectError,
       addEdgeDedup,
+      isValidTarget,
       connectionSourceActiveClass,
     ],
   );
@@ -431,7 +453,6 @@ export function useCanvasConnections(
     connectMenu,
     setConnectMenu,
     pendingLineStart,
-    connectError,
     isValidConnection,
     onConnect,
     onConnectStart,
