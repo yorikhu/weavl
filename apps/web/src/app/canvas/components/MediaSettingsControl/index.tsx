@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { ChevronDown } from "lucide-react";
+import { Popover } from "@/components/Popover";
 import { getMediaCardSize, type MediaDimensionOption } from "../../utils/mediaSizing";
 import styles from "./index.module.scss";
 
@@ -99,7 +99,6 @@ export function MediaSettingsControl({
   onDurationChange,
   onCountChange,
 }: MediaSettingsControlProps) {
-  const controlRef = useRef<HTMLDivElement | null>(null);
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
   const summary = [
     ratio,
@@ -111,33 +110,31 @@ export function MediaSettingsControl({
     .filter(Boolean)
     .join(" · ");
 
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsidePress = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Node && !controlRef.current?.contains(target)) onOpenChange(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsidePress, true);
-    return () => document.removeEventListener("pointerdown", closeOnOutsidePress, true);
-  }, [open, onOpenChange]);
-
   return (
-    <div ref={controlRef} className={styles.wrap}>
-      <button type="button" className={styles.trigger} onClick={() => onOpenChange(!open)}>
-        {selectedDimension && <RatioMark option={selectedDimension} compact />}
-        <span>{summary}</span>
-        <ChevronDown size={10} className={open ? styles.chevronOpen : undefined} />
-      </button>
-      {open && (
-        <div className={styles.panel}>
+    <div className={styles.wrap}>
+      <Popover
+        mode="click"
+        open={open}
+        onOpenChange={onOpenChange}
+        side="top"
+        align="start"
+        sideOffset={10}
+        collisionPadding={16}
+        showArrow={false}
+        autoFocusOnOpen={false}
+        contentClassName={styles.panel}
+        trigger={
+          <button type="button" className={styles.trigger}>
+            {selectedDimension && <RatioMark option={selectedDimension} compact />}
+            <span>{summary}</span>
+            <ChevronDown size={10} className={open ? styles.chevronOpen : undefined} />
+          </button>
+        }
+      >
+        <div className={styles.panelBody}>
           <ChoiceGroup label={qualityLabel} values={qualities} value={quality} onChange={onQualityChange} />
           {resolution && resolutions && onResolutionChange && (
-            <ChoiceGroup
-              label="清晰度"
-              values={resolutions}
-              value={resolution}
-              onChange={onResolutionChange}
-            />
+            <ChoiceGroup label="清晰度" values={resolutions} value={resolution} onChange={onResolutionChange} />
           )}
           <section className={styles.section}>
             <h4>比例</h4>
@@ -173,7 +170,7 @@ export function MediaSettingsControl({
             onChange={(item) => onCountChange(Number(item))}
           />
         </div>
-      )}
+      </Popover>
     </div>
   );
 }
