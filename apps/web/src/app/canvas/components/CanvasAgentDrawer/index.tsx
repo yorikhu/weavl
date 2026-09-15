@@ -4,7 +4,7 @@
 
 import type { ChangeEvent, RefObject } from "react";
 import { Bot, Plus, Send, X } from "lucide-react";
-import { ComposerTextarea } from "@/components/ComposerTextarea";
+import { Form } from "@/components/Form";
 import styles from "./index.module.scss";
 
 export interface AgentMessage {
@@ -80,7 +80,7 @@ export function CanvasAgentDrawer({
             </button>
           </div>
         )}
-        <ComposerTextarea
+        <Form.ComposerTextarea
           className={styles.agentDrawerInput}
           placeholder="告诉 Agent 想做什么…"
           value={input}

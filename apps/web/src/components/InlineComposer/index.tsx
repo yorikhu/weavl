@@ -3,14 +3,18 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, type KeyboardEvent } from "react";
 import styles from "./index.module.scss";
 
+/** 可插入 InlineComposer 光标位置的结构化标签。 */
 export type ComposerToken = { type: "asset" | "model" | "skill"; id: string; label: string; instanceId?: string };
+
+/** 供父组件插入标签、聚焦或清空编辑器的命令句柄。 */
 export type InlineComposerHandle = {
   insertToken: (token: ComposerToken, focus?: boolean) => void;
   focus: () => void;
   clear: () => void;
 };
 
-type Props = {
+/** InlineComposer 的受控属性。 */
+export type InlineComposerProps = {
   value: string;
   onValueChange: (value: string) => void;
   onTokenRemove: (token: ComposerToken) => void;
@@ -69,7 +73,11 @@ function readText(root: HTMLElement) {
   return (clone.textContent || "").replaceAll("\u200b", "");
 }
 
-export const InlineComposer = forwardRef<InlineComposerHandle, Props>(function InlineComposer(
+/**
+ * 支持文本与资产、模型、Skill 标签混排的富创作输入器。
+ * 用于首页和 Agent 等需要在光标处插入标签的场景；普通表单多行输入使用 Form.ComposerTextarea。
+ */
+export const InlineComposer = forwardRef<InlineComposerHandle, InlineComposerProps>(function InlineComposer(
   {
     value,
     onValueChange,

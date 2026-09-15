@@ -7,6 +7,19 @@
   text-decoration: none;
 }
 
+.icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground);
+}
+
+.logo {
+  display: block;
+  color: currentColor;
+}
+
 .text {
   display: inline-flex;
   align-items: baseline;

@@ -9,8 +9,10 @@ import styles from "./index.module.scss";
 type Side = "top" | "right" | "bottom" | "left";
 type Align = "start" | "center" | "end";
 
+/** Popover 的触发方式、定位、受控开关及内容样式属性。 */
 export interface PopoverProps {
-  mode: "click" | "hover";
+  mode?: "click" | "hover";
+  variant?: "default" | "action";
   trigger: ReactElement;
   children: ReactNode;
   side?: Side;
@@ -33,30 +35,35 @@ export interface PopoverProps {
 const classes = (...names: Array<string | undefined>) => names.filter(Boolean).join(" ");
 
 /**
- * 全局浮层：hover 用于不可交互的即时提示，click 用于菜单和其他可交互内容。
+ * 全局浮层。hover 用于即时提示，click 用于菜单等可交互内容；action 提供紧凑操作面板样式。
  */
 export function Popover({
-  mode,
+  mode = "click",
+  variant = "default",
   trigger,
   children,
   side = "top",
-  align = "center",
-  sideOffset = 2,
+  align,
+  sideOffset,
   collisionPadding = 12,
   contentClassName,
   ariaLabel,
   contentRole,
-  showArrow = true,
+  showArrow,
   open,
   onOpenChange,
   hint,
-  hintAlign = align,
+  hintAlign,
   preserveOpenOnOutsideSelector,
   autoFocusOnOpen = true,
   openWhen,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [internalClickOpen, setInternalClickOpen] = useState(false);
+  const resolvedAlign = align ?? (variant === "action" && mode === "click" ? "start" : "center");
+  const resolvedHintAlign = hintAlign ?? resolvedAlign;
+  const resolvedSideOffset = sideOffset ?? (variant === "action" ? 4 : 2);
+  const resolvedShowArrow = showArrow ?? variant !== "action";
 
   if (mode === "hover") {
     return (
@@ -76,13 +83,13 @@ export function Popover({
             <TooltipPrimitive.Content
               className={classes(styles.content, styles.hoverContent, contentClassName)}
               side={side}
-              align={align}
-              sideOffset={sideOffset}
+              align={resolvedAlign}
+              sideOffset={resolvedSideOffset}
               collisionPadding={collisionPadding}
               aria-label={ariaLabel}
             >
               {children}
-              {showArrow && <TooltipPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
+              {resolvedShowArrow && <TooltipPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
             </TooltipPrimitive.Content>
           </TooltipPrimitive.Portal>
         </TooltipPrimitive.Root>
@@ -118,22 +125,27 @@ export function Popover({
               <TooltipPrimitive.Content
                 className={classes(styles.content, styles.hoverContent)}
                 side={side}
-                align={hintAlign}
-                sideOffset={sideOffset}
+                align={resolvedHintAlign}
+                sideOffset={resolvedSideOffset}
                 collisionPadding={collisionPadding}
               >
                 {hint}
-                {showArrow && <TooltipPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
+                {resolvedShowArrow && <TooltipPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
               </TooltipPrimitive.Content>
             </TooltipPrimitive.Portal>
           )}
           {clickOpen && (
             <PopoverPrimitive.Portal>
               <PopoverPrimitive.Content
-                className={classes(styles.content, styles.clickContent, contentClassName)}
+                className={classes(
+                  styles.content,
+                  styles.clickContent,
+                  variant === "action" ? styles.actionContent : undefined,
+                  contentClassName,
+                )}
                 side={side}
-                align={align}
-                sideOffset={sideOffset}
+                align={resolvedAlign}
+                sideOffset={resolvedSideOffset}
                 collisionPadding={collisionPadding}
                 aria-label={ariaLabel}
                 role={contentRole}
@@ -153,7 +165,7 @@ export function Popover({
                 }}
               >
                 {children}
-                {showArrow && <PopoverPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
+                {resolvedShowArrow && <PopoverPrimitive.Arrow className={styles.arrow} width={12} height={6} />}
               </PopoverPrimitive.Content>
             </PopoverPrimitive.Portal>
           )}

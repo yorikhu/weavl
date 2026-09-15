@@ -5,6 +5,7 @@ import type { ButtonHTMLAttributes } from "react";
 
 import styles from "./index.module.scss";
 
+/** HeaderCapsule 的选中状态及末端缩进配置。 */
 export interface HeaderCapsuleProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean;
   endInset?: boolean;

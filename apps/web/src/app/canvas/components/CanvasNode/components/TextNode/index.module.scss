@@ -137,6 +137,36 @@
   width: max-content;
 }
 
+.textNodeResizeControl {
+  left: calc(100% - 17px) !important;
+  top: calc(100% - 17px) !important;
+  z-index: 4;
+  width: 12px !important;
+  height: 12px !important;
+  translate: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    linear-gradient(
+        135deg,
+        transparent 0 52%,
+        var(--canvas-node-muted) 52% 60%,
+        transparent 60% 70%,
+        var(--canvas-node-muted) 70% 78%,
+        transparent 78% 100%
+      )
+      center / 10px 10px no-repeat !important;
+  opacity: 0;
+  pointer-events: none;
+  cursor: nwse-resize;
+  transition: opacity 120ms ease;
+}
+
+.textNodeEditorWrap:hover .textNodeResizeControl {
+  opacity: 0.78;
+  pointer-events: auto;
+}
+
 .textNodeEditing {
   /* v18：编辑态不做高亮变化，仅可编辑 */
   border-color: var(--canvas-node-border);
@@ -144,10 +174,9 @@
   box-shadow: var(--canvas-node-shadow);
   cursor: text;
   user-select: text;
-  /* v9：宽高都可以拉；容器定高时正文区弹性填充 */
+  /* 容器定高时正文区弹性填充；尺寸由节点级缩放柄统一管理。 */
   display: flex;
   flex-direction: column;
-  resize: both;
   min-width: 300px;
   max-width: 720px;
   min-height: 120px;
@@ -158,20 +187,6 @@
     color: var(--canvas-node-foreground);
     -webkit-text-fill-color: var(--canvas-node-foreground);
     caret-color: var(--canvas-node-foreground);
-  }
-  /* 缩放标识向内收，避免紧贴节点边缘。 */
-  &::-webkit-resizer {
-    background: linear-gradient(
-        135deg,
-        transparent 0 52%,
-        var(--canvas-node-muted) 52% 60%,
-        transparent 60% 70%,
-        var(--canvas-node-muted) 70% 78%,
-        transparent 78% 100%
-      )
-      2px 2px / 10px 10px no-repeat;
-    opacity: 0.78;
-    cursor: nwse-resize;
   }
 }
 

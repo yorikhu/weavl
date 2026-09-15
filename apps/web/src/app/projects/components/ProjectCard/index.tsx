@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useId, useRef, useState } from "react";
 import { ArrowUpRight, Copy, FolderInput, ImagePlus, MoreHorizontal, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import type { CanvasProject } from "@weavl/shared";
-import { ActionPopover } from "@/components/ActionPopover";
+import { Popover } from "@/components/Popover";
 import { Form } from "@/components/Form";
 import { canvasHref } from "@/utils/openCanvas";
 import { createTiltCardHandlers } from "@/utils/tiltCard";
@@ -189,7 +189,7 @@ export function ProjectCard({
                 disabled={saving}
               />
             ) : (
-              <ActionPopover
+              <Popover variant="action"
                 mode="hover"
                 side="top"
                 openWhen={isOverflowing}
@@ -201,7 +201,7 @@ export function ProjectCard({
                 }
               >
                 {project.name}
-              </ActionPopover>
+              </Popover>
             )}
           </h2>
           {renameError && <span className={styles.renameError}>{renameError}</span>}
@@ -210,7 +210,7 @@ export function ProjectCard({
             {new Date(trash ? project.deletedAt || project.updatedAt : project.updatedAt).toLocaleString("zh-CN")}
           </p>
         </div>
-        <ActionPopover
+        <Popover variant="action"
           mode="click"
           side="bottom"
           align="end"
@@ -272,7 +272,7 @@ export function ProjectCard({
               </>
             )}
           </div>
-        </ActionPopover>
+        </Popover>
       </div>
     </article>
   );

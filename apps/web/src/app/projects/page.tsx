@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Folder, FolderPlus, Layers, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import type { CanvasProject, ProjectFolder } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
-import { ActionPopover } from "@/components/ActionPopover";
-import { ConfirmModal } from "@/components/ConfirmModal";
+import { Popover } from "@/components/Popover";
 import { Form } from "@/components/Form";
 import { Modal } from "@/components/Modal";
 import { toast } from "@/hooks/useToast";
@@ -303,17 +302,17 @@ export default function ProjectsPage() {
                   onClick={() => setView(`folder:${folder.id}`)}
                 >
                   <Folder size={16} />
-                  <ActionPopover
+                  <Popover variant="action"
                     mode="hover"
                     openWhen={isOverflowing}
                     contentClassName={styles.namePopover}
                     trigger={<span>{folder.name}</span>}
                   >
                     {folder.name}
-                  </ActionPopover>
+                  </Popover>
                   <small>{projects.filter((project) => project.folderId === folder.id).length}</small>
                 </button>
-                <ActionPopover
+                <Popover variant="action"
                   mode="click"
                   side="right"
                   align="start"
@@ -349,7 +348,7 @@ export default function ProjectsPage() {
                       删除文件夹
                     </button>
                   </div>
-                </ActionPopover>
+                </Popover>
               </div>
             ))}
             <div className={styles.sideDivider} />
@@ -451,7 +450,8 @@ export default function ProjectsPage() {
           </Modal>
         )}
         {confirmation && (
-          <ConfirmModal
+          <Modal
+            mode="confirm"
             open
             {...getConfirmationCopy(confirmation)}
             danger

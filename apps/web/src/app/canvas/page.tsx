@@ -229,6 +229,7 @@ function CanvasInner() {
     editorElRef,
     composingRef,
     enterEdit,
+    focusNode,
     exitEdit,
     saveEdit,
     commitEdit,
@@ -242,7 +243,6 @@ function CanvasInner() {
     connectMenu,
     setConnectMenu,
     pendingLineStart,
-    connectError,
     isValidConnection,
     onConnect,
     onConnectStart,
@@ -493,6 +493,7 @@ function CanvasInner() {
         buffer: editBuffer,
         setBuffer: setEditBuffer,
         enterEdit,
+        focusNode,
         saveEdit,
         commitEdit,
         commitImageEdit,
@@ -599,6 +600,10 @@ function CanvasInner() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onSelectionChange={onSelectionChange}
+            onNodeDoubleClick={(event, node) => {
+              event.stopPropagation();
+              focusNode(node.id);
+            }}
             onPaneContextMenu={onPaneContextMenu}
             onPaneClick={() => {
               setContextMenu(null);
@@ -644,14 +649,6 @@ function CanvasInner() {
 
           <CanvasViewportControls />
 
-          {/* 连线失败 toast */}
-          {connectError && (
-            <div className={styles.connectError} role="alert">
-              <X size={12} />
-              <span>无法连接：{connectError}</span>
-            </div>
-          )}
-
           <CanvasAddMenus
             addMenu={contextMenu}
             connectMenu={connectMenu}
@@ -682,7 +679,6 @@ function CanvasInner() {
           )}
         </div>
       </div>
-      );
     </EnterEditContext.Provider>
   );
 }

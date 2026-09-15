@@ -7,6 +7,7 @@ import { createContext, type MutableRefObject } from "react";
  * - editingId / editingKind：当前编辑的节点
  * - buffer：编辑中的临时数据（标题 + 文本）
  * - enterEdit/saveEdit/commitEdit：进入、保存、提交
+ * - focusNode：只负责将视口聚焦到节点，不改变编辑状态
  * - commitImageEdit / commitVideoEdit：图片/视频节点编辑提交
  * - editorElRef / composingRef：contentEditable DOM 引用 + IME 状态
  * - imageEditStateRef / videoEditStateRef：图片/视频编辑面板的实时 ref（点外部保存时取最新值）
@@ -18,6 +19,7 @@ export interface EditCtx {
   buffer: { title: string; text: string };
   setBuffer: (b: { title: string; text: string }) => void;
   enterEdit: (id: string, mode?: "manual" | "generate") => void;
+  focusNode: (id: string) => void;
   saveEdit: (id: string, title: string, text: string) => void;
   commitEdit: () => void;
   commitImageEdit:
@@ -88,6 +90,7 @@ export const EnterEditContext = createContext<EditCtx>({
   buffer: { title: "", text: "" },
   setBuffer: () => {},
   enterEdit: () => {},
+  focusNode: () => {},
   saveEdit: () => {},
   commitEdit: () => {},
   commitImageEdit: null,

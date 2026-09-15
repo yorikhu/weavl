@@ -1,18 +1,16 @@
 "use client";
 
-import { memo, useState } from "react";
-import dynamic from "next/dynamic";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { WeavlBrand } from "@/components/WeavlBrand";
+import { Animation } from "@/components/Animation";
 import { Form } from "@/components/Form";
 import { useAuth } from "@/provider/AuthProvider";
 import { useTheme } from "@/provider/ThemeProvider";
 import ui from "@/styles/studio.module.scss";
 import styles from "./page.module.scss";
-
-const AeroShards = memo(dynamic(() => import("@/components/AeroShards"), { ssr: false }));
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +39,7 @@ export default function LoginPage() {
   return (
     <main className={styles.screen}>
       <div className={styles.aeroLayer} aria-hidden="true">
-        <AeroShards
+        <Animation.AeroShards
           backgroundColor={theme === "dark" ? "#161618" : "#FFFFFF"}
           shardColor={theme === "dark" ? "#696973" : "#C2C7D0"}
           accentColor={theme === "dark" ? "#E4E4E7" : "#59606B"}

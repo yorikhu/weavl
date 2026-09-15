@@ -192,42 +192,49 @@
   stroke-linecap: butt;
 }
 
-/* 不可连态：prepend a class on the connection svg via custom logic */
-
 /* v32：拖线中目标节点合法时的连接线 */
 .flowRoot :global(.react-flow__connection.connectable .react-flow__connection-path) {
   stroke: #b5d4f4;
   stroke-width: 2.4;
   filter: drop-shadow(0 0 6px rgba(181, 212, 244, 0.85));
 }
-/* v32：拖线中目标节点不合法时的连接线 */
-.flowRoot :global(.react-flow__connection.blocked .react-flow__connection-path) {
-  stroke: #e24b4a;
-  stroke-width: 1.5;
-  stroke-dasharray: 4 3;
-  filter: none;
-  opacity: 0.7;
-}
-
-/* 拖线目标只改变不透明卡片的明暗，不再绘制外层蓝色边框或光晕。 */
+/* 可连接卡片只强化边框，保持内容和底色稳定。 */
 .flowRoot :global(.react-flow__node.connectable-target) {
   outline: none;
   box-shadow: none;
   opacity: 1;
-  filter: var(--canvas-node-target-filter);
-  transition: filter 0.16s ease;
 }
 
 .flowRoot :global(.react-flow__node.connectable-target [data-canvas-node-surface]) {
-  background: var(--canvas-node-target-background);
   border-color: var(--canvas-node-border-selected);
+  transition: border-color 80ms ease-out;
 }
 
+/* 已连接卡片覆盖等尺寸的模糊蒙层，以纯视觉方式表达不可重复连接。 */
 .flowRoot :global(.react-flow__node.blocked-target) {
   outline: none;
   opacity: 1;
-  filter: grayscale(1) brightness(0.72);
-  transition: filter 0.16s ease;
+}
+
+.flowRoot :global(.react-flow__node.blocked-target)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--canvas-node-background) 58%, transparent);
+  backdrop-filter: blur(5px) saturate(0.65);
+  pointer-events: none;
+  animation: blockedOverlayIn 80ms ease-out both;
+}
+
+@keyframes blockedOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* v32：新边 success 描绘动画 —— dashoffset 从大到 0（绘出），然后关键帧末尾 dasharray 变 0 让全长实线 */
@@ -247,30 +254,6 @@
 }
 .flowRoot :global(.react-flow__edge.success-draw .react-flow__edge-path) {
   animation: edgeDraw 0.32s ease-out forwards;
-}
-
-/* v32：失败边 shake */
-@keyframes edgeShake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-3px);
-  }
-  40% {
-    transform: translateX(3px);
-  }
-  60% {
-    transform: translateX(-2px);
-  }
-  80% {
-    transform: translateX(2px);
-  }
-}
-.flowRoot :global(.react-flow__edge.blocked-shake .react-flow__edge-path) {
-  stroke: #e24b4a !important;
-  animation: edgeShake 0.2s ease-in-out;
 }
 
 /* React Flow 拖线时不绘制底层实体握把；可见圆点统一由 .cardHandle::after 控制。 */
@@ -334,37 +317,6 @@
 
 
 
-
-/* v32：连线失败 toast */
-.connectError {
-  position: absolute;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(20, 20, 22, 0.96);
-  backdrop-filter: blur(12px);
-  border: 0.5px solid #e24b4a;
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  color: #f7c1c1;
-  font-size: 12px;
-  z-index: 50;
-  animation: toastDrop 0.2s ease;
-}
-@keyframes toastDrop {
-  from {
-    transform: translate(-50%, -8px);
-    opacity: 0;
-  }
-  to {
-    transform: translate(-50%, 0);
-    opacity: 1;
-  }
-}
 
 
 

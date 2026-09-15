@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { AgentConversation, Asset, CanvasProject, MarketEntry, ModelKind } from "@weavl/shared";
 import { AppShell } from "@/components/AppShell";
-import { ActionPopover } from "@/components/ActionPopover";
+import { Popover } from "@/components/Popover";
 import { InlineComposer, type ComposerToken, type InlineComposerHandle } from "@/components/InlineComposer";
 import { Form } from "@/components/Form";
 import { jsonBody, studioApi } from "@/lib/studioApi";
@@ -612,7 +612,7 @@ export default function AgentPage() {
                   {composerTools.map((tool) => {
                     const Icon = tool.icon;
                     return (
-                      <ActionPopover
+                      <Popover variant="action"
                         key={tool.id}
                         hint={tool.label}
                         open={openTool === tool.id}
@@ -631,12 +631,12 @@ export default function AgentPage() {
                         }
                       >
                         {renderToolContent(tool.id)}
-                      </ActionPopover>
+                      </Popover>
                     );
                   })}
                   <span className={styles.modeLabel}>{mode === "auto" ? "自动" : "手动"} · 模拟</span>
                 </div>
-                <ActionPopover
+                <Popover variant="action"
                   mode="hover"
                   trigger={
                     <button
@@ -651,7 +651,7 @@ export default function AgentPage() {
                   }
                 >
                   发送
-                </ActionPopover>
+                </Popover>
               </div>
             </div>
             <p className={styles.disclaimer}>
