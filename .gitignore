@@ -16,6 +16,7 @@ out/
 # logs
 logs/
 apps/api/data/
+apps/api/src/generated/
 *.log
 npm-debug.log*
 pnpm-debug.log*

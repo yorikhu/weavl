@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String          @id
+  email          String          @unique
+  name           String
+  passwordHash   String          @map("password_hash")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  account        Account?
+  accountEvents  AccountEvent[]
+  sessions       Session[]
+  assetFolders   AssetFolder[]
+  assets         Asset[]
+  projectFolders ProjectFolder[]
+  projects       Project[]
+  conversations  Conversation[]
+  skills         Skill[]
+  workflows      Workflow[]
+  workflowRuns   WorkflowRun[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt], map: "sessions_expiry_idx")
+  @@map("sessions")
+}
+
+model Account {
+  userId      String  @id @map("user_id")
+  plan        String  @default("Free")
+  credits     Int     @default(20)
+  pendingPlan String? @map("pending_plan")
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model AccountEvent {
+  id        String    @id
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  detail    String
+  delta     Int?
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "account_events_user_idx")
+  @@map("account_events")
+}
+
+model AssetFolder {
+  id        String        @id
+  ownerId   String        @map("owner_id")
+  parentId  String?       @map("parent_id")
+  name      String
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parent    AssetFolder?  @relation("AssetFolderTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  AssetFolder[] @relation("AssetFolderTree")
+  assets    Asset[]
+
+  @@index([ownerId, parentId], map: "asset_folders_owner_idx")
+  @@map("asset_folders")
+}
+
+model Asset {
+  id          String            @id
+  ownerId     String            @map("owner_id")
+  folderId    String?           @map("folder_id")
+  name        String
+  kind        String
+  source      String
+  sourceId    String?           @map("source_id")
+  inLibrary   Boolean           @default(true) @map("in_library")
+  deletedAt   DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner       User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder      AssetFolder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  versions    AssetVersion[]
+  messageRefs MessageAssetRef[]
+
+  @@index([ownerId, deletedAt, updatedAt(sort: Desc)], map: "assets_owner_idx")
+  @@map("assets")
+}
+
+model AssetVersion {
+  id          String            @id
+  assetId     String            @map("asset_id")
+  name        String
+  mimeType    String            @map("mime_type")
+  size        BigInt
+  content     String?
+  storageKey  String?           @map("storage_key")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  asset       Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  messageRefs MessageAssetRef[]
+
+  @@index([assetId, createdAt], map: "asset_versions_asset_idx")
+  @@map("asset_versions")
+}
+
+model ProjectFolder {
+  id        String    @id
+  ownerId   String    @map("owner_id")
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  projects  Project[]
+
+  @@map("project_folders")
+}
+
+model Project {
+  id              String         @id
+  ownerId         String         @map("owner_id")
+  folderId        String?        @map("folder_id")
+  name            String
+  coverUrl        String?        @map("cover_url")
+  coverStorageKey String?        @map("cover_storage_key")
+  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder          ProjectFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  canvases        Canvas[]
+  conversations   Conversation[]
+  workflowRuns    WorkflowRun[]
+
+  @@index([ownerId, deletedAt, updatedAt(sort: Desc)], map: "projects_owner_idx")
+  @@map("projects")
+}
+
+model Canvas {
+  id        String   @id
+  projectId String   @map("project_id")
+  name      String
+  nodes     Json     @default("[]")
+  edges     Json     @default("[]")
+  viewport  Json     @default("{\"x\":0,\"y\":0,\"zoom\":1}")
+  position  Int      @default(0)
+  version   Int      @default(1)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, position], map: "canvases_project_idx")
+  @@map("canvases")
+}
+
+model Conversation {
+  id        String                @id
+  ownerId   String                @map("owner_id")
+  projectId String?               @map("project_id")
+  title     String
+  archived  Boolean               @default(false)
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner     User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project   Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages  ConversationMessage[]
+
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String            @id
+  conversationId String            @map("conversation_id")
+  role           String
+  content        String
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  assetRefs      MessageAssetRef[]
+
+  @@index([conversationId, createdAt], map: "conversation_messages_idx")
+  @@map("conversation_messages")
+}
+
+model MessageAssetRef {
+  messageId String              @map("message_id")
+  assetId   String              @map("asset_id")
+  versionId String              @map("version_id")
+  message   ConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  asset     Asset               @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  version   AssetVersion        @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, assetId, versionId])
+  @@map("message_asset_refs")
+}
+
+model Skill {
+  id          String   @id
+  ownerId     String?  @map("owner_id")
+  title       String
+  description String
+  content     String
+  inputHint   String   @map("input_hint")
+  outputKind  String   @map("output_kind")
+  visibility  String
+  version     Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, visibility, updatedAt(sort: Desc)], map: "skills_owner_idx")
+  @@map("skills")
+}
+
+model Workflow {
+  id          String        @id
+  ownerId     String?       @map("owner_id")
+  title       String
+  description String
+  category    String
+  version     Int           @default(1)
+  status      String        @default("draft")
+  fields      Json          @default("[]")
+  stages      Json          @default("[]")
+  graph       Json?
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner       User?         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  runs        WorkflowRun[]
+
+  @@map("workflows")
+}
+
+model WorkflowRun {
+  id                 String   @id
+  ownerId            String   @map("owner_id")
+  workflowId         String   @map("workflow_id")
+  workflowVersion    Int      @map("workflow_version")
+  definitionSnapshot Json?    @map("definition_snapshot")
+  projectId          String?  @map("project_id")
+  inputs             Json
+  status             String
+  stages             Json
+  currentStage       Int      @default(0) @map("current_stage")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner              User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  workflow           Workflow @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  project            Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, updatedAt(sort: Desc)], map: "workflow_runs_owner_idx")
+  @@map("workflow_runs")
+}
+
+model ProviderChannel {
+  id               String               @id
+  provider         String
+  modelKind        String               @map("model_kind")
+  modelId          String               @map("model_id")
+  remoteModel      String               @map("remote_model")
+  label            String
+  baseUrl          String               @map("base_url")
+  apiKeyEnv        String               @map("api_key_env")
+  priority         Int                  @default(100)
+  enabled          Boolean              @default(true)
+  failureThreshold Int                  @default(3) @map("failure_threshold")
+  cooldownSeconds  Int                  @default(60) @map("cooldown_seconds")
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  requestLogs      ProviderRequestLog[]
+
+  @@index([modelKind, modelId, enabled, priority], map: "provider_channel_route_idx")
+  @@map("provider_channels")
+}
+
+model ProviderRequestLog {
+  id           String          @id
+  channelId    String          @map("channel_id")
+  requestKind  String          @map("request_kind")
+  status       String
+  latencyMs    Int             @map("latency_ms")
+  statusCode   Int?            @map("status_code")
+  errorMessage String?         @map("error_message")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  channel      ProviderChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt(sort: Desc)], map: "provider_logs_channel_idx")
+  @@map("provider_request_logs")
+}
+
+model LegacyRun {
+  id         String   @id
+  templateId String   @map("template_id")
+  state      Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([updatedAt(sort: Desc)], map: "legacy_runs_updated_idx")
+  @@map("legacy_runs")
+}

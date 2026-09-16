@@ -1,0 +1,72 @@
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { z } from "zod";
+import { AuthRequest, parseBody } from "../../common/http";
+import { SessionGuard } from "../auth/session.guard";
+import { WorkflowsService } from "./workflows.service";
+const field = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  type: z.enum(["text", "textarea", "number", "select", "asset"]),
+  required: z.boolean(),
+  options: z.array(z.string()).optional(),
+});
+const stage = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  instruction: z.string(),
+  outputKind: z.enum(["text", "image", "video", "audio", "pdf", "word", "ppt", "file"]),
+  visibility: z.enum(["hidden", "summary", "preview", "review"]),
+});
+const definition = z.object({
+  title: z.string().trim().min(1).max(100),
+  description: z.string().max(800),
+  category: z.string().max(80),
+  fields: z.array(field),
+  stages: z.array(stage).min(1),
+  graph: z.record(z.string(), z.unknown()).optional(),
+});
+@Controller("studio/workflows")
+@UseGuards(SessionGuard)
+export class WorkflowsController {
+  constructor(private readonly workflows: WorkflowsService) {}
+  @Get() list(@Req() r: AuthRequest) {
+    return this.workflows.list(r.studioUser.id);
+  }
+  @Get("runs") runs(@Req() r: AuthRequest, @Query("workflowId") id?: string) {
+    return this.workflows.runs(r.studioUser.id, id);
+  }
+  @Get("runs/:runId") run(@Req() r: AuthRequest, @Param("runId") id: string) {
+    return this.workflows.run(id, r.studioUser.id);
+  }
+  @Get(":id") get(@Req() r: AuthRequest, @Param("id") id: string) {
+    return this.workflows.get(id, r.studioUser.id);
+  }
+  @Post() create(@Req() r: AuthRequest, @Body() b: unknown) {
+    return this.workflows.create(r.studioUser.id, parseBody(definition, b));
+  }
+  @Patch(":id") update(@Req() r: AuthRequest, @Param("id") id: string, @Body() b: unknown) {
+    return this.workflows.update(
+      id,
+      r.studioUser.id,
+      parseBody(definition.partial().extend({ status: z.enum(["draft", "published"]).optional() }), b),
+    );
+  }
+  @Post(":id/runs") createRun(@Req() r: AuthRequest, @Param("id") id: string, @Body() b: unknown) {
+    const x = parseBody(z.object({ inputs: z.record(z.string(), z.string()), projectId: z.string().optional() }), b);
+    return this.workflows.createRun(id, r.studioUser.id, x);
+  }
+  @Post("runs/:runId/decide") decide(@Req() r: AuthRequest, @Param("runId") id: string, @Body() b: unknown) {
+    const x = parseBody(
+      z.object({ action: z.enum(["approve", "retry"]), content: z.string().max(20000).optional() }),
+      b,
+    );
+    return this.workflows.decide(id, r.studioUser.id, x.action, x.content);
+  }
+  @Post("runs/:runId/retry") retry(@Req() r: AuthRequest, @Param("runId") id: string, @Body() b: unknown) {
+    const x = parseBody(z.object({ stageId: z.string() }), b);
+    return this.workflows.retry(id, r.studioUser.id, x.stageId);
+  }
+  @Post("runs/:runId/cancel") cancel(@Req() r: AuthRequest, @Param("runId") id: string) {
+    return this.workflows.cancel(id, r.studioUser.id);
+  }
+}

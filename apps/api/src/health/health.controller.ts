@@ -1,21 +1,27 @@
 import { Controller, Get } from "@nestjs/common";
-import { verticalOf, validateSteps } from "@weavl/shared";
+import { RedisService } from "../infrastructure/cache/redis.service";
+import { PrismaService } from "../infrastructure/database/prisma.service";
+import { ObjectStorageService } from "../infrastructure/storage/object-storage.service";
 
 @Controller("health")
 export class HealthController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+    private readonly storage: ObjectStorageService,
+  ) {}
+
   @Get()
-  check(): Record<string, unknown> {
-    // 引用 shared 包，验证 workspace 联动 + 契约类型可用
-    const vertical = verticalOf("ecom.product-image");
-    const stepsOk = validateSteps([
-      { type: "llm", id: "script", prompt: "..." },
-      { type: "image-gen", id: "cover" },
+  async check() {
+    const [database, redis, storage] = await Promise.all([
+      this.prisma.user.count().then(() => "healthy"),
+      this.redis.ping().then(() => "healthy"),
+      this.storage.health().then((ready) => (ready ? "healthy" : "unavailable")),
     ]);
     return {
       ok: true,
       service: "weavl-api",
-      verticalDemo: vertical,
-      stepsValidation: stepsOk === null ? "passed" : stepsOk,
+      dependencies: { database, redis, storage },
       timestamp: new Date().toISOString(),
     };
   }
