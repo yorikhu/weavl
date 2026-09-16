@@ -19,7 +19,7 @@ export interface EditCtx {
   buffer: { title: string; text: string };
   setBuffer: (b: { title: string; text: string }) => void;
   enterEdit: (id: string, mode?: "manual" | "generate") => void;
-  focusNode: (id: string) => void;
+  focusNode: (id: string, options?: { leftInset?: number }) => void;
   saveEdit: (id: string, title: string, text: string) => void;
   commitEdit: () => void;
   commitImageEdit:

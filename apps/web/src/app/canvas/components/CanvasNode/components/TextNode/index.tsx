@@ -15,13 +15,19 @@ import { toast } from "@/hooks/useToast";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
+import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { TextNodeData } from "../../../../types/nodes";
 import sharedStyles from "../../index.module.scss";
 import localStyles from "./index.module.scss";
 
 const styles = { ...sharedStyles, ...localStyles };
 
-/** 文本节点右下角缩放柄：悬停时显示，并将拖拽尺寸实时写回节点数据。 */
+/**
+ * 渲染文本节点右下角缩放柄，并将拖拽尺寸实时写回节点数据。
+ *
+ * @param props - 当前文本节点标识。
+ * @returns 悬停节点时可用的 React Flow 缩放控件。
+ */
 function TextNodeResizeHandle({ id }: { id: string }) {
   const { setNodes } = useReactFlow();
 
@@ -80,7 +86,7 @@ export function TextNode({ data, id }: NodeProps) {
       <TextNodeResizeHandle id={id} />
       <div className={styles.imageNodeTitleAbove}>
         <TypeIcon size={12} />
-        <span>{d.title || "文本"}</span>
+        <EditableNodeTitle nodeId={id} value={d.title} fallback="文本" />
       </div>
       <div
         data-canvas-node-surface
@@ -142,6 +148,12 @@ export function TextNode({ data, id }: NodeProps) {
   );
 }
 
+/**
+ * 渲染尚未选择生成或手动编写方式的空文本节点。
+ *
+ * @param props - 当前节点标识和文本节点数据。
+ * @returns 保留节点尺寸与连接点的空文本编辑态。
+ */
 function EmptyTextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
   const edit = useContext(EnterEditContext);
   return (

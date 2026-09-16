@@ -1,0 +1,503 @@
+.tabs {
+  margin: 12px 14px 8px;
+  padding: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: 10px;
+  border: 1px solid #3a3a3f;
+  background: #242427;
+
+  button {
+    height: 30px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    cursor: pointer;
+  }
+}
+
+.activeTab {
+  background: #505056 !important;
+  color: #f5f5f7 !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 2px 7px rgba(0, 0, 0, 0.2);
+}
+
+.tools {
+  padding: 4px 14px 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+
+  > label,
+  > div {
+    min-width: 0;
+  }
+}
+
+.libraryTools {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.search {
+  height: 32px;
+  padding-left: 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--surface-border);
+  border-radius: 9px;
+  color: var(--muted-foreground);
+  background: var(--subcard);
+
+  &:focus-within {
+    border-color: var(--surface-hover-border);
+  }
+
+  input {
+    min-width: 0;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 11px;
+  }
+}
+
+.filterButton {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--surface-border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+
+  &:hover,
+  &[aria-expanded="true"],
+  &.filterActive {
+    border-color: var(--surface-hover-border);
+    background: var(--surface-hover);
+    color: var(--foreground);
+  }
+}
+
+.filterPopover {
+  min-width: 142px;
+  padding: 5px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface) 98%, transparent);
+  color: var(--foreground);
+}
+
+.filterOption {
+  width: 100%;
+  height: 32px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.folderBar {
+  min-height: 36px;
+  margin: 0 14px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumbs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+  color: var(--muted-foreground);
+
+  > button,
+  span > button {
+    min-width: 0;
+    max-width: 104px;
+    padding: 4px 3px;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--foreground);
+    }
+  }
+
+  span {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  svg {
+    flex: 0 0 auto;
+  }
+}
+
+.newFolderButton {
+  height: 30px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.58;
+  }
+
+  &:hover {
+    border-color: var(--surface-hover-border);
+    background: var(--surface-hover);
+    color: var(--foreground);
+  }
+}
+
+.folderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.viewSwitch {
+  padding: 2px;
+  display: flex;
+  border: 1px solid var(--surface-border);
+  border-radius: 9px;
+
+  button {
+    width: 27px;
+    height: 27px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+  }
+}
+
+.activeView {
+  background: var(--surface-hover) !important;
+  color: var(--foreground) !important;
+}
+
+.items {
+  min-height: 0;
+  padding: 2px 10px 18px;
+  flex: 1;
+  overflow: auto;
+}
+
+.item {
+  position: relative;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.selected {
+  border-color: var(--surface-hover-border);
+  background: var(--surface-hover);
+}
+
+.preview {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  border-radius: 7px;
+  background: var(--subcard);
+  color: var(--muted-foreground);
+
+  img,
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.folderPreview {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+}
+
+.folderArrow {
+  margin-right: 5px;
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
+.imagePreview {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+}
+
+.itemName {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.item:hover .actions,
+.selected .actions,
+.itemMenuOpen .actions {
+  opacity: 1;
+}
+
+.itemMenuOpen {
+  border-color: var(--surface-hover-border);
+  background: var(--surface-hover);
+}
+
+.iconButton {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--subcard);
+    color: var(--foreground);
+  }
+}
+
+.navigationIcon {
+  transform: rotate(45deg);
+}
+
+.assetActionsPopover {
+  min-width: 150px;
+}
+
+.dangerAction:hover {
+  color: #e86f6b !important;
+  background: rgba(226, 75, 74, 0.09) !important;
+}
+
+.group {
+  /* 3px 标题内边距 + 14px 展开箭头 + 10px 间距。 */
+  --group-folder-icon-left: 27px;
+  margin: 5px 0 14px;
+  padding: 0;
+}
+
+.groupTitle {
+  width: 100%;
+  min-height: 54px;
+  padding: 4px 7px 7px 3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--foreground);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 540;
+  text-align: left;
+  cursor: pointer;
+
+  > svg {
+    flex: 0 0 14px;
+    color: var(--muted-foreground);
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--surface-hover) 60%, transparent);
+  }
+
+  span {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+.groupItems {
+  min-width: 0;
+  /* 列表项自身还有 6px 内边距，内容缩进后与文件夹图标左边缘对齐。 */
+  padding-left: calc(var(--group-folder-icon-left) - 6px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 7px;
+
+  .item {
+    min-width: 0;
+    min-height: 118px;
+    padding: 8px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .preview {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    flex-basis: auto;
+  }
+
+  .actions {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+
+    .iconButton {
+      background: transparent;
+
+      &:hover {
+        background: transparent;
+        color: var(--foreground);
+      }
+    }
+  }
+
+  .locateButton {
+    display: none;
+  }
+
+  .folderItem {
+    grid-column: 1 / -1;
+    min-height: 48px;
+    /* 与宫格资源卡片共用 8px 左侧基线。 */
+    padding: 8px;
+    flex-direction: row;
+    align-items: center;
+
+    .preview {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      aspect-ratio: 1;
+    }
+  }
+
+  .group {
+    grid-column: 1 / -1;
+  }
+
+  .groupItems {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    /* 宫格项自身为 8px 内边距，首列预览仍与文件夹图标对齐。 */
+    padding-left: calc(var(--group-folder-icon-left) - 8px);
+  }
+
+  .empty {
+    grid-column: 1 / -1;
+  }
+}
+
+:global(html:not(.dark)) .tabs {
+  border-color: #d3d6db;
+  background: #e8eaed;
+}
+
+:global(html:not(.dark)) .activeTab {
+  background: #777c84 !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 2px 7px rgba(34, 41, 52, 0.14);
+}
+
+.empty {
+  padding: 42px 18px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.assetDialogForm {
+  margin-top: 20px;
+}

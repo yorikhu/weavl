@@ -100,6 +100,7 @@ export class ConversationsController {
       kind: "text",
       source: "agent",
       sourceId: conversation.id,
+      inLibrary: false,
       content,
     });
     const assetRef: AssetRef = { assetId: asset.id, versionId: asset.versions[0]!.id };
@@ -138,7 +139,7 @@ export class ConversationsController {
       canvases: [
         {
           id: newId("canvas"),
-          name: "主画布",
+          name: "画布 1",
           nodes: assets.map((asset, index) => ({
             id: newId("node"),
             type: "text",

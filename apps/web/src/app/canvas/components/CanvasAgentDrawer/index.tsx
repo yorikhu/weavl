@@ -26,6 +26,12 @@ interface CanvasAgentDrawerProps {
   onClose: () => void;
 }
 
+/**
+ * 渲染画布内的 Agent 会话抽屉，并负责附件输入与消息提交界面。
+ *
+ * @param props - 会话内容、输入状态、抽屉引用和操作回调。
+ * @returns 画布右侧的 Agent 抽屉。
+ */
 export function CanvasAgentDrawer({
   drawerRef,
   messages,

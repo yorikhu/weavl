@@ -143,7 +143,7 @@ export class ProjectsController {
     }));
     const canvas: CanvasDocument = {
       id: newId("canvas"),
-      name: "主画布",
+      name: "画布 1",
       nodes,
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
@@ -253,12 +253,12 @@ export class ProjectsController {
 
   @Post(":id/canvases")
   addCanvas(@Req() req: AuthRequest, @Param("id") id: string, @Body() body: unknown) {
-    const input = parseBody(z.object({ name: z.string().trim().min(1).max(80).default("新画布") }), body);
+    const input = parseBody(z.object({ name: z.string().trim().min(1).max(80).optional() }), body);
     return this.store.update((state) => {
       const project = activeProject(state.projects, id, req.studioUser.id);
       const canvas: CanvasDocument = {
         id: newId("canvas"),
-        name: input.name,
+        name: input.name || `画布 ${project.canvases.length + 1}`,
         nodes: [],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
@@ -282,97 +282,23 @@ export class ProjectsController {
       const project = activeProject(state.projects, id, req.studioUser.id);
       const canvas = project.canvases.find((item) => item.id === canvasId);
       if (!canvas) throw new Error("画布不存在");
-      if (input.nodes) {
-        input.nodes.forEach((rawNode) => {
-          if (!rawNode || typeof rawNode !== "object") return;
-          const node = rawNode as { id?: string; type?: string; data?: Record<string, unknown> };
-          const data = node.data;
-          if (!node.id || !data) return;
-          const content =
-            node.type === "text"
-              ? String(data.text || "")
-              : node.type === "image" || node.type === "video"
-                ? String(data.url || "")
-                : "";
-          const sourceId = `${project.id}:${canvas.id}:${node.id}`;
-          const ref = data.assetRef as { assetId?: string; versionId?: string } | undefined;
-          if (ref?.assetId) {
-            const linked = owned(state.assets, ref.assetId, req.studioUser.id);
-            if (
-              linked.source === "canvas" &&
-              linked.sourceId === sourceId &&
-              content.trim() &&
-              linked.versions.at(-1)?.content !== content
-            ) {
-              const timestamp = new Date().toISOString();
-              linked.versions.push({
-                id: newId("version"),
-                name: linked.name,
-                mimeType: node.type === "text" ? "text/plain" : "application/octet-stream",
-                size: content.length,
-                content,
-                createdAt: timestamp,
-              });
-              linked.updatedAt = timestamp;
-              data.assetRef = { assetId: linked.id, versionId: linked.versions.at(-1)!.id };
-            }
-            return;
-          }
-          if (!content.trim()) return;
-          const existing = state.assets.find(
-            (asset) => asset.ownerId === req.studioUser.id && asset.source === "canvas" && asset.sourceId === sourceId,
-          );
-          const timestamp = new Date().toISOString();
-          if (existing) {
-            if (existing.versions.at(-1)?.content !== content) {
-              existing.versions.push({
-                id: newId("version"),
-                name: existing.name,
-                mimeType: node.type === "text" ? "text/plain" : "application/octet-stream",
-                size: content.length,
-                content,
-                createdAt: timestamp,
-              });
-              existing.updatedAt = timestamp;
-            }
-            data.assetRef = { assetId: existing.id, versionId: existing.versions.at(-1)!.id };
-            data.source = "canvas";
-          } else {
-            const name = String(data.title || "画布内容");
-            const version = {
-              id: newId("version"),
-              name,
-              mimeType: node.type === "text" ? "text/plain" : "application/octet-stream",
-              size: content.length,
-              content,
-              createdAt: timestamp,
-            };
-            const asset = {
-              id: newId("asset"),
-              ownerId: req.studioUser.id,
-              folderId: null,
-              name,
-              kind:
-                node.type === "image"
-                  ? ("image" as const)
-                  : node.type === "video"
-                    ? ("video" as const)
-                    : ("text" as const),
-              source: "canvas" as const,
-              sourceId,
-              versions: [version],
-              createdAt: timestamp,
-              updatedAt: timestamp,
-            };
-            state.assets.push(asset);
-            data.assetRef = { assetId: asset.id, versionId: version.id };
-            data.source = "canvas";
-          }
-        });
-      }
+      /* 画布节点本身就是项目资产。自动保存只持久化画布，不再隐式写入全局资产库。 */
       Object.assign(canvas, input, { updatedAt: new Date().toISOString() });
       project.updatedAt = canvas.updatedAt;
       return canvas;
+    });
+  }
+
+  @Delete(":id/canvases/:canvasId")
+  deleteCanvas(@Req() req: AuthRequest, @Param("id") id: string, @Param("canvasId") canvasId: string) {
+    return this.store.update((state) => {
+      const project = activeProject(state.projects, id, req.studioUser.id);
+      if (project.canvases.length <= 1) throw new BadRequestException("项目至少需要保留一张画布");
+      const canvasIndex = project.canvases.findIndex((canvas) => canvas.id === canvasId);
+      if (canvasIndex < 0) throw new BadRequestException("画布不存在");
+      const [deletedCanvas] = project.canvases.splice(canvasIndex, 1);
+      project.updatedAt = new Date().toISOString();
+      return deletedCanvas;
     });
   }
 }

@@ -22,6 +22,7 @@ const assetSchema = z.object({
   content: z.string().max(8_000_000),
   mimeType: z.string().max(120).optional(),
   folderId: z.string().nullable().optional(),
+  inLibrary: z.boolean().optional(),
 });
 
 @Controller("studio/assets")
@@ -35,12 +36,14 @@ export class AssetsController {
     @Query("source") source?: AssetSource,
     @Query("q") q?: string,
     @Query("trash") trash?: string,
+    @Query("includeGenerated") includeGenerated?: string,
   ) {
     return this.store
       .read()
       .assets.filter(
         (asset) =>
           asset.ownerId === req.studioUser.id &&
+          (includeGenerated === "1" || asset.inLibrary !== false) &&
           Boolean(asset.deletedAt) === (trash === "1") &&
           (!source || asset.source === source) &&
           (!q || asset.name.toLowerCase().includes(q.toLowerCase())),
@@ -52,7 +55,12 @@ export class AssetsController {
   create(@Req() req: AuthRequest, @Body() body: unknown): Asset {
     const input = parseBody(assetSchema, body);
     if (input.folderId) owned(this.store.read().folders, input.folderId, req.studioUser.id);
-    return this.store.createAsset({ ...input, ownerId: req.studioUser.id, source: "personal" });
+    return this.store.createAsset({
+      ...input,
+      ownerId: req.studioUser.id,
+      source: "personal",
+      inLibrary: input.inLibrary ?? true,
+    });
   }
 
   @Patch(":id")
@@ -62,6 +70,7 @@ export class AssetsController {
         name: z.string().trim().min(1).max(180).optional(),
         folderId: z.string().nullable().optional(),
         content: z.string().max(8_000_000).optional(),
+        inLibrary: z.boolean().optional(),
       }),
       body,
     );
@@ -70,6 +79,7 @@ export class AssetsController {
       const asset = owned(state.assets, id, req.studioUser.id);
       if (input.name) asset.name = input.name;
       if (input.folderId !== undefined) asset.folderId = input.folderId;
+      if (input.inLibrary !== undefined) asset.inLibrary = input.inLibrary;
       if (input.content !== undefined)
         asset.versions.push({
           id: newId("version"),

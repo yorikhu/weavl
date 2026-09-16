@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { ChevronDown } from "lucide-react";
+import { Popover } from "@/components/Popover";
 import { getMediaCardSize, type MediaDimensionOption } from "../../utils/mediaSizing";
 import styles from "./index.module.scss";
 
@@ -27,6 +27,12 @@ interface MediaSettingsControlProps {
   onCountChange: (value: number) => void;
 }
 
+/**
+ * 按真实宽高比绘制规格选项中的比例示意图。
+ *
+ * @param props - 输出尺寸及是否使用紧凑展示。
+ * @returns 不超过组件边界的比例标记。
+ */
 function RatioMark({ option, compact = false }: { option: MediaDimensionOption; compact?: boolean }) {
   const cardSize = getMediaCardSize(option);
   const scale = (compact ? 14 : 20) / 300;
@@ -42,6 +48,12 @@ function RatioMark({ option, compact = false }: { option: MediaDimensionOption; 
   );
 }
 
+/**
+ * 渲染媒体设置中可复用的单选按钮组。
+ *
+ * @param props - 分组标题、候选项、当前值和变更回调。
+ * @returns 带选中状态的参数按钮组。
+ */
 function ChoiceGroup({
   label,
   values,
@@ -77,7 +89,12 @@ function ChoiceGroup({
   );
 }
 
-/** 图片与视频节点共用的生成尺寸、清晰度和数量设置。 */
+/**
+ * 渲染图片与视频节点共用的生成尺寸、清晰度和数量设置。
+ *
+ * @param props - 媒体类型、当前模型、选中参数和状态更新回调。
+ * @returns 可展开的媒体参数选择器。
+ */
 export function MediaSettingsControl({
   open,
   ratio,
@@ -99,7 +116,6 @@ export function MediaSettingsControl({
   onDurationChange,
   onCountChange,
 }: MediaSettingsControlProps) {
-  const controlRef = useRef<HTMLDivElement | null>(null);
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
   const summary = [
     ratio,
@@ -111,33 +127,31 @@ export function MediaSettingsControl({
     .filter(Boolean)
     .join(" · ");
 
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsidePress = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Node && !controlRef.current?.contains(target)) onOpenChange(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsidePress, true);
-    return () => document.removeEventListener("pointerdown", closeOnOutsidePress, true);
-  }, [open, onOpenChange]);
-
   return (
-    <div ref={controlRef} className={styles.wrap}>
-      <button type="button" className={styles.trigger} onClick={() => onOpenChange(!open)}>
-        {selectedDimension && <RatioMark option={selectedDimension} compact />}
-        <span>{summary}</span>
-        <ChevronDown size={10} className={open ? styles.chevronOpen : undefined} />
-      </button>
-      {open && (
-        <div className={styles.panel}>
+    <div className={styles.wrap}>
+      <Popover
+        mode="click"
+        open={open}
+        onOpenChange={onOpenChange}
+        side="top"
+        align="start"
+        sideOffset={10}
+        collisionPadding={16}
+        showArrow={false}
+        autoFocusOnOpen={false}
+        contentClassName={styles.panel}
+        trigger={
+          <button type="button" className={styles.trigger}>
+            {selectedDimension && <RatioMark option={selectedDimension} compact />}
+            <span>{summary}</span>
+            <ChevronDown size={10} className={open ? styles.chevronOpen : undefined} />
+          </button>
+        }
+      >
+        <div className={styles.panelBody}>
           <ChoiceGroup label={qualityLabel} values={qualities} value={quality} onChange={onQualityChange} />
           {resolution && resolutions && onResolutionChange && (
-            <ChoiceGroup
-              label="清晰度"
-              values={resolutions}
-              value={resolution}
-              onChange={onResolutionChange}
-            />
+            <ChoiceGroup label="清晰度" values={resolutions} value={resolution} onChange={onResolutionChange} />
           )}
           <section className={styles.section}>
             <h4>比例</h4>
@@ -173,7 +187,7 @@ export function MediaSettingsControl({
             onChange={(item) => onCountChange(Number(item))}
           />
         </div>
-      )}
+      </Popover>
     </div>
   );
 }

@@ -101,7 +101,7 @@ export default function AgentPage() {
     try {
       const [chats, files, methods] = await Promise.all([
         studioApi<AgentConversation[]>("/studio/conversations"),
-        studioApi<Asset[]>("/studio/assets"),
+        studioApi<Asset[]>("/studio/assets?includeGenerated=1"),
         studioApi<MarketEntry[]>("/studio/market"),
       ]);
       setConversations(chats);
@@ -272,7 +272,7 @@ export default function AgentPage() {
     setError("");
     try {
       for (const file of Array.from(files)) {
-        const asset = await uploadAsset(file);
+        const asset = await uploadAsset(file, null, false);
         setAssets((current) => [asset, ...current]);
         setAssetIds((current) => [...current, asset.id]);
         composerRef.current?.insertToken({ type: "asset", id: asset.id, label: asset.name });
@@ -366,7 +366,7 @@ export default function AgentPage() {
           <span className={styles.menuCaption}>已有资产</span>
           <div className={styles.menuList}>
             {assets.length ? (
-              assets.map((asset) => (
+              assets.filter((asset) => asset.inLibrary !== false).map((asset) => (
                 <button
                   key={asset.id}
                   type="button"
@@ -571,10 +571,25 @@ export default function AgentPage() {
                       {message.assetRefs.map((ref) => {
                         const asset = assets.find((item) => item.id === ref.assetId);
                         return (
-                          <button key={ref.versionId} className={styles.result} onClick={() => router.push("/assets")}>
+                          <button
+                            key={ref.versionId}
+                            className={styles.result}
+                            onClick={() => {
+                              if (!asset || asset.inLibrary !== false) {
+                                router.push("/assets");
+                                return;
+                              }
+                              void studioApi<Asset>(`/studio/assets/${asset.id}`, {
+                                method: "PATCH",
+                                body: jsonBody({ inLibrary: true }),
+                              })
+                                .then(() => refresh())
+                                .catch((cause) => setError((cause as Error).message));
+                            }}
+                          >
                             <FileText size={15} />
-                            <span>{asset?.name || "已保存的产物"}</span>
-                            <small>资产 v{asset?.versions.length || 1}</small>
+                            <span>{asset?.name || "会话产物"}</span>
+                            <small>{asset?.inLibrary === false ? "保存到资产" : `资产 v${asset?.versions.length || 1}`}</small>
                           </button>
                         );
                       })}

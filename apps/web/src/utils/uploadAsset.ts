@@ -22,7 +22,7 @@ function readFile(file: File): Promise<string> {
 }
 
 /** 当前本地演示存储使用 Data URL；换成对象存储时只需替换此处。 */
-export async function uploadAsset(file: File, folderId: string | null = null): Promise<Asset> {
+export async function uploadAsset(file: File, folderId: string | null = null, inLibrary = true): Promise<Asset> {
   if (file.size > 5_000_000) throw new Error("演示存储单个文件上限为 5 MB；正式对象存储接入后可上传大文件。");
   return studioApi<Asset>("/studio/assets", {
     method: "POST",
@@ -32,6 +32,7 @@ export async function uploadAsset(file: File, folderId: string | null = null): P
       content: await readFile(file),
       mimeType: file.type,
       folderId,
+      inLibrary,
     }),
   });
 }

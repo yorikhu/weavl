@@ -1,106 +1,28 @@
 "use client";
 
-import type { RefObject } from "react";
-import { Bot, ChevronDown, Home, Layers, Plus, Trash2 } from "lucide-react";
-import { Popover } from "@/components/Popover";
-import { WeavlBrand } from "@/components/WeavlBrand";
+import type { ReactNode, RefObject } from "react";
+import { Bot } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { HeaderCapsule } from "@/components/HeaderCapsule";
 import styles from "./index.module.scss";
 
 interface CanvasProjectHeaderProps {
-  projectName: string;
-  onProjectNameChange: (name: string) => void;
-  projectMenuOpen: boolean;
-  onProjectMenuOpenChange: (open: boolean) => void;
-  onHome: () => void;
-  onProjects: () => void;
-  onCreateProject: () => void;
-  onDeleteProject: () => void;
+  toolbar?: ReactNode;
   agentOpen: boolean;
   onToggleAgent: () => void;
   agentButtonRef: RefObject<HTMLButtonElement | null>;
 }
 
-export function CanvasProjectHeader({
-  projectName,
-  onProjectNameChange,
-  projectMenuOpen,
-  onProjectMenuOpenChange,
-  onHome,
-  onProjects,
-  onCreateProject,
-  onDeleteProject,
-  agentOpen,
-  onToggleAgent,
-  agentButtonRef,
-}: CanvasProjectHeaderProps) {
+/**
+ * 渲染画布顶部页面层，承载可替换的项目操作栏和右侧账户、Agent 入口。
+ *
+ * @param props - 项目工具栏、Agent 抽屉状态和切换回调。
+ * @returns 画布顶部导航区域。
+ */
+export function CanvasProjectHeader({ toolbar, agentOpen, onToggleAgent, agentButtonRef }: CanvasProjectHeaderProps) {
   return (
     <div className={styles.topbar}>
-      <div className={styles.topbarLeft}>
-        <div className={styles.projectIdentity}>
-          <Popover
-            mode="click"
-            open={projectMenuOpen}
-            onOpenChange={onProjectMenuOpenChange}
-            side="bottom"
-            align="start"
-            sideOffset={8}
-            showArrow={false}
-            ariaLabel="项目操作"
-            contentRole="menu"
-            contentClassName={`${styles.projectPopover} glass-strong`}
-            trigger={
-              <button
-                type="button"
-                className={`${styles.projectMenuTrigger} ${projectMenuOpen ? styles.projectMenuTriggerOpen : ""}`}
-                aria-label="打开项目菜单"
-                aria-expanded={projectMenuOpen}
-              >
-                <WeavlBrand variant="icon" iconSize={19} />
-                <ChevronDown
-                  size={13}
-                  className={`${styles.projectMenuChevron} ${projectMenuOpen ? styles.projectMenuChevronOpen : ""}`}
-                />
-              </button>
-            }
-          >
-            <button type="button" role="menuitem" className={styles.projectMenuItem} onClick={onHome}>
-              <Home size={14} />
-              回到主页
-            </button>
-            <button type="button" role="menuitem" className={styles.projectMenuItem} onClick={onProjects}>
-              <Layers size={14} />
-              全部项目
-            </button>
-            <button type="button" role="menuitem" className={styles.projectMenuItem} onClick={onCreateProject}>
-              <Plus size={14} />
-              创建项目
-            </button>
-            <div className={styles.projectMenuSeparator} role="separator" />
-            <button
-              type="button"
-              role="menuitem"
-              className={`${styles.projectMenuItem} ${styles.projectMenuItemDanger}`}
-              onClick={onDeleteProject}
-            >
-              <Trash2 size={14} />
-              删除项目
-            </button>
-          </Popover>
-          <input
-            className={styles.projectNameInput}
-            value={projectName}
-            onChange={(event) => onProjectNameChange(event.target.value)}
-            onBlur={() => onProjectNameChange(projectName.trim() || "未命名项目")}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
-            }}
-            aria-label="项目名称"
-            spellCheck={false}
-          />
-        </div>
-      </div>
+      <div className={styles.topbarLeft}>{toolbar}</div>
       <div className={styles.topbarRight}>
         <UserMenu variant="header" className={styles.canvasHeaderCapsule} />
         <HeaderCapsule

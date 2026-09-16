@@ -7,10 +7,25 @@ import type { FieldProps } from "../../types";
 import { Field } from "../Field";
 
 /** 单行输入框属性，可通过 name 接入 Form，也可使用 value/onChange 单独受控。 */
-export type InputProps = InputHTMLAttributes<HTMLInputElement> & FieldProps;
+export type InputProps = InputHTMLAttributes<HTMLInputElement> &
+  FieldProps & {
+    /** bare 用于搜索栏等已有外层边框的复合控件。 */
+    variant?: "default" | "bare";
+  };
 
 /** 带统一标签、说明和受控能力的单行输入框。 */
-export function Input({ name, label, hint, id, className, value, onChange, required, ...props }: InputProps) {
+export function Input({
+  name,
+  label,
+  hint,
+  id,
+  className,
+  value,
+  onChange,
+  required,
+  variant = "default",
+  ...props
+}: InputProps) {
   const form = useContext(FormContext);
   const generatedId = useId();
   const fieldId = id ?? generatedId;
@@ -22,7 +37,9 @@ export function Input({ name, label, hint, id, className, value, onChange, requi
         id={fieldId}
         name={name}
         required={required}
-        className={[styles.control, className].filter(Boolean).join(" ")}
+        className={[styles.control, variant === "bare" ? styles.bareControl : undefined, className]
+          .filter(Boolean)
+          .join(" ")}
         value={bound ? (form!.values[name!] ?? "") : value}
         onChange={(event) => {
           if (bound) form!.change(name!, event.target.value);

@@ -1,10 +1,16 @@
 import type { Node } from "@xyflow/react";
 import type { BasicNodeKind, ImageNodeData, TextNodeData, VideoNodeData } from "../types/nodes";
 import type { NodeLibraryItem } from "../constants";
+import { getNextCanvasLayer } from "./canvasGroups";
 
 export type FlowPosition = { x: number; y: number };
 
 let idSequence = 0;
+/**
+ * 生成当前页面会话内唯一的节点标识。
+ *
+ * @returns 带时间戳和递增序号的节点标识。
+ */
 export const nextNodeId = () => `n_${Date.now()}_${++idSequence}`;
 
 type BasicNodeDefinitionMap = {
@@ -58,16 +64,59 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
   },
 };
 
-export function createBasicNode(kind: BasicNodeKind, position: FlowPosition, connected = false): Node {
+const NODE_KIND_LABELS: Record<BasicNodeKind, string> = { text: "文本", image: "图片", video: "视频" };
+
+/** 按同类节点现有最大序号生成名称，避免当前画布出现同名基础节点。 */
+function nextNodeTitle(kind: BasicNodeKind, nodes: Node[]) {
+  const label = NODE_KIND_LABELS[kind];
+  const pattern = new RegExp(`^${label}(?:\\s*(\\d+))?$`);
+  const max = nodes.reduce((current, node) => {
+    const data = node.data as Record<string, unknown>;
+    if (data.nodeKind !== kind || typeof data.title !== "string") return current;
+    const match = data.title.match(pattern);
+    if (!match) return current;
+    return Math.max(current, Number(match[1] || 1));
+  }, 0);
+  return `${label} ${max + 1}`;
+}
+
+/**
+ * 按基础节点类型创建具备默认数据、唯一名称和正确层级的 React Flow 节点。
+ *
+ * @param kind - 要创建的基础节点类型。
+ * @param position - 节点在画布坐标系中的位置。
+ * @param connected - 是否由拖线操作创建；该状态会选择对应的初始内容。
+ * @param existingNodes - 当前节点集合，用于生成名称和顶层层级。
+ * @returns 可直接加入 React Flow 状态的节点。
+ */
+export function createBasicNode(
+  kind: BasicNodeKind,
+  position: FlowPosition,
+  connected = false,
+  existingNodes: Node[] = [],
+): Node {
   const definition = BASIC_NODE_DEFINITIONS[kind];
+  const data = structuredClone(connected ? definition.connectedData : definition.data) as unknown as Record<
+    string,
+    unknown
+  >;
+  data.title = nextNodeTitle(kind, existingNodes);
   return {
     id: nextNodeId(),
     type: definition.type,
     position,
-    data: structuredClone(connected ? definition.connectedData : definition.data) as unknown as Record<string, unknown>,
+    zIndex: getNextCanvasLayer(existingNodes),
+    data,
   };
 }
 
+/**
+ * 将节点库配置转换为可放置到画布的 React Flow 节点。
+ *
+ * @param item - 节点库中的能力定义。
+ * @param position - 节点在画布坐标系中的位置。
+ * @returns 与能力类型匹配的卡片或媒体节点。
+ */
 export function createLibraryNode(item: NodeLibraryItem, position: FlowPosition): Node {
   if (item.nodeKind === "card") {
     return {

@@ -8,7 +8,12 @@ export { ImageEditPanel } from "./components/ImageNode";
 export { TextEditPanel } from "./components/TextNode";
 export { VideoEditPanel } from "./components/VideoNode";
 
-/** 统一节点入口；新增类型只需在此注册对应的子组件。 */
+/**
+ * 根据节点类型分发到对应的画布节点组件。
+ *
+ * @param props - React Flow 注入的节点属性。
+ * @returns 文本、图片、视频或结构化卡片节点。
+ */
 export function CanvasNode(props: NodeProps) {
   switch (props.type) {
     case "image":

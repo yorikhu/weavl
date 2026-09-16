@@ -7,7 +7,14 @@ import nodeStyles from "../components/CanvasNode/index.module.scss";
 
 const NODE_FOCUS_MAX_ZOOM = 1.5;
 
-/** 节点编辑态及持久化写回，独立于页面菜单与连线交互。 */
+/**
+ * 管理节点编辑态、聚焦视口和编辑缓冲区的持久化写回。
+ * 编辑状态与页面菜单、节点选中和连线交互保持独立。
+ *
+ * @param nodes - 当前画布节点。
+ * @param setNodes - React Flow 节点状态更新器。
+ * @returns 编辑上下文、进入与退出编辑态的方法及当前编辑节点信息。
+ */
 export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateAction<Node[]>>) {
   const { setViewport } = useReactFlow();
   const viewportWidth = useStore((state) => state.width);
@@ -17,13 +24,16 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingMode, setEditingMode] = useState<"manual" | "generate">("manual");
   const [editBuffer, setEditBuffer] = useState<{ title: string; text: string }>({ title: "", text: "" });
+  /* 拖动只改变节点位置；编辑操作通过 ref 读取最新节点，避免回调随每一帧位置变化。 */
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   /** contentEditable DOM 引用（让 commitEdit 能读到最新 innerText）+ IME composition 标志 */
   const editorElRef = useRef<HTMLDivElement | null>(null);
   const composingRef = useRef(false);
   /** 进入编辑：只初始化编辑数据和模式，不改变当前画布视口。 */
   const enterEdit = useCallback(
     (id: string, mode: "manual" | "generate" = "manual") => {
-      const n = nodes.find((x) => x.id === id);
+      const n = nodesRef.current.find((x) => x.id === id);
       if (!n) return;
       const d = n.data as Record<string, unknown>;
       if (mode === "manual" && d.nodeKind === "text" && d.creationMode !== "manual") {
@@ -48,29 +58,31 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
       setEditingMode(mode);
       setEditingId(id);
     },
-    [nodes, setNodes],
+    [setNodes],
   );
 
   /** 双击聚焦：按节点实际尺寸自适应视口，保证缩放后的节点完整可见。 */
   const focusNode = useCallback(
-    (id: string) => {
-      const node = nodes.find((item) => item.id === id);
+    (id: string, options?: { leftInset?: number }) => {
+      const node = nodesRef.current.find((item) => item.id === id);
       if (!node) return;
       const data = node.data as Record<string, unknown>;
       /* 文本节点保存的拖拽尺寸优先于 React Flow 可能尚未刷新的 measured。 */
       const width = typeof data.width === "number" ? data.width : (node.measured?.width ?? 440);
       const height = typeof data.height === "number" ? data.height : (node.measured?.height ?? 120);
+      const leftInset = Math.max(0, options?.leftInset ?? 0);
       const viewport = getViewportForBounds(
         { x: node.position.x, y: node.position.y, width, height },
-        viewportWidth,
+        Math.max(1, viewportWidth - leftInset),
         viewportHeight,
         minZoom,
         Math.min(maxZoom, NODE_FOCUS_MAX_ZOOM),
         0.16,
       );
+      viewport.x += leftInset;
       void setViewport(viewport, { duration: 320, ease: (progress) => 1 - (1 - progress) ** 3 });
     },
-    [nodes, viewportWidth, viewportHeight, minZoom, maxZoom, setViewport],
+    [viewportWidth, viewportHeight, minZoom, maxZoom, setViewport],
   );
 
   /** 退出编辑：视口保持不动（位置和缩放都不变），只关编辑态 */
@@ -205,7 +217,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
      视频节点编辑态时改走 commitVideoEdit */
   const commitEdit = useCallback(() => {
     if (!editingId) return;
-    const editingNode = nodes.find((n) => n.id === editingId);
+    const editingNode = nodesRef.current.find((n) => n.id === editingId);
     const editingKind = (editingNode?.data as Record<string, unknown> | undefined)?.nodeKind;
     if (editingKind === "image") {
       const payload = imageEditStateRef.current;
@@ -228,7 +240,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         : undefined;
     writeNodeData(editingId, editBuffer.title, finalText, size);
     exitEdit();
-  }, [editingId, editBuffer, writeNodeData, exitEdit, nodes, commitImageEdit, commitVideoEdit]);
+  }, [editingId, editBuffer, writeNodeData, exitEdit, commitImageEdit, commitVideoEdit]);
 
   /** 工具栏格式化命令：作用于当前 contentEditable 焦点 */
   const onApplyFormat = useCallback((cmd: string, value?: string) => {

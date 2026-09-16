@@ -245,6 +245,23 @@ export class StudioStore {
       this.state.projectFolders = [];
       this.save();
     }
+    /* 旧版首张画布使用“主画布”，统一迁移为当前默认名称。 */
+    const legacyDefaultCanvases = this.state.projects.flatMap((project) =>
+      project.canvases.filter((canvas, index) => index === 0 && canvas.name === "主画布"),
+    );
+    if (legacyDefaultCanvases.length) {
+      legacyDefaultCanvases.forEach((canvas) => {
+        canvas.name = "画布 1";
+      });
+      this.save();
+    }
+    /* 旧数据中只有 personal 来源代表用户主动入库，其余生成产物迁移为非全局资产。 */
+    if (this.state.assets.some((asset) => asset.inLibrary === undefined)) {
+      this.state.assets.forEach((asset) => {
+        if (asset.inLibrary === undefined) asset.inLibrary = asset.source === "personal";
+      });
+      this.save();
+    }
     // 旧版市场条目保留内容和 ID，仅统一归入 Skill。
     const legacyMarket = this.state.market as unknown as Array<{ type: string }>;
     if (legacyMarket.some((entry) => entry.type === "prompt")) {
@@ -291,6 +308,7 @@ export class StudioStore {
     source: AssetSource;
     sourceId?: string;
     folderId?: string | null;
+    inLibrary?: boolean;
     content: string;
     mimeType?: string;
   }): Asset {
@@ -311,6 +329,7 @@ export class StudioStore {
       kind: input.kind,
       source: input.source,
       sourceId: input.sourceId,
+      inLibrary: input.inLibrary ?? true,
       versions: [version],
       createdAt: timestamp,
       updatedAt: timestamp,

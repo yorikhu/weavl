@@ -2,23 +2,13 @@
 
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
-import {
-  Image as ImageIcon,
-  ImagePlus,
-  Maximize2,
-  Palette,
-  RefreshCw,
-  Tag,
-} from "lucide-react";
+import { Image as ImageIcon, ImagePlus, Maximize2, Palette, RefreshCw, Tag } from "lucide-react";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
+import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { ImageNodeData } from "../../../../types/nodes";
-import {
-  getMediaCardSize,
-  getMediaDimensions,
-  type MediaDimensionOption,
-} from "../../../../utils/mediaSizing";
+import { getMediaCardSize, getMediaDimensions, type MediaDimensionOption } from "../../../../utils/mediaSizing";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
@@ -35,10 +25,12 @@ function normalizeImageQuality(quality?: string) {
  */
 function ImageCardStatic({
   d,
+  nodeId,
   onActivate,
   editing = false,
 }: {
   d: ImageNodeData;
+  nodeId?: string;
   onActivate?: () => void;
   editing?: boolean;
 }) {
@@ -62,6 +54,8 @@ function ImageCardStatic({
             placeholder="图片节点"
             spellCheck={false}
           />
+        ) : nodeId ? (
+          <EditableNodeTitle nodeId={nodeId} value={d.title} fallback="图片节点" />
         ) : (
           <span>{displayTitle}</span>
         )}
@@ -109,7 +103,7 @@ export function ImageNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <ImageCardStatic d={d} onActivate={() => edit.enterEdit(id)} />
+      <ImageCardStatic d={d} nodeId={id} onActivate={() => edit.enterEdit(id)} />
     </div>
   );
 }
@@ -140,6 +134,11 @@ export function ImageEditPanel() {
   const syncedNodeIdRef = useRef<string | null>(null);
   const dimensions = getMediaDimensions("image", model);
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+
+  /** 提示词面板卸载不会保证 Popover 回调执行，编辑目标变化时主动清理打开态。 */
+  useEffect(() => {
+    setShowRatioMenu(false);
+  }, [editingId]);
 
   /** 节点变更（切到不同图片节点编辑）时同步字段初值 */
   useEffect(() => {

@@ -18,7 +18,13 @@ export interface CardField {
   value: string;
 }
 
-export interface CardNodeData {
+export interface GroupableNodeData {
+  groupId?: string;
+  groupName?: string;
+  groupZIndex?: number;
+}
+
+export interface CardNodeData extends GroupableNodeData {
   nodeKind: "card";
   kind: NodeKind;
   title: string;
@@ -27,7 +33,7 @@ export interface CardNodeData {
   isGate?: boolean;
 }
 
-export interface ImageNodeData {
+export interface ImageNodeData extends GroupableNodeData {
   nodeKind: "image";
   kind: "image" | "video";
   title: string;
@@ -45,7 +51,7 @@ export interface ImageNodeData {
   model?: string;
 }
 
-export interface TextNodeData {
+export interface TextNodeData extends GroupableNodeData {
   nodeKind: "text";
   title: string;
   text: string;
@@ -54,7 +60,7 @@ export interface TextNodeData {
   height?: number;
 }
 
-export interface VideoNodeData {
+export interface VideoNodeData extends GroupableNodeData {
   nodeKind: "video";
   title: string;
   category: string;

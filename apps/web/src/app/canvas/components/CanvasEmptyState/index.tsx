@@ -9,6 +9,12 @@ interface CanvasEmptyStateProps {
   onLoadRecent: () => void;
 }
 
+/**
+ * 渲染空画布引导，并把按钮点击位置交给节点添加菜单。
+ *
+ * @param props - 最近运行状态及添加、载入操作回调。
+ * @returns 画布没有节点时使用的空状态。
+ */
 export function CanvasEmptyState({ hasRecentRun, onAdd, onLoadRecent }: CanvasEmptyStateProps) {
   return (
     <div className={styles.guide}>
