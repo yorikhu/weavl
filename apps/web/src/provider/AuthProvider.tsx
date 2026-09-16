@@ -9,7 +9,6 @@ type AuthContextValue = {
   user: StudioUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -51,13 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const next = await studioApi<StudioUser>("/auth/login", {
           method: "POST",
           body: jsonBody({ email, password }),
-        });
-        setUser(next);
-      },
-      register: async (name, email, password) => {
-        const next = await studioApi<StudioUser>("/auth/register", {
-          method: "POST",
-          body: jsonBody({ name, email, password }),
         });
         setUser(next);
       },

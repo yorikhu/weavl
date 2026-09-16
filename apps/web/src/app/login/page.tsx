@@ -7,6 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { WeavlBrand } from "@/components/WeavlBrand";
 import { Animation } from "@/components/Animation";
 import { Form } from "@/components/Form";
+import { toast } from "@/hooks/useToast";
 import { useAuth } from "@/provider/AuthProvider";
 import { useTheme } from "@/provider/ThemeProvider";
 import ui from "@/styles/studio.module.scss";
@@ -14,10 +15,9 @@ import styles from "./page.module.scss";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const { theme } = useTheme();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,8 +25,7 @@ export default function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      if (mode === "register") await register(form.name, form.email, form.password);
-      else await login(form.email, form.password);
+      await login(form.email, form.password);
       const next = new URLSearchParams(window.location.search).get("next");
       router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/home");
     } catch (cause) {
@@ -88,10 +87,9 @@ export default function LoginPage() {
         </div>
         <Form className={styles.form} values={form} onValuesChange={setForm} onFinish={submit}>
           <div className={styles.formHead}>
-            <h2>{mode === "login" ? "欢迎回来" : "创建工作空间"}</h2>
-            <p>{mode === "login" ? "继续你的创作" : "几步即可开始使用 Weavl"}</p>
+            <h2>欢迎回来</h2>
+            <p>继续你的创作</p>
           </div>
-          {mode === "register" && <Form.Input name="name" label="称呼" required autoComplete="name" />}
           <Form.Input name="email" label="邮箱" type="email" required autoComplete="email" />
           <Form.Input
             name="password"
@@ -99,24 +97,16 @@ export default function LoginPage() {
             type="password"
             minLength={8}
             required
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            autoComplete="current-password"
           />
           {error && <p className={ui.error}>{error}</p>}
           <button className={ui.button} type="submit" disabled={busy}>
-            {busy ? "请稍候…" : mode === "login" ? "登录工作台" : "创建账号"}
+            {busy ? "请稍候…" : "登录工作台"}
             <ArrowRight size={14} />
           </button>
-          <button
-            type="button"
-            className={styles.switch}
-            onClick={() => {
-              setMode(mode === "login" ? "register" : "login");
-              setError("");
-            }}
-          >
-            {mode === "login" ? "没有账号？创建一个" : "已有账号？返回登录"}
+          <button type="button" className={styles.switch} onClick={() => toast("内部测试，暂不支持注册账号")}>
+            没有账号？创建一个
           </button>
-          <p className={styles.demo}>本地演示账号：demo@weavl.local · weavl1234</p>
         </Form>
       </div>
       <Link href="/home" className={styles.back}>
