@@ -32,13 +32,19 @@
 }
 
 .sideItem span {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.sideItem > svg {
+  flex: 0 0 auto;
+}
+
 .sideItem small {
+  flex: 0 0 auto;
   margin-left: auto;
   color: var(--faint-foreground);
   font-size: 11px;
