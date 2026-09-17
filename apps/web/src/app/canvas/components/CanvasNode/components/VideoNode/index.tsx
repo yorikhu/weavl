@@ -16,6 +16,8 @@ import {
   Video as VideoIcon,
 } from "lucide-react";
 import { toast } from "@/hooks/useToast";
+import { useGenerationQuote } from "@/hooks/useGenerationQuote";
+import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
@@ -167,6 +169,11 @@ export function VideoEditPanel() {
   const syncedNodeIdRef = useRef<string | null>(null);
   const dimensions = getMediaDimensions("video", model);
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  const priceQuote = useGenerationQuote({
+    modelId: model,
+    parameters: { count, ratio, resolution: quality.toLowerCase(), durationSeconds: duration, generateAudio: false },
+    enabled: isVideo,
+  });
   /** 编辑目标变化时清理所有附属菜单，避免新提示词面板继承旧节点状态。 */
   useEffect(() => {
     setShowRatioMenu(false);
@@ -305,7 +312,6 @@ export function VideoEditPanel() {
     }
   }, [busy, count, duration, edit, model, prompt, quality, ratio, selectedDimension, setNodes]);
   const refOptions = ["全能参考", "人脸参考", "首尾帧", "角色一致性"];
-  const cost = count * (quality === "2K" ? 60 : quality === "720P" ? 27 : 18);
   if (!edit.editingId || !isVideo) return null;
 
   return (
@@ -320,7 +326,7 @@ export function VideoEditPanel() {
         detail: item.configured ? item.maker : `${item.maker} · 未配置`,
       }))}
       modelMenuLabel="视频模型"
-      cost={cost}
+      cost={formatGenerationPrice(priceQuote)}
       busy={busy}
       rows={3}
       header={

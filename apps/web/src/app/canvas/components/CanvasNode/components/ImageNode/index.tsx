@@ -5,6 +5,8 @@ import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflo
 import type { Asset, GenerationModelOption } from "@weavl/shared";
 import { Image as ImageIcon, ImagePlus, Maximize2, Palette, RefreshCw, Tag } from "lucide-react";
 import { toast } from "@/hooks/useToast";
+import { useGenerationQuote } from "@/hooks/useGenerationQuote";
+import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
@@ -159,6 +161,17 @@ export function ImageEditPanel() {
   const syncedNodeIdRef = useRef<string | null>(null);
   const dimensions = getMediaDimensions("image", model);
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  const priceQuote = useGenerationQuote({
+    modelId: model,
+    parameters: {
+      count,
+      ratio,
+      resolution,
+      quality: quality === "低画质" ? "low" : quality === "高画质" ? "high" : "medium",
+      size: selectedDimension ? `${selectedDimension.width}x${selectedDimension.height}` : undefined,
+    },
+    enabled: isImage,
+  });
 
   /** 提示词面板卸载不会保证 Popover 回调执行，编辑目标变化时主动清理打开态。 */
   useEffect(() => {
@@ -312,7 +325,7 @@ export function ImageEditPanel() {
         detail: item.configured ? item.maker : `${item.maker} · 未配置`,
       }))}
       modelMenuLabel="图片模型"
-      cost={count * (resolution === "4K" ? 24 : resolution === "2K" ? 12 : 6)}
+      cost={formatGenerationPrice(priceQuote)}
       busy={busy}
       rows={3}
       header={

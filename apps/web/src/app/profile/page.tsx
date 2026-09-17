@@ -143,7 +143,7 @@ export default function ProfilePage() {
                 <span className={ui.eyebrow}>可用积分</span>
                 <strong>{account ? formatNumber(account.credits) : "—"}</strong>
                 <span className={ui.meta}>
-                  模拟生成目前不扣积分 <ArrowUpRight size={13} />
+                  查看消费明细 <ArrowUpRight size={13} />
                 </span>
               </button>
               <button className={`${ui.card} ${styles.summaryButton}`} onClick={() => changeTab("plans")}>
@@ -200,7 +200,7 @@ export default function ProfilePage() {
               <Coins size={20} />
               <span>可用积分</span>
               <strong>{account ? formatNumber(account.credits) : "—"}</strong>
-              <p>当前 Agent 与工作流使用模拟生成，不扣除积分。真实计费与充值会在模型服务接入后开放。</p>
+              <p>固定价格模型生成前展示预估积分；Token 模型按实际输入与输出用量结算。</p>
             </section>
             <h2 className={styles.sectionTitle}>积分记录</h2>
             {account?.events

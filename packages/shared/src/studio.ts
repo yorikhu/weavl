@@ -12,6 +12,40 @@ export interface GenerationModelOption {
   configured: boolean;
   isAuto?: boolean;
 }
+
+/** 平台按当前模型、供应商成本和全局策略计算出的积分预估。 */
+export interface GenerationPriceQuote {
+  configured: boolean;
+  quotable: boolean;
+  strategy: "manual-rule" | "provider-cost" | "unavailable";
+  billingMode: "fixed" | "metered" | "unavailable";
+  ruleId: string | null;
+  credits: number;
+  reason?: string;
+  costCny?: number;
+  targetSaleCny?: number;
+  chargedValueCny?: number;
+  estimatedProfitCny?: number;
+  effectiveMarkupRate?: number;
+  confidence?: "high" | "medium" | "low";
+  assumptions?: string[];
+  meteredRates?: Array<{
+    key: string;
+    label: string;
+    creditsPerMTokens: number;
+  }>;
+  policy?: {
+    creditValueCny: number;
+    markupRate: number;
+    usdCnyRate: number;
+  };
+}
+
+/** 前端请求积分预估时提交的稳定模型标识及计费参数。 */
+export interface GenerationQuoteRequest {
+  modelId: string;
+  parameters: Record<string, unknown>;
+}
 export type AssetSource = "personal" | "agent" | "workflow" | "canvas";
 
 /** 画布节点对已持久化资产版本的稳定引用，避免只依赖会过期的访问地址。 */

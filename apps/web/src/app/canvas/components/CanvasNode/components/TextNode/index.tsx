@@ -12,6 +12,8 @@ import {
 } from "@xyflow/react";
 import { AlignLeft, FilePenLine, Type as TypeIcon } from "lucide-react";
 import { toast } from "@/hooks/useToast";
+import { useGenerationQuote } from "@/hooks/useGenerationQuote";
+import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
@@ -231,6 +233,11 @@ export function TextEditPanel() {
   const [model, setModel] = useState("weavl-text");
   const [models, setModels] = useState(FALLBACK_TEXT_MODELS);
   const [busy, setBusy] = useState(false);
+  const priceQuote = useGenerationQuote({
+    modelId: model,
+    parameters: { maxOutputTokens: 1000 },
+    enabled: isText,
+  });
 
   useEffect(() => {
     if (!isText) return;
@@ -270,7 +277,7 @@ export function TextEditPanel() {
         detail: item.configured ? undefined : "未配置",
       }))}
       modelMenuLabel="文本模型"
-      cost={6}
+      cost={formatGenerationPrice(priceQuote)}
       busy={busy}
       rows={4}
       onPromptChange={setPrompt}

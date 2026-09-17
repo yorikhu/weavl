@@ -1,4 +1,5 @@
 import { API } from "./env";
+import type { GenerationPriceQuote, GenerationQuoteRequest } from "@weavl/shared";
 
 /**
  * 统一调用 Studio API 并将非成功响应转换为 Error。
@@ -31,3 +32,16 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
  * @returns JSON 请求体。
  */
 export const jsonBody = (value: unknown) => JSON.stringify(value);
+
+/**
+ * 根据模型和生成参数获取服务端积分预估，不进行预扣或创建用量记录。
+ *
+ * @param request - 稳定模型标识与影响计费的参数。
+ * @returns 当前计价规则下的积分预估。
+ */
+export function quoteGeneration(request: GenerationQuoteRequest) {
+  return studioApi<GenerationPriceQuote>("/studio/billing/quote", {
+    method: "POST",
+    body: jsonBody(request),
+  });
+}
