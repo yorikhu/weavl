@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
-import { parseBody } from "../../common/http";
+import { parseBody, type AuthRequest } from "../../common/http";
 import { SessionGuard } from "../auth/session.guard";
 import { TextGenerationService } from "./text-generation.service";
 const schema = z.object({
@@ -26,11 +26,12 @@ export class TextGenerationController {
   /**
    * 校验输入后调用统一文本生成网关。
    *
+   * @param request - 包含当前登录用户的请求对象。
    * @param body - 尚未校验的文本生成请求体。
    * @returns 实时模型结果或无密钥时的演示结果。
    */
-  @Post() generate(@Body() body: unknown) {
+  @Post() generate(@Req() request: AuthRequest, @Body() body: unknown) {
     const x = parseBody(schema, body);
-    return this.generation.generate(x.model, x.prompt);
+    return this.generation.generate(request.studioUser.id, x.model, x.prompt);
   }
 }

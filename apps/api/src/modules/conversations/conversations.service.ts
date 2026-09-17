@@ -109,6 +109,7 @@ export class ConversationsService {
       avatar: "数字人",
     };
     const generated = await this.generation.generate(
+      ownerId,
       "weavl-text",
       `目标：${input.content}${source}${method}\n输出类型：${kinds.map((x) => labels[x]).join("、")}`,
     );

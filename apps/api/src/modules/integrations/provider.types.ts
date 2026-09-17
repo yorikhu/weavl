@@ -4,6 +4,7 @@
  */
 export interface ProviderChannel {
   id: string;
+  providerId: string;
   provider: string;
   protocol: ProviderProtocol;
   modelKind: "text" | "image" | "video" | "audio" | "avatar";
@@ -29,12 +30,23 @@ export interface GenerationModel {
   maker: string;
   description: string;
   isAuto?: boolean;
+  enabled?: boolean;
+  capabilities?: Record<string, unknown>;
 }
 
 /** 标准化后的文本生成入参。 */
 export interface TextGenerationRequest {
   prompt: string;
   system?: string;
+  maxOutputTokens?: number;
+}
+
+/** 供应商同步返回的实际 Token 用量。 */
+export interface ProviderTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens?: number;
+  totalTokens: number;
 }
 
 /** 文本渠道执行结果及可观测信息。 */
@@ -43,6 +55,8 @@ export interface TextGenerationResult {
   channelId: string;
   provider: string;
   latencyMs: number;
+  generationId?: string;
+  usage?: ProviderTokenUsage;
 }
 
 /** 不同图片供应商适配器共享的生成参数。 */
@@ -85,5 +99,5 @@ export interface TextProviderAdapter {
   generateText(
     channel: ProviderChannel,
     request: TextGenerationRequest,
-  ): Promise<{ content: string; statusCode: number }>;
+  ): Promise<{ content: string; statusCode: number; generationId?: string; usage?: ProviderTokenUsage }>;
 }

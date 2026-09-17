@@ -3,6 +3,7 @@ import type { GenerationJob, Prisma } from "@prisma/client";
 import { newId } from "../../common/id";
 import { PrismaService } from "../../infrastructure/database/prisma.service";
 import { AssetsService } from "../assets/assets.service";
+import { PricingService } from "../billing/pricing.service";
 import { ModelGatewayService } from "../integrations/model-gateway.service";
 import { ProviderRegistryService } from "../integrations/provider-registry.service";
 import type { ImageGenerationRequest, ProviderChannel, VideoGenerationRequest } from "../integrations/provider.types";
@@ -16,6 +17,7 @@ export class MediaGenerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly assets: AssetsService,
+    private readonly pricing: PricingService,
     private readonly gateway: ModelGatewayService,
     private readonly registry: ProviderRegistryService,
   ) {}
@@ -41,29 +43,37 @@ export class MediaGenerationService {
    */
   async generateImage(ownerId: string, modelId: string, request: ImageGenerationRequest) {
     await this.assertModel("image", modelId);
-    const result = await this.gateway.generateImage(modelId, request);
-    const assets = await Promise.all(
-      result.outputs.map((output, index) =>
-        this.assets.create({
-          ownerId,
-          name: `图片 ${new Date().toLocaleDateString("zh-CN")} ${index + 1}`,
-          kind: "image",
-          content: output.content,
-          mimeType: output.mimeType,
-          source: "canvas",
-          sourceId: result.channelId,
-          inLibrary: false,
-          copyRemote: true,
-        }),
-      ),
-    );
-    return {
-      status: "succeeded" as const,
-      model: result.model,
-      provider: result.provider,
-      channelId: result.channelId,
-      assets,
-    };
+    const billing = await this.pricing.reserve(ownerId, modelId, request as unknown as Record<string, unknown>);
+    try {
+      const result = await this.gateway.generateImage(modelId, request);
+      const assets = await Promise.all(
+        result.outputs.map((output, index) =>
+          this.assets.create({
+            ownerId,
+            name: `图片 ${new Date().toLocaleDateString("zh-CN")} ${index + 1}`,
+            kind: "image",
+            content: output.content,
+            mimeType: output.mimeType,
+            source: "canvas",
+            sourceId: result.channelId,
+            inLibrary: false,
+            copyRemote: true,
+          }),
+        ),
+      );
+      await this.pricing.settle(billing.usageId, { channelId: result.channelId });
+      return {
+        status: "succeeded" as const,
+        model: result.model,
+        provider: result.provider,
+        channelId: result.channelId,
+        billing,
+        assets,
+      };
+    } catch (error) {
+      await this.pricing.refund(billing.usageId, (error as Error).message || "图片生成失败");
+      throw error;
+    }
   }
 
   /**
@@ -77,20 +87,27 @@ export class MediaGenerationService {
    */
   async submitVideo(ownerId: string, modelId: string, request: VideoGenerationRequest) {
     await this.assertModel("video", modelId);
-    const result = await this.gateway.submitVideo(modelId, request);
-    const job = await this.prisma.generationJob.create({
-      data: {
-        id: newId("generation"),
-        ownerId,
-        channelId: result.channelId,
-        modelKind: "video",
-        modelId,
-        remoteOperation: result.operationName,
-        status: "running",
-        request: request as unknown as Prisma.InputJsonValue,
-      },
-    });
-    return this.jobView(job);
+    const billing = await this.pricing.reserve(ownerId, modelId, request as unknown as Record<string, unknown>);
+    try {
+      const result = await this.gateway.submitVideo(modelId, request);
+      const job = await this.prisma.generationJob.create({
+        data: {
+          id: newId("generation"),
+          ownerId,
+          channelId: result.channelId,
+          modelKind: "video",
+          modelId,
+          remoteOperation: result.operationName,
+          status: "running",
+          request: request as unknown as Prisma.InputJsonValue,
+        },
+      });
+      await this.pricing.attach(billing.usageId, { channelId: result.channelId, jobId: job.id });
+      return { ...this.jobView(job), billing };
+    } catch (error) {
+      await this.pricing.refund(billing.usageId, (error as Error).message || "视频任务提交失败");
+      throw error;
+    }
   }
 
   /**
@@ -117,6 +134,7 @@ export class MediaGenerationService {
         where: { id: job.id },
         data: { status: "failed", errorMessage: operation.error, updatedAt: new Date() },
       });
+      await this.pricing.refundForJob(job.id, operation.error);
       return this.jobView(failed);
     }
 
@@ -154,12 +172,14 @@ export class MediaGenerationService {
           updatedAt: new Date(),
         },
       });
+      await this.pricing.settleForJob(job.id, job.channelId);
       return { ...this.jobView(succeeded), assets };
     } catch (error) {
       await this.prisma.generationJob.update({
         where: { id: job.id },
         data: { status: "failed", errorMessage: (error as Error).message, updatedAt: new Date() },
       });
+      await this.pricing.refundForJob(job.id, (error as Error).message || "视频生成失败");
       throw error;
     }
   }

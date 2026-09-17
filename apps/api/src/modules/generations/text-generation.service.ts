@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { PricingService } from "../billing/pricing.service";
 import { ModelGatewayService } from "../integrations/model-gateway.service";
 import { ProviderRegistryService } from "../integrations/provider-registry.service";
 
@@ -8,6 +9,7 @@ export class TextGenerationService {
   constructor(
     private readonly gateway: ModelGatewayService,
     private readonly registry: ProviderRegistryService,
+    private readonly pricing: PricingService,
   ) {}
 
   /**
@@ -22,20 +24,30 @@ export class TextGenerationService {
   /**
    * 调用文本模型；仅在所有文本渠道均未配置时返回本地演示文案。
    *
+   * @param ownerId - 当前用户标识。
    * @param modelId - 文本模型或自动路由标识。
    * @param prompt - 用户输入的文本指令。
    * @returns 实时模型结果或本地演示结果。
    * @throws {BadRequestException} 模型不存在或类型不匹配时抛出。
    */
-  async generate(modelId: string, prompt: string) {
+  async generate(ownerId: string, modelId: string, prompt: string) {
     const models = await this.models();
     if (!models.some((model) => model.id === modelId)) throw new BadRequestException("文本模型不存在或类型不匹配");
+    const maxOutputTokens = 1000;
+    const billing = await this.pricing.reserve(ownerId, modelId, { promptLength: prompt.length, maxOutputTokens });
     try {
-      return await this.gateway.generateText(modelId, { prompt });
+      const result = await this.gateway.generateText(modelId, { prompt, maxOutputTokens });
+      const settledBilling = await this.pricing.settle(
+        billing.usageId,
+        { channelId: result.channelId },
+        result.usage ? { ...result.usage, generationId: result.generationId } : undefined,
+      );
+      return { ...result, billing: settledBilling ?? billing };
     } catch (error) {
+      await this.pricing.refund(billing.usageId, (error as Error).message || "文本生成失败");
       if (models.some((x) => x.configured)) throw error;
       // TODO(generation): 正式环境启用强制配置后移除无密钥演示回退。
-      return { content: this.mock(prompt), model: modelId, mode: "mock" as const };
+      return { content: this.mock(prompt), model: modelId, mode: "mock" as const, billing: { ...billing, credits: 0 } };
     }
   }
 
