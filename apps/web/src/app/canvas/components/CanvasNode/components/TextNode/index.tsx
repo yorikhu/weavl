@@ -12,11 +12,15 @@ import {
 } from "@xyflow/react";
 import { AlignLeft, FilePenLine, Type as TypeIcon } from "lucide-react";
 import { toast } from "@/hooks/useToast";
+import { useGenerationQuote } from "@/hooks/useGenerationQuote";
+import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { NodePromptPanel } from "../../../NodePromptPanel";
+import { NodeGenerationOverlay } from "../NodeGenerationOverlay";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { TextNodeData } from "../../../../types/nodes";
+import { getGenerationErrorMessage, updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import sharedStyles from "../../index.module.scss";
 import localStyles from "./index.module.scss";
 
@@ -69,6 +73,7 @@ function TextNodeResizeHandle({ id }: { id: string }) {
  * 渲染 React Flow 文本节点，并根据编辑上下文切换展示状态。
  *
  * @param props - React Flow 注入的节点属性。
+ * @returns 文本节点浏览态或编辑态组件。
  */
 export function TextNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
@@ -78,7 +83,11 @@ export function TextNode({ data, id }: NodeProps) {
   const isManualNode = d.creationMode === "manual";
 
   if (editing) {
-    return edit.editingMode === "manual" ? <TextNodeEditor id={id} data={d} /> : <EmptyTextNodeEditor id={id} data={d} />;
+    return edit.editingMode === "manual" ? (
+      <TextNodeEditor id={id} data={d} />
+    ) : (
+      <EmptyTextNodeEditor id={id} data={d} />
+    );
   }
 
   return (
@@ -108,6 +117,7 @@ export function TextNode({ data, id }: NodeProps) {
         }}
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
+        <NodeGenerationOverlay status={d.generationStatus} label="文案" error={d.generationError} />
         {hasText || isManualNode ? (
           <div
             className={styles.textNodeBody}
@@ -176,6 +186,7 @@ function EmptyTextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
         }
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
+        <NodeGenerationOverlay status={data.generationStatus} label="文案" error={data.generationError} />
         <div className={styles.textEmptyPlaceholder} aria-hidden="true">
           <AlignLeft size={30} strokeWidth={1.7} />
         </div>
@@ -204,48 +215,69 @@ interface TextModelOption {
 }
 
 const FALLBACK_TEXT_MODELS: TextModelOption[] = [
-  { id: "weavl-text", label: "Weavl Text", configured: false },
-  { id: "volcengine-text", label: "豆包", configured: false },
-  { id: "aliyun-text", label: "通义千问", configured: false },
-  { id: "zenmux-text", label: "ZenMux Text", configured: false },
+  { id: "deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash", configured: false },
+  { id: "atria-dawn-preview", label: "Atria Dawn Preview (Free)", configured: false },
+  { id: "ling-3.0-flash-vl", label: "Ling-3.0-flash-VL", configured: false },
+  { id: "kimi-k2.8-preview", label: "Kimi K2.8 Preview", configured: false },
 ];
 
-/** 文本节点生成态使用与图片、视频一致的节点下方提示词面板。 */
+/**
+ * 渲染文本节点生成态的节点下方提示词面板。
+ *
+ * @returns 当前节点不处于生成态时返回 `null`，否则返回文本生成面板。
+ */
 export function TextEditPanel() {
   const edit = useContext(EnterEditContext);
+  const { setNodes } = useReactFlow();
   const editingId = edit.editingId;
   const node = useStore((state) => (editingId ? (state.nodes.find((item) => item.id === editingId) ?? null) : null));
   const isText =
     (node?.data as Record<string, unknown> | undefined)?.nodeKind === "text" && edit.editingMode === "generate";
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState("weavl-text");
+  const [model, setModel] = useState("deepseek-v4.1-flash");
   const [models, setModels] = useState(FALLBACK_TEXT_MODELS);
   const [busy, setBusy] = useState(false);
+  const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
+    modelId: model,
+    parameters: { promptLength: prompt.length, maxOutputTokens: 1000 },
+    enabled: isText,
+  });
 
   useEffect(() => {
     if (!isText) return;
     void studioApi<TextModelOption[]>("/studio/generations/text/models")
-      .then(setModels)
+      .then((options) => {
+        setModels(options);
+        setModel((current) => (options.some((option) => option.id === current) ? current : options[0]?.id || current));
+      })
       .catch(() => setModels(FALLBACK_TEXT_MODELS));
   }, [isText]);
 
   const generate = useCallback(async () => {
     if (!editingId || !prompt.trim() || busy) return;
     setBusy(true);
+    setNodes((nodes) =>
+      updateNodeGenerationState(nodes, editingId, { generationStatus: "running", generationError: undefined }),
+    );
     try {
       const result = await studioApi<{ content: string; mode: "live" | "mock" }>("/studio/generations/text", {
         method: "POST",
         body: jsonBody({ model, prompt }),
       });
       edit.saveEdit(editingId, edit.buffer.title || "文本", result.content);
+      setNodes((nodes) => updateNodeGenerationState(nodes, editingId, { generationStatus: "succeeded" }));
       setPrompt("");
       toast(result.mode === "live" ? "文案已生成" : "演示文案已生成", "success");
     } catch (cause) {
-      toast((cause as Error).message || "文本生成失败");
+      const message = getGenerationErrorMessage(cause, "文本生成失败");
+      setNodes((nodes) =>
+        updateNodeGenerationState(nodes, editingId, { generationStatus: "failed", generationError: message }),
+      );
+      toast(message);
     } finally {
       setBusy(false);
     }
-  }, [busy, edit, editingId, model, prompt]);
+  }, [busy, edit, editingId, model, prompt, setNodes]);
 
   if (!editingId || !isText) return null;
   return (
@@ -257,12 +289,12 @@ export function TextEditPanel() {
       models={models.map((item) => ({
         id: item.id,
         label: item.label,
-        detail: item.configured ? undefined : "演示",
+        detail: item.configured ? undefined : "未配置",
       }))}
       modelMenuLabel="文本模型"
-      cost={6}
+      cost={formatGenerationPrice(priceQuote)}
+      costLoading={priceLoading}
       busy={busy}
-      rows={4}
       onPromptChange={setPrompt}
       onModelChange={setModel}
       onSubmit={() => void generate()}
@@ -279,6 +311,7 @@ export function TextEditPanel() {
  * 重渲染导致光标跳转；IME 组合输入期间不会同步缓冲区。
  *
  * @param props - 当前文本节点数据。
+ * @returns 基于 contentEditable 的文本节点编辑器。
  */
 function TextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
   const edit = useContext(EnterEditContext);

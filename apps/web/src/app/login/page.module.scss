@@ -117,14 +117,6 @@
 .switch:hover {
   color: var(--foreground);
 }
-.demo {
-  border-top: 1px solid var(--surface-border);
-  padding-top: 16px;
-  color: var(--faint-foreground);
-  font-size: 11px;
-  line-height: 1.6;
-  text-align: center;
-}
 .back {
   align-self: flex-end;
   color: var(--muted-foreground);

@@ -35,6 +35,11 @@ const newWorkflow: {
   stages: [{ id: "draft", title: "初稿", instruction: "根据输入生成初稿", outputKind: "text", visibility: "review" }],
 };
 
+/**
+ * 渲染工作流列表工作区。
+ *
+ * @returns 工作流列表和创建入口。
+ */
 export default function WorkflowsWorkspace() {
   const router = useRouter();
   const { user } = useAuth();

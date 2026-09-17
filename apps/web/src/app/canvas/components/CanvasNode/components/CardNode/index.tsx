@@ -17,6 +17,7 @@ const styles = { ...sharedStyles, ...localStyles };
  * 渲染卡片节点通用的 Markdown 文本编辑器。
  *
  * @param props - 编辑器初始内容、视觉强调色与保存/取消回调。
+ * @returns 卡片节点编辑器。
  */
 function NodeEditor({
   categoryLabel,
@@ -115,6 +116,7 @@ function NodeEditor({
           placeholder="标题"
           aria-label="节点标题"
         />
+        {/* TODO(canvas-card): 接入卡片内容重写接口后启用该操作。 */}
         <button className={styles.nodeEditorBtn} title="AI 重写（即将上线）" disabled>
           <Sparkles size={12} />
         </button>
@@ -168,6 +170,7 @@ function NodeEditor({
  * 渲染结构化卡片节点，并在双击后切换为通用节点编辑器。
  *
  * @param props - React Flow 注入的节点属性。
+ * @returns 卡片节点浏览态或编辑态组件。
  */
 export function CardNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);

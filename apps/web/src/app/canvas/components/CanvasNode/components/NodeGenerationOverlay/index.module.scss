@@ -1,0 +1,81 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: inherit;
+  background: rgba(20, 20, 21, 0.58);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  animation: node-generation-spin 760ms linear infinite;
+}
+
+.failed {
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: rgba(25, 23, 23, 0.82);
+  text-align: center;
+
+  strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  span {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 9px;
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+@keyframes node-generation-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:global(html:not(.dark)) .overlay {
+  background: rgba(246, 247, 249, 0.68);
+  color: rgba(25, 29, 35, 0.82);
+}
+
+:global(html:not(.dark)) .spinner {
+  border-color: rgba(25, 29, 35, 0.2);
+  border-top-color: rgba(25, 29, 35, 0.78);
+}
+
+:global(html:not(.dark)) .failed {
+  background: rgba(246, 244, 244, 0.9);
+
+  strong {
+    color: rgba(25, 29, 35, 0.84);
+  }
+
+  span {
+    color: rgba(25, 29, 35, 0.58);
+  }
+}

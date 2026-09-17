@@ -23,7 +23,8 @@ function resetHandle(handle: HTMLElement) {
 /**
  * 让组和临时多选区的批量连接球共享屏幕等距磁吸与候选仲裁。
  *
- * @param options - 保存当前批量拖线状态的可变引用。
+ * @param props - 保存当前批量拖线状态的可变引用。
+ * @returns 无返回值；Hook 负责注册和清理全局指针监听。
  */
 export function useBatchHandleMagnet({ draggingRef }: UseBatchHandleMagnetOptions) {
   useEffect(() => {

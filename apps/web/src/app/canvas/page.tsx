@@ -42,6 +42,8 @@ import { CanvasEmptyState } from "./components/CanvasEmptyState";
 import { useCanvasEditing } from "./hooks/useCanvasEditing";
 import { useCanvasConnections } from "./hooks/useCanvasConnections";
 import { useCanvasHistory } from "./hooks/useCanvasHistory";
+import { useCanvasHistoryShortcuts } from "./hooks/useCanvasHistoryShortcuts";
+import { useCanvasNodeDeleteShortcut } from "./hooks/useCanvasNodeDeleteShortcut";
 import { useCanvasGroups } from "./hooks/useCanvasGroups";
 import { useCanvasAssets } from "./hooks/useCanvasAssets";
 import type { BasicNodeKind } from "./types/nodes";
@@ -97,6 +99,7 @@ function CanvasInner() {
   const promptFallbackFrameRef = useRef<number | null>(null);
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
   const { canUndo, canRedo, undo, redo } = useCanvasHistory(nodes, edges, setNodes, setEdges, canvasReady, canvasId);
+  useCanvasHistoryShortcuts(undo, canvasReady);
 
   useEffect(() => {
     if (initializingRef.current) return;
@@ -194,6 +197,7 @@ function CanvasInner() {
     const saved = sessionStorage.getItem("weavl:agent-prompt");
     if (saved) {
       sessionStorage.removeItem("weavl:agent-prompt");
+      // TODO(canvas-agent): 将首页指令交给 Agent 编排服务并创建真实画布节点。
       setAgentMessages((ms) => [
         ...ms,
         { role: "user", text: saved },
@@ -228,6 +232,7 @@ function CanvasInner() {
   const clearCanvasSelection = useCallback(() => setSelectedNodeId(null), []);
   const {
     selection,
+    isMarqueeSelecting,
     focusedGroupId,
     focusedGroupMemberId,
     focusedGroupNodeIds,
@@ -279,6 +284,7 @@ function CanvasInner() {
     setEdges,
     setCanvases,
   });
+  useCanvasNodeDeleteShortcut(focusedGroupMemberId, deleteNode, clearFocusedGroupMember);
 
   const persistCurrentCanvas = useCallback(async () => {
     if (!projectId || !canvasId) return;
@@ -589,7 +595,7 @@ function CanvasInner() {
     })();
   }, [chatInput, chatThumb, canvasConversationId, projectName, projectId, selectedNodeId, nodes, setNodes]);
 
-  /** chat 缩略上传（占位：DataURL） */
+  /** TODO(canvas-agent): 改为复用资产上传接口，避免长期在内存中保留 Data URL。 */
   const handleThumb = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -598,6 +604,8 @@ function CanvasInner() {
   }, []);
 
   const { selectedNodeCount, selectedNodeIds, selectedGroupId, insets: selectionInsets, actionTopInset } = selection;
+  /* React Flow 会在框选移动过程中持续写入 selected；操作入口必须等松手后再出现。 */
+  const actionableSelectedNodeIds = isMarqueeSelecting ? [] : selectedNodeIds;
   const editingKind = getEditingNodeKind(nodes, editingId);
   /** 组成员聚焦是独立交互状态，不能依赖 React Flow 对不可选节点的 selected 清理逻辑。 */
   const renderedNodes = useMemo(
@@ -634,6 +642,7 @@ function CanvasInner() {
       const node = nodesRef.current.find((item) => item.id === nodeId);
       const data = node?.data as Record<string, unknown> | undefined;
       if (!data) return;
+      if (data.mediaSource === "upload" || data.mediaSource === "asset") return;
       if (data.nodeKind === "image" || data.nodeKind === "video") {
         enterEdit(nodeId);
         return;
@@ -886,7 +895,7 @@ function CanvasInner() {
             <Background variant={BackgroundVariant.Dots} gap={12} size={1} className={styles.bg} />
             <CanvasGroupLayer
               focusedGroupId={focusedGroupId}
-              selectedNodeIds={selectedNodeIds}
+              selectedNodeIds={actionableSelectedNodeIds}
               selectedGroupId={selectedGroupId}
               selectionInsets={selectionInsets}
               pendingBatchSourceIds={connectMenu?.sourceNodeIds}
@@ -896,7 +905,7 @@ function CanvasInner() {
               onBatchCreate={openBatchConnectMenu}
             />
             <CanvasSelectionToolbar
-              nodeIds={selectedNodeIds}
+              nodeIds={actionableSelectedNodeIds}
               topInset={actionTopInset}
               groupId={selectedGroupId}
               onGroup={groupNodes}

@@ -58,7 +58,6 @@ function DefaultCover() {
         strokeWidth="5"
         strokeLinecap="round"
       />
-      <circle cx="427" cy="250" r="21" fill="#65746E" fillOpacity=".42" />
       <path
         d="M0 371C155 326 293 361 425 313C510 282 570 283 640 267"
         stroke="#EDEBE0"
@@ -69,6 +68,12 @@ function DefaultCover() {
   );
 }
 
+/**
+ * 渲染项目列表中的单个项目。
+ *
+ * @param props - 组件属性。
+ * @returns 支持重命名和操作菜单的项目卡片。
+ */
 export function ProjectCard({
   project,
   trash,
@@ -159,11 +164,6 @@ export function ProjectCard({
       )}
       <div className={styles.cover}>
         {artwork}
-        {href && !trash && (
-          <span className={styles.coverOpen}>
-            打开项目 <ArrowUpRight size={13} />
-          </span>
-        )}
       </div>
       <div className={styles.cardFooter}>
         <div className={styles.cardInfo}>

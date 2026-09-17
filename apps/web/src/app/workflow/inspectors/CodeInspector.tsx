@@ -34,7 +34,12 @@ export interface CodeConfig {
   errorHandling?: CodeErrorHandling;
 }
 
-/** 缺失字段兜底 */
+/**
+ * 补齐代码节点配置的默认字段。
+ *
+ * @param c - 可能不完整的代码节点配置。
+ * @returns 可供编辑器直接消费的完整配置。
+ */
 export function normalizeCodeConfig(c: Partial<CodeConfig>): CodeConfig {
   return {
     title: c.title,
@@ -85,6 +90,12 @@ const ON_ERROR_OPTIONS = [
   { value: "ignore", label: "忽略错误继续" },
 ] as const;
 
+/**
+ * 渲染代码节点配置面板。
+ *
+ * @param props - 组件属性。
+ * @returns 代码节点检查器。
+ */
 export function CodeInspector({ config, onChange }: Props) {
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [ideOpen, setIdeOpen] = useState(false);

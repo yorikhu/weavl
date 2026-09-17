@@ -14,7 +14,12 @@ export interface DrawerProps extends Omit<HTMLAttributes<HTMLElement>, "title"> 
   onClose: () => void;
 }
 
-/** 可复用的非阻塞式工作区抽屉，支持顶部插槽、左右方向和开合过渡。 */
+/**
+ * 可复用的非阻塞式工作区抽屉，支持顶部插槽、左右方向和开合过渡。
+ *
+ * @param props - 抽屉开合状态、内容、方向和关闭回调。
+ * @returns 非阻塞式工作区抽屉。
+ */
 export function Drawer({
   open,
   title,

@@ -1,4 +1,10 @@
-/** Keep the caret visible when controlled textareas grow beyond their viewport. */
+/**
+ * 受控多行输入框超过可视区域后，保持光标所在行可见。
+ *
+ * @param textarea - 目标多行输入框。
+ * @param caret - 当前光标偏移量。
+ * @returns 无返回值。
+ */
 export function scrollCaretIntoView(textarea: HTMLTextAreaElement, caret: number) {
   if (caret === textarea.value.length) {
     textarea.scrollTop = textarea.scrollHeight;
@@ -36,6 +42,13 @@ export function scrollCaretIntoView(textarea: HTMLTextAreaElement, caret: number
     textarea.scrollTop = caretTop + lineHeight - textarea.clientHeight;
 }
 
+/**
+ * 下一帧将位于文本末尾的光标滚动到可视区域。
+ *
+ * @param textarea - 目标多行输入框。
+ * @param caret - 当前光标偏移量。
+ * @returns 无返回值。
+ */
 export function scrollToLatestLine(textarea: HTMLTextAreaElement, caret: number) {
   window.requestAnimationFrame(() => {
     if (textarea.isConnected && caret === textarea.value.length) textarea.scrollTop = textarea.scrollHeight;

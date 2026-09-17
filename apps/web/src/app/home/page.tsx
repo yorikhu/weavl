@@ -67,11 +67,16 @@ const abilities = [
   },
 ] as const;
 const capabilities = [
-  { name: "文本与结构化内容", status: "本地模拟可用", desc: "对话草稿、定位、脚本与周报" },
-  { name: "图像、视频与音频", status: "待接入模型", desc: "资产可上传、预览与引用；生成服务尚未接入" },
+  { name: "文本与结构化内容", status: "首批模型已接入", desc: "对话草稿、定位、脚本与周报" },
+  { name: "图像与视频", status: "首批模型已接入", desc: "画布节点可选模型生成，产物保存在项目资产" },
   { name: "Word、PPT 与 PDF", status: "文件管理可用", desc: "支持资产化与下载，专项生成随后接入" },
 ];
 
+/**
+ * 渲染产品首页。
+ *
+ * @returns 首页 Hero、能力入口和案例内容。
+ */
 export default function HomePage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -200,7 +205,7 @@ export default function HomePage() {
               );
             })}
           </div>
-          <p>当前生成服务尚未接入；插入的模型会带入 Agent，结果为文字模拟稿。</p>
+          <p>选择内容类型，Agent 会将它与你的要求一起带入任务。</p>
         </div>
       );
     }
@@ -327,6 +332,11 @@ export default function HomePage() {
                   if (token.type === "asset") setAssetIds((current) => removeFirst(current, token.id));
                   if (token.type === "skill") setMethodIds((current) => removeFirst(current, token.id));
                   if (token.type === "model") setModelKinds((current) => removeFirst(current, token.id as ModelKind));
+                }}
+                onTokenRestore={(token) => {
+                  if (token.type === "asset") setAssetIds((current) => [...current, token.id]);
+                  if (token.type === "skill") setMethodIds((current) => [...current, token.id]);
+                  if (token.type === "model") setModelKinds((current) => [...current, token.id as ModelKind]);
                 }}
                 onSubmit={() => begin()}
                 placeholder="描述你想完成的内容…"
@@ -465,7 +475,7 @@ export default function HomePage() {
             </button>
           </div>
         </section>
-        {/* TODO:暂时先隐藏，项目调整完毕后放开 */}
+        {/* TODO(home): 项目与会话续作体验定稿后恢复“继续工作”模块。 */}
         {/* {user && (projects.length > 0 || conversations.length > 0) && (
           <section className={styles.section}>
             <div className={styles.sectionHead}>

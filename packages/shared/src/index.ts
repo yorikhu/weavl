@@ -112,7 +112,7 @@ export interface ConfirmationGate {
 export interface CandidateArtifact {
   id: string;
   stepId: string;
-  /** 文本类候选的内容；图片类为占位描述 */
+  /** TODO(workflow-engine): 图片节点接入真实执行器后扩展为资产引用；当前兼容引擎仅返回描述。 */
   kind: "text" | "image" | "structured";
   content: string;
   /** 差异点标注，如 '测评型' */

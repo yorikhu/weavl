@@ -1,10 +1,17 @@
 .label {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: text;
 }
 
 .input {
   min-width: 48px;
-  max-width: 220px;
+  max-width: 100%;
+  box-sizing: border-box;
   margin: -2px -4px;
   padding: 2px 4px;
   border: 0;

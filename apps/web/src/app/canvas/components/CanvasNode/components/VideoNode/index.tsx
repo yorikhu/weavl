@@ -2,43 +2,60 @@
 
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
-import {
-  ChevronDown,
-  Film,
-  ImagePlus,
-  Layers,
-  Maximize2,
-  RefreshCw,
-  Sparkles,
-  Tag,
-  User as UserIcon,
-  Video as VideoIcon,
-} from "lucide-react";
+import type { Asset, GenerationModelOption } from "@weavl/shared";
+import { ChevronDown, Film, Layers, Maximize2, Video as VideoIcon } from "lucide-react";
+import { toast } from "@/hooks/useToast";
+import { useGenerationQuote } from "@/hooks/useGenerationQuote";
+import { formatGenerationPrice } from "@/lib/generationPricing";
+import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
+import { NodeGenerationOverlay } from "../NodeGenerationOverlay";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { VideoNodeData } from "../../../../types/nodes";
-import { getMediaCardSize, getMediaDimensions, type MediaDimensionOption } from "../../../../utils/mediaSizing";
+import { getMediaCardSize, resolveMediaCapabilities, type MediaDimensionOption } from "../../../../utils/mediaSizing";
+import { getGenerationErrorMessage, updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
+const FALLBACK_VIDEO_MODELS: GenerationModelOption[] = [
+  {
+    id: "doubao-seedance-2.0",
+    kind: "video",
+    label: "Doubao-Seedance-2.0",
+    maker: "ByteDance",
+    description: "支持文生视频、图生视频和参考音频的视频模型",
+    configured: false,
+  },
+];
+
+/** 视频生成接口返回的可轮询任务视图。 */
+interface VideoGenerationJob {
+  id: string;
+  status: "queued" | "running" | "finalizing" | "succeeded" | "failed";
+  error?: string | null;
+  assets?: Asset[];
+}
 
 /**
  * 渲染视频节点在浏览态和编辑态共用的卡片主体。
  *
  * @param props - 视频数据、预览地址、文件选择回调与编辑状态。
+ * @returns 视频节点的标题、预览和连接点。
  */
 function VideoCardStatic({
   d,
   nodeId,
   onActivate,
   editing = false,
+  onIntrinsicSize,
 }: {
   d: VideoNodeData;
   nodeId?: string;
   onActivate?: () => void;
   editing?: boolean;
+  onIntrinsicSize?: (size: { width: number; height: number }) => void;
 }) {
   const edit = useContext(EnterEditContext);
   /** 视频节点默认尺寸与图片节点保持一致（300×200） */
@@ -46,6 +63,7 @@ function VideoCardStatic({
   const h = d.size?.h ?? 200;
   const displayTitle = d.title || "视频节点";
   const url = d.url;
+  const outputOnly = d.mediaSource === "upload" || d.mediaSource === "asset";
 
   return (
     <>
@@ -55,6 +73,7 @@ function VideoCardStatic({
           <input
             className={`${styles.imageNodeTitleInput} nodrag`}
             value={edit.buffer.title ?? ""}
+            style={{ width: `${Math.max(4, (edit.buffer.title?.length ?? 0) + 1)}ch` }}
             onChange={(e) => edit.setBuffer({ ...edit.buffer, title: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
@@ -75,11 +94,22 @@ function VideoCardStatic({
           if (!(event.target as Element).closest(".react-flow__handle")) onActivate?.();
         }}
       >
-        <Handle type="target" position={Position.Left} className={styles.cardHandle} />
+        {!outputOnly && <Handle type="target" position={Position.Left} className={styles.cardHandle} />}
         {/* 已有视频则显示视频预览，否则仅显示中性占位图标。 */}
         {url ? (
           <div className={styles.imagePreview}>
-            <video src={url} className={styles.imageReal} muted preload="metadata" />
+            <video
+              src={url}
+              className={styles.imageReal}
+              muted
+              preload="metadata"
+              onLoadedMetadata={(event) =>
+                onIntrinsicSize?.({
+                  width: event.currentTarget.videoWidth,
+                  height: event.currentTarget.videoHeight,
+                })
+              }
+            />
           </div>
         ) : (
           <div className={`${styles.imagePreview} ${styles.emptyMediaPreview}`}>
@@ -88,6 +118,7 @@ function VideoCardStatic({
             </div>
           </div>
         )}
+        <NodeGenerationOverlay status={d.generationStatus} label="视频" error={d.generationError} />
         <Handle type="source" position={Position.Right} className={styles.cardHandle} />
       </div>
     </>
@@ -98,10 +129,30 @@ function VideoCardStatic({
  * 渲染 React Flow 视频节点，并根据编辑上下文切换展示状态。
  *
  * @param props - React Flow 注入的节点属性。
+ * @returns 视频节点浏览态或编辑态组件。
  */
 export function VideoNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
+  const { setNodes } = useReactFlow();
   const d = data as unknown as VideoNodeData;
+  const updateIntrinsicSize = useCallback(
+    (intrinsicSize: { width: number; height: number }) => {
+      if (!d.url) return;
+      if (intrinsicSize.width <= 0 || intrinsicSize.height <= 0) return;
+      if (d.intrinsicSize?.width === intrinsicSize.width && d.intrinsicSize.height === intrinsicSize.height) return;
+      setNodes((current) =>
+        current.map((node) =>
+          node.id === id
+            ? {
+                ...node,
+                data: { ...node.data, intrinsicSize, size: getMediaCardSize(intrinsicSize) },
+              }
+            : node,
+        ),
+      );
+    },
+    [d.intrinsicSize?.height, d.intrinsicSize?.width, d.url, id, setNodes],
+  );
 
   if (edit.editingId === id) {
     return <VideoNodeEditor data={d} />;
@@ -109,7 +160,12 @@ export function VideoNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <VideoCardStatic d={d} nodeId={id} onActivate={() => edit.enterEdit(id)} />
+      <VideoCardStatic
+        d={d}
+        nodeId={id}
+        onActivate={d.mediaSource === "upload" || d.mediaSource === "asset" ? undefined : () => edit.enterEdit(id)}
+        onIntrinsicSize={updateIntrinsicSize}
+      />
     </div>
   );
 }
@@ -133,18 +189,50 @@ export function VideoEditPanel() {
   const [quality, setQuality] = useState(data?.quality ?? "720P");
   const [duration, setDuration] = useState(data?.duration ?? 5);
   const [count, setCount] = useState(data?.count ?? 1);
-  const [model, setModel] = useState(data?.model ?? "Weavl Video");
+  const [model, setModel] = useState(data?.model ?? "doubao-seedance-2.0");
+  const [models, setModels] = useState<GenerationModelOption[]>(FALLBACK_VIDEO_MODELS);
+  const [busy, setBusy] = useState(false);
   const [refType, setRefType] = useState("全能参考");
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const [showRefMenu, setShowRefMenu] = useState(false);
   const syncedNodeIdRef = useRef<string | null>(null);
-  const dimensions = getMediaDimensions("video", model);
+  const selectedModel = models.find((item) => item.id === model);
+  const capabilities = resolveMediaCapabilities("video", selectedModel?.capabilities);
+  const dimensions = capabilities.dimensions;
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  const effectiveRatio = selectedDimension?.ratio ?? ratio;
+  const effectiveQuality = capabilities.resolutions.includes(quality)
+    ? quality
+    : (capabilities.resolutions[0] ?? quality);
+  const effectiveCount = capabilities.counts.includes(count) ? count : (capabilities.counts[0] ?? count);
+  const minimumDuration = Math.min(...capabilities.durations);
+  const maximumDuration = Math.max(...capabilities.durations);
+  const effectiveDuration = Math.min(maximumDuration, Math.max(minimumDuration, duration));
+  const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
+    modelId: model,
+    parameters: {
+      count: effectiveCount,
+      ratio: effectiveRatio,
+      resolution: effectiveQuality.toLowerCase(),
+      durationSeconds: effectiveDuration,
+      generateAudio: false,
+    },
+    enabled: isVideo,
+  });
   /** 编辑目标变化时清理所有附属菜单，避免新提示词面板继承旧节点状态。 */
   useEffect(() => {
     setShowRatioMenu(false);
     setShowRefMenu(false);
   }, [editingId]);
+  useEffect(() => {
+    if (!isVideo) return;
+    void studioApi<GenerationModelOption[]>("/studio/generations/models?kind=video")
+      .then((options) => {
+        setModels(options);
+        setModel((current) => (options.some((option) => option.id === current) ? current : options[0]?.id || current));
+      })
+      .catch(() => setModels(FALLBACK_VIDEO_MODELS));
+  }, [editingId, isVideo]);
   useEffect(() => {
     if (!editingId) {
       syncedNodeIdRef.current = null;
@@ -157,9 +245,15 @@ export function VideoEditPanel() {
     setQuality(data.quality ?? "720P");
     setDuration(data.duration ?? 5);
     setCount(data.count ?? 1);
-    setModel(data.model ?? "Weavl Video");
+    setModel(data.model ?? "doubao-seedance-2.0");
     syncedNodeIdRef.current = editingId;
   }, [editingId, data]);
+  /**
+   * 同步视频输出规格与画布卡片比例。
+   *
+   * @param nextDimension - 用户选择的模型输出规格。
+   * @returns 无返回值。
+   */
   const changeDimension = useCallback(
     (nextDimension: MediaDimensionOption) => {
       setRatio(nextDimension.ratio);
@@ -175,7 +269,7 @@ export function VideoEditPanel() {
               ...currentData,
               ratio: nextDimension.ratio,
               generationSize: { width: nextDimension.width, height: nextDimension.height },
-              size: nextSize,
+              size: currentData.url ? currentData.size : nextSize,
             },
           };
         }),
@@ -183,48 +277,145 @@ export function VideoEditPanel() {
     },
     [editingId, setNodes],
   );
+  /**
+   * 切换模型，并在必要时回退到新模型支持的首个画面比例。
+   *
+   * @param nextModel - 新的稳定模型标识。
+   * @returns 无返回值。
+   */
   const changeModel = useCallback(
     (nextModel: string) => {
       setModel(nextModel);
-      const nextDimensions = getMediaDimensions("video", nextModel);
+      const nextCapabilities = resolveMediaCapabilities(
+        "video",
+        models.find((item) => item.id === nextModel)?.capabilities,
+      );
+      const nextDimensions = nextCapabilities.dimensions;
       if (!nextDimensions.some((item) => item.ratio === ratio) && nextDimensions[0]) {
         changeDimension(nextDimensions[0]);
       }
+      if (!nextCapabilities.resolutions.includes(quality) && nextCapabilities.resolutions[0]) {
+        setQuality(nextCapabilities.resolutions[0]);
+      }
+      if (nextCapabilities.durations.length) {
+        const minimum = Math.min(...nextCapabilities.durations);
+        const maximum = Math.max(...nextCapabilities.durations);
+        setDuration((current) => Math.min(maximum, Math.max(minimum, current)));
+      }
+      if (!nextCapabilities.counts.includes(count) && nextCapabilities.counts[0]) {
+        setCount(nextCapabilities.counts[0]);
+      }
     },
-    [changeDimension, ratio],
+    [changeDimension, count, models, quality, ratio],
   );
   useEffect(() => {
     edit.videoEditStateRef.current = {
       prompt,
-      ratio,
-      quality,
-      duration,
-      count,
+      ratio: effectiveRatio,
+      quality: effectiveQuality,
+      duration: effectiveDuration,
+      count: effectiveCount,
       model,
       generationSize: selectedDimension
         ? { width: selectedDimension.width, height: selectedDimension.height }
         : undefined,
       title: edit.buffer.title,
     };
-  }, [prompt, ratio, quality, duration, count, model, selectedDimension, edit]);
-  const onGenerate = useCallback(() => {
-    if (!edit.editingId) return;
-    edit.commitVideoEdit?.(edit.editingId, {
-      prompt,
-      ratio,
-      quality,
-      duration,
-      count,
-      model,
-      generationSize: selectedDimension
-        ? { width: selectedDimension.width, height: selectedDimension.height }
-        : undefined,
-      title: undefined,
-    });
-  }, [edit, prompt, ratio, quality, duration, count, model, selectedDimension]);
-  const modelOptions = ["Weavl Video", "Lib Video", "Sora", "Veo"];
+  }, [prompt, effectiveRatio, effectiveQuality, effectiveDuration, effectiveCount, model, selectedDimension, edit]);
+  /**
+   * 提交视频长任务并按官方建议的间隔轮询，全部产物版本归入原节点。
+   *
+   * @returns 视频任务结束并完成节点写回后的 Promise。
+   */
+  const onGenerate = useCallback(async () => {
+    const nodeId = edit.editingId;
+    if (!nodeId || !prompt.trim() || busy) return;
+    setBusy(true);
+    setNodes((nodes) =>
+      updateNodeGenerationState(nodes, nodeId, { generationStatus: "queued", generationError: undefined }),
+    );
+    try {
+      let job = await studioApi<VideoGenerationJob>("/studio/generations/video", {
+        method: "POST",
+        body: jsonBody({
+          model,
+          prompt,
+          count: effectiveCount,
+          ratio: effectiveRatio,
+          resolution: effectiveQuality.toLowerCase(),
+          durationSeconds: effectiveDuration,
+        }),
+      });
+      setNodes((nodes) =>
+        updateNodeGenerationState(nodes, nodeId, {
+          generationStatus: job.status,
+          generationJobId: job.id,
+          generationError: undefined,
+        }),
+      );
+      for (let attempt = 0; attempt < 40 && job.status !== "succeeded" && job.status !== "failed"; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 15000));
+        job = await studioApi<VideoGenerationJob>(`/studio/generations/video/${job.id}`);
+        setNodes((nodes) =>
+          updateNodeGenerationState(nodes, nodeId, {
+            generationStatus: job.status,
+            generationJobId: job.id,
+            generationError: job.error || undefined,
+          }),
+        );
+      }
+      if (job.status === "failed") throw new Error(job.error || "视频生成失败");
+      if (job.status !== "succeeded") throw new Error("视频仍在生成，请稍后重试");
+      const generatedAssets = job.assets || [];
+      const generatedAsset = generatedAssets[0];
+      const generatedVersion = generatedAsset?.versions.at(-1);
+      if (!generatedAsset || !generatedVersion?.content) throw new Error("视频模型没有返回可用产物");
+      const variants = generatedAssets.flatMap((asset) => {
+        const version = asset.versions.at(-1);
+        return version?.content
+          ? [{ url: version.content, assetRef: { assetId: asset.id, versionId: version.id } }]
+          : [];
+      });
+      edit.commitVideoEdit?.(nodeId, {
+        prompt,
+        ratio: effectiveRatio,
+        quality: effectiveQuality,
+        duration: effectiveDuration,
+        count: effectiveCount,
+        model,
+        url: generatedVersion.content,
+        assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
+        variants,
+        size: selectedDimension ? getMediaCardSize(selectedDimension) : undefined,
+        generationSize: selectedDimension
+          ? { width: selectedDimension.width, height: selectedDimension.height }
+          : undefined,
+        generationStatus: "succeeded",
+        generationJobId: job.id,
+      });
+      toast(generatedAssets.length > 1 ? `${generatedAssets.length} 个视频已生成` : "视频已生成", "success");
+    } catch (cause) {
+      const message = getGenerationErrorMessage(cause, "视频生成失败");
+      setNodes((nodes) =>
+        updateNodeGenerationState(nodes, nodeId, { generationStatus: "failed", generationError: message }),
+      );
+      toast(message);
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    busy,
+    edit,
+    effectiveCount,
+    effectiveDuration,
+    effectiveQuality,
+    effectiveRatio,
+    model,
+    prompt,
+    selectedDimension,
+    setNodes,
+  ]);
   const refOptions = ["全能参考", "人脸参考", "首尾帧", "角色一致性"];
-  const cost = count * (quality === "2K" ? 60 : quality === "720P" ? 27 : 18);
   if (!edit.editingId || !isVideo) return null;
 
   return (
@@ -233,35 +424,24 @@ export function VideoEditPanel() {
       prompt={prompt}
       placeholder="描述想生成的视频画面、动作与节奏，或引用已有素材…"
       model={model}
-      models={modelOptions.map((item) => ({ id: item, label: item }))}
+      models={models.map((item) => ({
+        id: item.id,
+        label: item.label,
+        detail: item.configured ? item.maker : `${item.maker} · 未配置`,
+      }))}
       modelMenuLabel="视频模型"
-      cost={cost}
-      rows={3}
+      cost={formatGenerationPrice(priceQuote)}
+      costLoading={priceLoading}
+      busy={busy}
       header={
         <div className={styles.imageEditBarHead}>
           <div className={styles.imageEditBarTags}>
-            <button className={styles.imageEditTag}>
-              <ImagePlus size={11} />
-              参考
-              <RefreshCw size={10} className={styles.imageEditTagIcon} />
-            </button>
-            <button className={styles.imageEditTag}>
-              <Tag size={11} />
-              标记
-            </button>
-            <button className={styles.imageEditTag}>
-              <Sparkles size={11} />
-              特效
-            </button>
-            <button className={styles.imageEditTag}>
-              <UserIcon size={11} />
-              角色库
-            </button>
             <button className={styles.imageEditTag}>
               <Film size={11} />
               运镜
             </button>
           </div>
+          {/* TODO(canvas-media): 实现视频沉浸式编辑器后启用放大编辑入口。 */}
           <button className={styles.imageEditExpand} title="放大编辑（即将上线）" aria-label="放大编辑">
             <Maximize2 size={14} />
           </button>
@@ -303,15 +483,15 @@ export function VideoEditPanel() {
           <span className={styles.imageEditParamSep} />
           <MediaSettingsControl
             open={showRatioMenu}
-            ratio={ratio}
+            ratio={effectiveRatio}
             dimensions={dimensions}
-            quality={quality}
-            qualities={["480P", "720P", "2K"]}
+            quality={effectiveQuality}
+            qualities={capabilities.resolutions}
             qualityLabel="清晰度"
-            duration={duration}
-            durations={[3, 5, 10]}
-            count={count}
-            counts={[1, 2, 4]}
+            duration={effectiveDuration}
+            durations={capabilities.durations}
+            count={effectiveCount}
+            counts={capabilities.counts}
             countUnit="个"
             onOpenChange={(open) => {
               setShowRatioMenu(open);
@@ -331,7 +511,7 @@ export function VideoEditPanel() {
         setShowRatioMenu(false);
         setShowRefMenu(false);
       }}
-      onSubmit={onGenerate}
+      onSubmit={() => void onGenerate()}
       onEscape={edit.exitEdit}
     />
   );
@@ -341,6 +521,7 @@ export function VideoEditPanel() {
  * 渲染视频节点编辑态的卡片，并初始化外置编辑面板所需的共享状态。
  *
  * @param props - 当前视频节点标识与数据。
+ * @returns 视频节点编辑态组件。
  */
 function VideoNodeEditor({ data }: { data: VideoNodeData }) {
   const edit = useContext(EnterEditContext);
@@ -352,7 +533,7 @@ function VideoNodeEditor({ data }: { data: VideoNodeData }) {
         quality: data.quality ?? "720P",
         duration: data.duration ?? 5,
         count: data.count ?? 1,
-        model: data.model ?? "Weavl Video",
+        model: data.model ?? "doubao-seedance-2.0",
         url: data.url,
         title: edit.buffer.title,
       };

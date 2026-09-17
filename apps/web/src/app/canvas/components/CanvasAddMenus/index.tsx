@@ -248,6 +248,7 @@ export function CanvasAddMenus({
               </button>
             ))}
             <div className={styles.contextMenuSep} />
+            {/* TODO(canvas-nodes): 接入下列媒体业务节点后移除 disabled 状态。 */}
             <button className={styles.contextMenuItem} disabled title="即将上线">
               <Sparkles size={13} />
               智能剪辑

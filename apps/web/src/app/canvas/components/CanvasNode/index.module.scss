@@ -131,16 +131,23 @@
   flex-direction: column;
 }
 
+.imageNodeActions {
+  z-index: 7;
+}
+
 .imageNodeTitleAbove {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
   display: inline-flex;
+  width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 6px;
   color: var(--canvas-node-muted);
   font-size: 12px;
   font-weight: 500;
+  line-height: 16px;
   white-space: nowrap;
   pointer-events: none;
   svg {
@@ -152,35 +159,43 @@
   }
   span,
   input {
+    min-width: 0;
+    max-width: calc(100% - 18px);
+    overflow: hidden;
+    text-overflow: ellipsis;
     pointer-events: auto;
   }
 }
 
-/* v23：编辑态标题输入 —— 与静态标题视觉一致（透明无边框），focus 才露微弱底色 */
+/* 图片和视频编辑态标题输入框与静态标题保持相同基线。 */
 .imageNodeTitleInput {
+  min-width: 60px;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 1px 4px;
   margin: -1px -4px;
   border: none;
   border-radius: 6px;
+  outline: none;
   background: transparent;
   color: var(--canvas-node-muted);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 500;
-  font-family: inherit;
-  outline: none;
   cursor: text;
-  min-width: 60px;
-  width: 12em;
+
   &::placeholder {
     color: var(--canvas-node-muted);
   }
+
   &:focus {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgb(255 255 255 / 6%);
   }
 }
 
 .imageNode {
   position: relative;
+  box-sizing: border-box;
   padding: 0;
   border-radius: 14px;
   background: var(--canvas-node-background);
@@ -206,7 +221,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: inherit;
+  border-radius: calc(14px - var(--canvas-node-border-width));
   overflow: hidden;
 }
 
@@ -277,9 +292,32 @@
 
 /* 编辑态卡片列：完全复用默认态卡片尺寸，居中 */
 .imageNodeEditCardCol {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-self: center;
+}
+
+.imagePreviewDialogStage {
+  display: flex;
+  width: max-content;
+  height: max-content;
+  max-width: 80vw;
+  max-height: 80vh;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #101012;
+
+  img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 80vw;
+    max-height: 80vh;
+    object-fit: contain;
+  }
 }
 
 /* v22：旧编辑卡样式已删除（卡片复用默认态组件） */
@@ -302,17 +340,19 @@
   align-items: center;
   gap: 4px;
   padding: 3px 9px;
-  border-radius: 10px;
   border: 0.5px solid #27272c;
+  border-radius: 10px;
   background: #202023;
   color: #e6e8ec;
-  font-size: 11px;
   font-family: inherit;
+  font-size: 11px;
   cursor: pointer;
+
   &:hover {
     border-color: #3a3a41;
     background: #1a1a1e;
   }
+
   svg {
     color: #a8a8b2;
   }
@@ -422,13 +462,13 @@
 }
 
 :global(html:not(.dark)) .imageEditTag {
-  background: #f3f5f7;
   border-color: rgba(15, 23, 42, 0.12);
+  background: #f3f5f7;
   color: #334155;
 
   &:hover {
-    background: #e9edf1;
     border-color: rgba(15, 23, 42, 0.2);
+    background: #e9edf1;
   }
 
   svg {

@@ -9,7 +9,12 @@ export const STEP_KIND_META: Record<string, { label: string; color: string }> = 
   mcp: { label: "MCP", color: "#5e5e66" },
 };
 
-/** 从 step.type 归一化到展示 kind（未识别归 LLM） */
+/**
+ * 从步骤类型归一化到展示类型，未识别类型回退到 LLM。
+ *
+ * @param type - 工作流步骤类型。
+ * @returns 节点展示元数据的键。
+ */
 export function stepKindOf(type: string): keyof typeof STEP_KIND_META {
   return (type in STEP_KIND_META ? type : "llm") as keyof typeof STEP_KIND_META;
 }
@@ -24,6 +29,12 @@ export const STEP_NAME_ZH: Record<string, string> = {
   package: "内容包",
 };
 
+/**
+ * 获取步骤的中文展示名称。
+ *
+ * @param id - 工作流步骤标识。
+ * @returns 已知中文名或原始标识。
+ */
 export function stepNameOf(id: string): string {
   return STEP_NAME_ZH[id] ?? id;
 }

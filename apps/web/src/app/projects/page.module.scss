@@ -278,32 +278,6 @@
   transform: translateY(-3px) scale(1.02);
 }
 
-.coverOpen {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 10px;
-  border: 1px solid rgb(255 255 255 / 30%);
-  border-radius: 7px;
-  background: rgb(18 21 22 / 67%);
-  color: #fff;
-  font-size: 10px;
-  opacity: 0;
-  transform: translateY(4px);
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
-}
-
-.projectCard:hover .coverOpen,
-.projectCard:focus-within .coverOpen {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .cardFooter {
   position: relative;
   z-index: 2;
@@ -353,10 +327,29 @@
 
 .nameInput {
   width: 100%;
-  min-height: 28px;
-  padding: 3px 7px;
-  border-radius: 6px;
-  font-size: 13px;
+  height: auto;
+  min-height: 0;
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 5px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
+.nameInput:focus {
+  border: 0;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+
+:global(html:not(.dark)) .nameInput,
+:global(html:not(.dark)) .nameInput:focus {
+  background: rgba(15, 23, 42, 0.07);
 }
 
 .renameError {
@@ -493,8 +486,7 @@
 @media (prefers-reduced-motion: reduce) {
   .projectCard,
   .coverArtwork,
-  .coverImage,
-  .coverOpen {
+  .coverImage {
     transition: none;
   }
 

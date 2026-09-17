@@ -31,7 +31,12 @@ function BrandIcon({ size }: { size: number }) {
   );
 }
 
-/** 全局 Weavl 品牌入口，统一首页、登录页、侧栏及画布中的品牌图形。 */
+/**
+ * 全局 Weavl 品牌入口，统一首页、登录页、侧栏及画布中的品牌图形。
+ *
+ * @param props - 品牌形态、图标尺寸和样式类。
+ * @returns Weavl 品牌标识。
+ */
 export function WeavlBrand({ className, iconSize = 22, variant = "full" }: WeavlBrandProps) {
   if (variant === "icon") {
     return (

@@ -48,7 +48,12 @@ export interface LLMConfig {
   skills: LLMSkillItem[];
 }
 
-/** 缺失字段兜底 */
+/**
+ * 补齐大模型节点配置的默认字段，并兼容旧版单输出结构。
+ *
+ * @param c - 包含模型引用的部分大模型配置。
+ * @returns 可供编辑器直接消费的完整配置。
+ */
 export function normalizeLlmConfig(c: Partial<LLMConfig> & { model: ModelRef }): LLMConfig {
   return {
     title: c.title,
@@ -108,6 +113,12 @@ const BATCH_ITEM_TYPES: Array<{ value: BatchItemType; label: string }> = [
 
 export type BatchItemType = "str" | "int" | "float" | "bool" | "time" | "object" | "file";
 
+/**
+ * 渲染大模型节点配置面板。
+ *
+ * @param props - 组件属性。
+ * @returns 大模型节点检查器。
+ */
 export function LLMInspector({ config, onChange }: Props) {
   const [modelOpen, setModelOpen] = useState(false);
   const [expandedVars, setExpandedVars] = useState<Set<number>>(new Set());

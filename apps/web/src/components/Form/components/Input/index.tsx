@@ -13,7 +13,12 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> &
     variant?: "default" | "bare";
   };
 
-/** 带统一标签、说明和受控能力的单行输入框。 */
+/**
+ * 带统一标签、说明和受控能力的单行输入框。
+ *
+ * @param props - 原生输入框、字段展示和 Form 受控属性。
+ * @returns 可独立使用或接入 Form 的单行输入框。
+ */
 export function Input({
   name,
   label,

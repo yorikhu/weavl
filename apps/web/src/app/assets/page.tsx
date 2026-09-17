@@ -21,6 +21,11 @@ const sources = [
   { key: "trash", label: "回收站" },
 ] as const;
 
+/**
+ * 渲染全局资产网盘。
+ *
+ * @returns 资产管理页面。
+ */
 export default function AssetsPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -316,13 +321,13 @@ export default function AssetsPage() {
                 </button>
               </div>
               <div className={styles.previewBody}>
-                {preview.kind === "image" && version?.content.startsWith("data:") ? (
+                {preview.kind === "image" && version?.content ? (
                   <NextImage src={version.content} alt={preview.name} width={620} height={440} unoptimized />
-                ) : preview.kind === "video" && version?.content.startsWith("data:") ? (
+                ) : preview.kind === "video" && version?.content ? (
                   <video src={version.content} controls />
-                ) : preview.kind === "audio" && version?.content.startsWith("data:") ? (
+                ) : preview.kind === "audio" && version?.content ? (
                   <audio src={version.content} controls />
-                ) : preview.kind === "pdf" && version?.content.startsWith("data:") ? (
+                ) : preview.kind === "pdf" && version?.content ? (
                   <iframe src={version.content} title={preview.name} />
                 ) : version?.content.startsWith("data:") ? (
                   <p>此格式暂无内置预览，可以下载原文件。</p>
@@ -358,7 +363,7 @@ export default function AssetsPage() {
                 <a
                   className={ui.buttonQuiet}
                   href={
-                    version?.content.startsWith("data:")
+                    version?.content.startsWith("data:") || version?.content.startsWith("http")
                       ? version.content
                       : `data:text/plain;charset=utf-8,${encodeURIComponent(version?.content || "")}`
                   }

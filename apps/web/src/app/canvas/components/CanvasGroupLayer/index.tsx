@@ -28,7 +28,13 @@ function groupIdOf(node: Node): string | undefined {
   return typeof groupId === "string" ? groupId : undefined;
 }
 
-/** 单节点拖动无需刷新组覆盖层；分组成员和临时多选才订阅位置变化。 */
+/**
+ * 筛选需要参与组覆盖层计算的节点。
+ * 单节点拖动无需刷新组覆盖层；分组成员和临时多选才订阅位置变化。
+ *
+ * @param state - React Flow 节点状态。
+ * @returns 分组成员以及多选状态下的已选节点。
+ */
 function selectOverlayNodes(state: { nodes: Node[] }): Node[] {
   const selectedCount = state.nodes.reduce((count, node) => count + Number(Boolean(node.selected)), 0);
   return state.nodes.filter((node) => Boolean(groupIdOf(node)) || (selectedCount > 1 && Boolean(node.selected)));

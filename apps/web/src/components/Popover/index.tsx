@@ -30,12 +30,17 @@ export interface PopoverProps {
   preserveOpenOnOutsideSelector?: string;
   autoFocusOnOpen?: boolean;
   openWhen?: (element: HTMLElement) => boolean;
+  /** 标记 Portal 内容所属的交互区域，供外层点击边界识别嵌套浮层。 */
+  contentScope?: string;
 }
 
 const classes = (...names: Array<string | undefined>) => names.filter(Boolean).join(" ");
 
 /**
  * 全局浮层。hover 用于即时提示，click 用于菜单等可交互内容；action 提供紧凑操作面板样式。
+ *
+ * @param props - 触发模式、定位方式、内容和受控开合状态。
+ * @returns 带 Portal 定位能力的全局浮层。
  */
 export function Popover({
   mode = "click",
@@ -57,6 +62,7 @@ export function Popover({
   preserveOpenOnOutsideSelector,
   autoFocusOnOpen = true,
   openWhen,
+  contentScope,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [internalClickOpen, setInternalClickOpen] = useState(false);
@@ -149,6 +155,7 @@ export function Popover({
                 collisionPadding={collisionPadding}
                 aria-label={ariaLabel}
                 role={contentRole}
+                data-popover-scope={contentScope}
                 onOpenAutoFocus={(event) => {
                   if (!autoFocusOnOpen) event.preventDefault();
                 }}

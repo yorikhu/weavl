@@ -4,18 +4,25 @@
   "private": true,
   "description": "Nest.js orchestration layer — workflow runtime / queue / model abstraction",
   "scripts": {
-    "build": "nest build",
-    "dev": "nest start --watch",
+    "build": "prisma generate && nest build",
+    "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-express": "^11.1.6",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "@weavl/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
+    "ioredis": "^6.0.0",
+    "minio": "^8.0.7",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.4"
@@ -24,6 +31,7 @@
     "@nestjs/cli": "^11.0.10",
     "@types/express": "^5.0.1",
     "@types/node": "^22.18.0",
+    "prisma": "7.10.0",
     "typescript": "^5.9.3"
   }
 }

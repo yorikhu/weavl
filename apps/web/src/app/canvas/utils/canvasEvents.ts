@@ -20,6 +20,18 @@ const NODE_POINTER_CONTROL_SELECTOR = [
   ".nodrag",
 ].join(", ");
 
+const TEXT_EDITABLE_SELECTOR = "input, textarea, select, [contenteditable='true']";
+
+/**
+ * 判断键盘事件是否来自文本或表单编辑区域。
+ *
+ * @param target - 原生键盘事件目标。
+ * @returns 目标是否应保留浏览器自身的编辑快捷键。
+ */
+export function isTextEditingTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest(TEXT_EDITABLE_SELECTOR));
+}
+
 /**
  * 从真实 pointerdown 目标解析节点标识，节点内部控件不会触发聚焦切换。
  *

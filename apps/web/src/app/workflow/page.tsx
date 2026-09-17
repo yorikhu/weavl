@@ -65,6 +65,8 @@ const KIND_ACCENT: Record<string, { color: string; icon: string }> = {
  *
  * 布局：顶栏（标题 / tab / 发布） + 中间节点流（CSS Grid 横向） + 底部工具条
  * 数据来自 GET /templates/:id，steps 按顺序水平排列，连线用 ::after 伪元素绘制。
+ *
+ * @returns 全屏工作流编辑器。
  */
 export default function WorkflowPage() {
   const [id, setId] = useState("");
@@ -1734,7 +1736,12 @@ export default function WorkflowPage() {
 
 /* ============================== 子组件 ============================== */
 
-/** 节点库里的一个条目（图标 + 名称 + 描述） */
+/**
+ * 渲染节点库中的图标、名称和描述。
+ *
+ * @param props - 节点元数据和点击回调。
+ * @returns 节点库条目。
+ */
 function PickerItem({ meta, onClick }: { meta: NodeTypeMeta; onClick: () => void }) {
   const Icon = meta.icon;
   return (
@@ -2021,7 +2028,8 @@ function StartInspector({
                     className={styles.inspectorGroupBtn}
                     aria-label="单步试运行"
                     onClick={(e) => {
-                      e.stopPropagation(); /* TODO 单步试运行 */
+                      e.stopPropagation();
+                      // TODO(workflow-run): 接入当前触发器节点的单步试运行接口。
                     }}
                   >
                     <Play size={11} />
@@ -2189,7 +2197,13 @@ function StartInspector({
   );
 }
 
-/** 普通 step 节点的配置面板（占位：展示元数据） */
+/**
+ * 渲染普通步骤的只读元数据面板。
+ *
+ * @param props - 当前工作流节点。
+ * @returns 普通步骤检查器。
+ * @todo 为普通步骤提供可编辑配置。
+ */
 function StepInspector({ node }: { node: NodeRow }) {
   return (
     <div className={styles.inspectorBody}>
@@ -2215,7 +2229,12 @@ function StepInspector({ node }: { node: NodeRow }) {
   );
 }
 
-/** step.model → 展示文本（兼容 ModelRef 的两种形态） */
+/**
+ * 将两种 ModelRef 形态转换为展示文本。
+ *
+ * @param model - 可选模型引用。
+ * @returns 模型展示名称。
+ */
 function modelLabel(model: ModelRef | undefined): string {
   if (!model) return "默认模型";
   if ("provider" in model) return `${model.provider} · ${model.model}`;
@@ -2223,13 +2242,14 @@ function modelLabel(model: ModelRef | undefined): string {
 }
 
 /**
- * smoothstep 折线路径（React Flow 同款算法）：
- * 水平从 source 出 → 圆角转弯 → 水平进 target。
- * target 在 source 左侧（后退边）时退化为贝塞尔，避免绕路。
- */
-/**
  * cubic Bezier 平滑曲线：从 source 水平出 → 平滑 S 弧 → 水平入 target。
  * 控制点偏移 = max(40, 曼哈顿距离/3)，保证小距离也丝滑、远距离弧度自然。
+ *
+ * @param x1 - 起点横坐标。
+ * @param y1 - 起点纵坐标。
+ * @param x2 - 终点横坐标。
+ * @param y2 - 终点纵坐标。
+ * @returns SVG path 字符串。
  */
 function smoothstepPath(x1: number, y1: number, x2: number, y2: number): string {
   if (Math.abs(y2 - y1) < 1) return `M ${x1} ${y1} L ${x2} ${y2}`;
@@ -2464,7 +2484,12 @@ const TIMEZONES: Array<{ offset: number; label: string; zones: TzEntry[] }> = [
   { offset: 840, label: "UTC+14:00", zones: [{ iana: "Pacific/Kiritimati", cn: "莱恩群岛时间" }] },
 ];
 
-/** 从 IANA 找所在偏移（用于高亮 + 初始化第二列） */
+/**
+ * 查询 IANA 时区所在的 UTC 偏移。
+ *
+ * @param iana - IANA 时区标识。
+ * @returns 分钟单位的 UTC 偏移，未知时区回退为 480。
+ */
 function findOffset(iana: string): number {
   for (const g of TIMEZONES) {
     if (g.zones.some((z) => z.iana === iana)) return g.offset;
@@ -2472,7 +2497,12 @@ function findOffset(iana: string): number {
   return 480;
 }
 
-/** 当前时区显示名（用于按钮） */
+/**
+ * 获取当前时区的按钮展示名称。
+ *
+ * @param iana - IANA 时区标识。
+ * @returns 中文名称和 IANA 标识，未知时区返回原值。
+ */
 function tzLabel(iana: string): string {
   for (const g of TIMEZONES) {
     for (const z of g.zones) {
@@ -2482,7 +2512,13 @@ function tzLabel(iana: string): string {
   return iana;
 }
 
-/** step → 节点卡片的元数据行（按节点类型组装） */
+/**
+ * 按步骤类型构造节点卡片的元数据行。
+ *
+ * @param s - 工作流步骤定义。
+ * @param index - 步骤在工作流中的位置。
+ * @returns 节点卡片展示行。
+ */
 function buildNodeRows(s: TemplateDetail["steps"][number], index: number): NodeRow["rows"] {
   const isFirst = index === 0;
   const inputName = isFirst ? "sys.query" : `step${index - 1}.output`;
@@ -2546,8 +2582,12 @@ function buildNodeRows(s: TemplateDetail["steps"][number], index: number): NodeR
  *   模型：单行 chip（avatar + 完整名称）
  *   技能：单行 chip（icon + 名称）
  *
- * 注：当前实现用 mock 数据（从 template.steps 取不到 inputs，UI 演示用占位）。
- *     后续接 LLMConfig 后用 config.skills / config.systemPrompt 替换占位。
+ * TODO(workflow-llm): Template Step 补齐 LLMConfig 后，从 config.skills 和
+ * config.systemPrompt 生成分组，移除当前演示输入。
+ *
+ * @param s - 大模型步骤定义。
+ * @returns 大模型节点卡片的分组数据。
+ * @todo 从 LLMConfig 读取真实输入、技能和系统提示词。
  */
 function buildLLMGroups(s: TemplateDetail["steps"][number]): NodeGroup[] {
   const outputName = `${s.id}.output`;

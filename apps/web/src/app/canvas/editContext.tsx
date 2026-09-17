@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, type MutableRefObject } from "react";
+import type { AssetRef } from "@weavl/shared";
+import type { MediaNodeVariant } from "./types/nodes";
 
 /**
  * 画布编辑态共享 context：
@@ -31,10 +33,14 @@ export interface EditCtx {
           quality?: string;
           resolution?: string;
           generationSize?: { width: number; height: number };
+          size?: { w: number; h: number };
           count?: number;
           model?: string;
           url?: string;
+          assetRef?: AssetRef;
+          variants?: MediaNodeVariant[];
           title?: string;
+          generationStatus?: "succeeded";
         },
       ) => void)
     | null;
@@ -46,11 +52,16 @@ export interface EditCtx {
           ratio?: string;
           quality?: string;
           generationSize?: { width: number; height: number };
+          size?: { w: number; h: number };
           duration?: number;
           count?: number;
           model?: string;
           url?: string;
+          assetRef?: AssetRef;
+          variants?: MediaNodeVariant[];
           title?: string;
+          generationStatus?: "succeeded";
+          generationJobId?: string;
         },
       ) => void)
     | null;
@@ -68,7 +79,8 @@ export interface EditCtx {
     count?: number;
     model?: string;
     url?: string;
-    title?: string;
+    assetRef?: AssetRef;
+    variants?: MediaNodeVariant[];
   } | null>;
   videoEditStateRef: MutableRefObject<{
     prompt?: string;
@@ -79,6 +91,8 @@ export interface EditCtx {
     count?: number;
     model?: string;
     url?: string;
+    assetRef?: AssetRef;
+    variants?: MediaNodeVariant[];
     title?: string;
   } | null>;
 }

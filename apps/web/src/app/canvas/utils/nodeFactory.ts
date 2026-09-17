@@ -2,10 +2,12 @@ import type { Node } from "@xyflow/react";
 import type { BasicNodeKind, ImageNodeData, TextNodeData, VideoNodeData } from "../types/nodes";
 import type { NodeLibraryItem } from "../constants";
 import { getNextCanvasLayer } from "./canvasGroups";
+import { DEFAULT_IMAGE_DIMENSION, getMediaCardSize } from "./mediaSizing";
 
 export type FlowPosition = { x: number; y: number };
 
 let idSequence = 0;
+const DEFAULT_IMAGE_CARD_SIZE = getMediaCardSize(DEFAULT_IMAGE_DIMENSION);
 /**
  * 生成当前页面会话内唯一的节点标识。
  *
@@ -34,7 +36,10 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       title: "图片",
       category: "图片",
       tint: "rgba(212, 83, 126, 0.18)",
-      size: { w: 300, h: 200 },
+      size: DEFAULT_IMAGE_CARD_SIZE,
+      ratio: DEFAULT_IMAGE_DIMENSION.ratio,
+      generationSize: { width: DEFAULT_IMAGE_DIMENSION.width, height: DEFAULT_IMAGE_DIMENSION.height },
+      mediaSource: "generator",
     },
     connectedData: {
       nodeKind: "image",
@@ -42,7 +47,10 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       title: "图片节点",
       category: "图片",
       tint: "rgba(212, 83, 126, 0.18)",
-      size: { w: 300, h: 200 },
+      size: DEFAULT_IMAGE_CARD_SIZE,
+      ratio: DEFAULT_IMAGE_DIMENSION.ratio,
+      generationSize: { width: DEFAULT_IMAGE_DIMENSION.width, height: DEFAULT_IMAGE_DIMENSION.height },
+      mediaSource: "generator",
     },
   },
   video: {
@@ -53,6 +61,7 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       category: "视频",
       tint: "rgba(55, 138, 221, 0.20)",
       size: { w: 300, h: 200 },
+      mediaSource: "generator",
     },
     connectedData: {
       nodeKind: "video",
@@ -60,13 +69,20 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       category: "视频",
       tint: "rgba(55, 138, 221, 0.20)",
       size: { w: 300, h: 200 },
+      mediaSource: "generator",
     },
   },
 };
 
 const NODE_KIND_LABELS: Record<BasicNodeKind, string> = { text: "文本", image: "图片", video: "视频" };
 
-/** 按同类节点现有最大序号生成名称，避免当前画布出现同名基础节点。 */
+/**
+ * 按同类节点现有最大序号生成名称，避免当前画布出现同名基础节点。
+ *
+ * @param kind - 基础节点类型。
+ * @param nodes - 当前画布节点。
+ * @returns 带递增序号的节点名称。
+ */
 function nextNodeTitle(kind: BasicNodeKind, nodes: Node[]) {
   const label = NODE_KIND_LABELS[kind];
   const pattern = new RegExp(`^${label}(?:\\s*(\\d+))?$`);

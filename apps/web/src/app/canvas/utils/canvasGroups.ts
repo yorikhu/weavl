@@ -77,13 +77,23 @@ function hasRaisedTitle(node: Node): boolean {
   return data.nodeKind === "text" || data.nodeKind === "image" || data.nodeKind === "video";
 }
 
-/** 组边框与首行节点之间的顶部留白；带外置标题的节点需要额外容纳标题。 */
+/**
+ * 计算组边框与首行节点之间的顶部留白。
+ *
+ * @param nodes - 组内节点。
+ * @returns 能容纳外置标题的顶部留白。
+ */
 function getGroupTopInset(nodes: Node[]): number {
   if (nodes.some(hasRaisedTitle)) return 44;
   return 28;
 }
 
-/** 将单组操作栏锚定在组边框上沿，额外间距由工具栏组件统一提供。 */
+/**
+ * 将单组操作栏锚定在组边框上沿。
+ *
+ * @param nodes - 组内节点。
+ * @returns 操作栏相对组边框的顶部内缩距离。
+ */
 export function getCanvasGroupActionTopInset(nodes: Node[]): number {
   return getGroupTopInset(nodes);
 }
@@ -139,7 +149,13 @@ export function getCanvasGroupBounds(nodes: Node[]): CanvasGroupBounds[] {
   return [...groups].map(([id, group]) => groupBounds(id, group.name, group.nodes));
 }
 
-/** 判断画布坐标是否位于任意组边界内，不依赖组图层是否接收到 DOM 事件。 */
+/**
+ * 判断画布坐标是否位于任意组边界内，不依赖组图层是否接收到 DOM 事件。
+ *
+ * @param nodes - 当前画布节点。
+ * @param point - 画布坐标系中的目标点。
+ * @returns 目标点是否位于任意组边界内。
+ */
 export function isPointInsideCanvasGroup(nodes: Node[], point: { x: number; y: number }): boolean {
   return getCanvasGroupBounds(nodes).some(
     (group) =>
@@ -163,6 +179,10 @@ export function normalizeGroupedNodeSelection(nodes: Node[]): Node[] {
 /**
  * 为当前聚焦的组内节点添加独立样式类，并清理其他节点残留的临时类。
  * 不使用 domAttributes：React Flow 复用节点内部属性时可能把同一属性同步到同组节点。
+ *
+ * @param nodes - 当前画布节点。
+ * @param focusedNodeId - 当前聚焦的组内节点 ID。
+ * @returns 仅目标节点带聚焦样式类的新节点数组。
  */
 export function markFocusedGroupMember(nodes: Node[], focusedNodeId: string | null): Node[] {
   return nodes.map((node) => {
@@ -213,6 +233,11 @@ export function stripNodeGroup(data: Record<string, unknown>): Record<string, un
 /**
  * 连线创建的新节点继承共同源节点的分组。只有全部源节点都属于同一个组时才继承，
  * 避免临时多选跨组连接时把新节点错误收入其中一个组。
+ *
+ * @param node - 即将加入画布的新节点。
+ * @param sourceIds - 本次批量连接的源节点 ID。
+ * @param nodes - 当前画布节点。
+ * @returns 根据共同来源补充分组信息后的节点。
  */
 export function inheritSharedSourceGroup(node: Node, sourceIds: string[], nodes: Node[]): Node {
   const uniqueSourceIds = [...new Set(sourceIds)];

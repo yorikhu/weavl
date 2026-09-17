@@ -9,7 +9,12 @@ const ThemeContext = createContext<{
   toggle: () => void;
 }>({ theme: "dark", toggle: () => {} });
 
-/** 主题 Provider：黑白切换 + localStorage 持久化（默认暗色） */
+/**
+ * 提供明暗主题切换，并将用户选择持久化到 localStorage。
+ *
+ * @param props - 应用子树。
+ * @returns 默认使用暗色主题的主题上下文。
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
@@ -31,6 +36,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;
 }
 
+/**
+ * 读取当前主题及切换操作。
+ *
+ * @returns 主题上下文。
+ */
 export function useTheme() {
   return useContext(ThemeContext);
 }

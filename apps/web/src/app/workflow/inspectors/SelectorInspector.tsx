@@ -44,6 +44,12 @@ export interface SelectorConfig {
   branches: SelectorBranch[];
 }
 
+/**
+ * 补齐选择器节点配置的默认字段。
+ *
+ * @param c - 组件属性。
+ * @returns 可供检查器直接使用的完整选择器配置。
+ */
 export function normalizeSelectorConfig(c: Partial<SelectorConfig>): SelectorConfig {
   return {
     description: c.description,
@@ -70,6 +76,12 @@ const TYPE_ICONS: Record<SelectorCondition["leftType"], string> = {
   bool: "B",
 };
 
+/**
+ * 渲染选择器节点配置面板。
+ *
+ * @param props - 组件属性。
+ * @returns 选择器节点检查器。
+ */
 export function SelectorInspector({ config, onChange }: Props) {
   const update = <K extends keyof SelectorConfig>(k: K, v: SelectorConfig[K]) => onChange({ ...config, [k]: v });
 

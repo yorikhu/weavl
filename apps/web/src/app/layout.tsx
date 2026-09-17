@@ -13,6 +13,12 @@ export const metadata: Metadata = {
 // 静态导出无法从服务端读取本地偏好；在正文绘制前同步根节点的主题。
 const themeBootstrap = `try{document.documentElement.classList.toggle("dark",localStorage.getItem("weavl-theme")!=="light")}catch{document.documentElement.classList.add("dark")}`;
 
+/**
+ * 配置应用 HTML、Provider 和全局浮层。
+ *
+ * @param props - 组件属性。
+ * @returns 应用根布局。
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

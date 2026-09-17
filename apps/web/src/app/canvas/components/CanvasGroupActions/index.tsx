@@ -1,5 +1,5 @@
 import { FolderMinus, FolderPlus } from "lucide-react";
-import styles from "./index.module.scss";
+import { CanvasActionToolbar } from "../CanvasActionToolbar";
 
 interface CanvasGroupActionsProps {
   nodeIds: string[];
@@ -29,20 +29,18 @@ export function CanvasGroupActions({ nodeIds, groupId, className, onGroup, onUng
   };
 
   return (
-    <div
-      className={`${styles.toolbar} ${className ?? ""} nodrag nopan`}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          runPrimaryAction();
-        }}
-      >
-        {isGrouped ? <FolderMinus size={14} /> : <FolderPlus size={14} />}
-        {isGrouped ? "解组" : "打组"}
-      </button>
-    </div>
+    <CanvasActionToolbar
+      className={className}
+      ariaLabel={isGrouped ? "解组操作" : "打组操作"}
+      actions={[
+        {
+          key: isGrouped ? "ungroup" : "group",
+          icon: isGrouped ? <FolderMinus /> : <FolderPlus />,
+          title: isGrouped ? "解组" : "打组",
+          label: isGrouped ? "解组" : "打组",
+          onClick: runPrimaryAction,
+        },
+      ]}
+    />
   );
 }

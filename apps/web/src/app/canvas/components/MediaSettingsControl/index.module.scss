@@ -125,6 +125,98 @@
   border-radius: 10px;
 }
 
+.durationHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h4 {
+    margin-bottom: 0;
+  }
+}
+
+.durationInputWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #8f8f97;
+  font-size: 10px;
+
+  input {
+    width: 30px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #ededf0;
+    font: inherit;
+    text-align: right;
+    appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      margin: 0;
+      appearance: none;
+    }
+  }
+}
+
+.durationRange {
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  margin: 15px 0 5px;
+  outline: 0;
+  background: transparent;
+  cursor: pointer;
+
+  &::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  &::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    margin-top: -4.5px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    appearance: none;
+    background: #8f8f95;
+  }
+
+  &::-moz-range-track {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  &::-moz-range-progress {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  &::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    background: #8f8f95;
+  }
+}
+
+.durationScale {
+  display: flex;
+  justify-content: space-between;
+  color: #707078;
+  font-size: 9px;
+}
+
 .ratioMark {
   box-sizing: border-box;
   display: inline-block;
@@ -185,4 +277,38 @@
 
 :global(html:not(.dark)) .active .ratioMark {
   color: #111827;
+}
+
+:global(html:not(.dark)) .durationScale {
+  color: #7b8492;
+}
+
+:global(html:not(.dark)) .durationInputWrap {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #667085;
+
+  input {
+    color: #111827;
+  }
+}
+
+:global(html:not(.dark)) .durationRange {
+  &::-webkit-slider-runnable-track {
+    background: rgba(15, 23, 42, 0.18);
+  }
+
+  &::-webkit-slider-thumb {
+    border-color: rgba(15, 23, 42, 0.18);
+    background: #7d8591;
+  }
+
+  &::-moz-range-track,
+  &::-moz-range-progress {
+    background: rgba(15, 23, 42, 0.18);
+  }
+
+  &::-moz-range-thumb {
+    border-color: rgba(15, 23, 42, 0.18);
+    background: #7d8591;
+  }
 }

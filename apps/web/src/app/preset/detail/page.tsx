@@ -20,7 +20,13 @@ interface ChatMsg {
   text: string;
 }
 
-/** 把 #RRGGBB 颜色叠加 alpha 返回 rgba() —— inline style 专用 */
+/**
+ * 为十六进制颜色添加透明度，供内联样式使用。
+ *
+ * @param hex - 六位十六进制颜色。
+ * @param alpha - 透明度。
+ * @returns rgba 颜色；输入无效时返回原值。
+ */
 function hexAlpha(hex: string, alpha: number): string {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex);
   const h = m?.[1];
@@ -36,6 +42,8 @@ function hexAlpha(hex: string, alpha: number): string {
  * 左：流程步骤（含确认门）
  * 右：Agent 对话（运行状态以 Agent 消息播报）
  * 底部：启动工作流（POST /runs）
+ *
+ * @returns 预设详情、Agent 对话和工作流启动界面。
  */
 export default function PresetDetailPage() {
   const router = useRouter();
@@ -83,7 +91,7 @@ export default function PresetDetailPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chat]);
 
-  /* 发送对话（mock Agent 回复） */
+  /* TODO(preset-agent): 将模板详情对话接入 Agent 会话和真实上下文。 */
   const sendChat = useCallback(() => {
     const text = chatDraft.trim();
     if (!text) return;

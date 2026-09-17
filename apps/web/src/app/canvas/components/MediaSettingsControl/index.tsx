@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Popover } from "@/components/Popover";
 import { getMediaCardSize, type MediaDimensionOption } from "../../utils/mediaSizing";
@@ -90,6 +91,94 @@ function ChoiceGroup({
 }
 
 /**
+ * 使用模型时长能力的最小值和最大值渲染逐秒滑杆与数字输入。
+ *
+ * @param props - 当前时长、模型支持的时长集合与变更回调。
+ * @returns 可拖拽且可直接输入的视频时长控件。
+ */
+function DurationControl({
+  value,
+  values,
+  onChange,
+}: {
+  value: number;
+  values: number[];
+  onChange: (value: number) => void;
+}) {
+  const options = useMemo(() => [...new Set(values)].filter(Number.isFinite).sort((a, b) => a - b), [values]);
+  const minimum = options[0] ?? 1;
+  const maximum = options.at(-1) ?? minimum;
+  const [draft, setDraft] = useState(String(value));
+  const parsedDraft = Number(draft);
+  const sliderValue = Math.min(maximum, Math.max(minimum, Number.isFinite(parsedDraft) ? parsedDraft : value));
+
+  useEffect(() => setDraft(String(value)), [value]);
+
+  const commit = (candidate: number) => {
+    if (!options.length || !Number.isFinite(candidate)) {
+      setDraft(String(value));
+      return;
+    }
+    const next = Math.min(maximum, Math.max(minimum, Math.round(candidate)));
+    setDraft(String(next));
+    if (next !== value) onChange(next);
+  };
+
+  if (!options.length) return null;
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.durationHeading}>
+        <h4>视频时长</h4>
+        <label className={styles.durationInputWrap}>
+          <input
+            type="number"
+            min={minimum}
+            max={maximum}
+            value={draft}
+            aria-label="视频时长（秒）"
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={() => commit(Number(draft))}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit(Number(draft));
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          <span>秒</span>
+        </label>
+      </div>
+      <input
+        className={styles.durationRange}
+        type="range"
+        min={minimum}
+        max={maximum}
+        step={1}
+        value={sliderValue}
+        aria-label="拖拽选择视频时长"
+        onChange={(event) => setDraft(event.target.value)}
+        onPointerUp={(event) => commit(Number(event.currentTarget.value))}
+        onPointerCancel={() => setDraft(String(value))}
+        onBlur={(event) => commit(Number(event.currentTarget.value))}
+        onKeyUp={(event) => {
+          if (
+            ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)
+          ) {
+            commit(Number(event.currentTarget.value));
+          }
+        }}
+      />
+      <div className={styles.durationScale} aria-hidden="true">
+        <span>{minimum}s</span>
+        <span>{maximum}s</span>
+      </div>
+    </section>
+  );
+}
+
+/**
  * 渲染图片与视频节点共用的生成尺寸、清晰度和数量设置。
  *
  * @param props - 媒体类型、当前模型、选中参数和状态更新回调。
@@ -117,8 +206,9 @@ export function MediaSettingsControl({
   onCountChange,
 }: MediaSettingsControlProps) {
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  const selectedRatio = selectedDimension?.ratio ?? ratio;
   const summary = [
-    ratio,
+    selectedRatio,
     quality,
     resolution,
     duration === undefined ? undefined : `${duration}s`,
@@ -139,6 +229,7 @@ export function MediaSettingsControl({
         collisionPadding={16}
         showArrow={false}
         autoFocusOnOpen={false}
+        contentScope="node-prompt"
         contentClassName={styles.panel}
         trigger={
           <button type="button" className={styles.trigger}>
@@ -151,7 +242,13 @@ export function MediaSettingsControl({
         <div className={styles.panelBody}>
           <ChoiceGroup label={qualityLabel} values={qualities} value={quality} onChange={onQualityChange} />
           {resolution && resolutions && onResolutionChange && (
-            <ChoiceGroup label="清晰度" values={resolutions} value={resolution} onChange={onResolutionChange} />
+            <ChoiceGroup
+              label="清晰度"
+              values={resolutions}
+              value={resolution}
+              format={(item) => item.toLowerCase()}
+              onChange={onResolutionChange}
+            />
           )}
           <section className={styles.section}>
             <h4>比例</h4>
@@ -160,8 +257,8 @@ export function MediaSettingsControl({
                 <button
                   key={`${item.ratio}-${item.width}x${item.height}`}
                   type="button"
-                  aria-pressed={item.ratio === ratio}
-                  className={`${styles.ratioChoice} ${item.ratio === ratio ? styles.active : ""}`}
+                  aria-pressed={item === selectedDimension}
+                  className={`${styles.ratioChoice} ${item === selectedDimension ? styles.active : ""}`}
                   onClick={() => onDimensionChange(item)}
                 >
                   <RatioMark option={item} />
@@ -171,13 +268,7 @@ export function MediaSettingsControl({
             </div>
           </section>
           {duration !== undefined && durations && onDurationChange && (
-            <ChoiceGroup
-              label="视频时长"
-              values={durations.map(String)}
-              value={String(duration)}
-              format={(item) => `${item}秒`}
-              onChange={(item) => onDurationChange(Number(item))}
-            />
+            <DurationControl value={duration} values={durations} onChange={onDurationChange} />
           )}
           <ChoiceGroup
             label="生成数量"
