@@ -11,6 +11,7 @@ import { getNextCanvasLayer } from "../utils/canvasGroups";
 import { nodeAssetPayload, type NodeAssetPayload } from "../utils/nodeAssets";
 import { selectNodeFromAssetList } from "../utils/nodeSelectors";
 import { stripNodeGroup } from "../utils/canvasGroups";
+import { readLocalMediaSize } from "../utils/mediaSizing";
 
 interface UseCanvasAssetsOptions {
   nodes: Node[];
@@ -177,14 +178,21 @@ export function useCanvasAssets(options: UseCanvasAssetsOptions) {
     async (files: FileList | null) => {
       if (!files?.length) return;
       try {
-        const assets = await Promise.all(Array.from(files, (file) => uploadAsset(file, null, false)));
+        const localFiles = Array.from(files);
+        const [assets, mediaSizes] = await Promise.all([
+          Promise.all(localFiles.map((file) => uploadAsset(file, null, false))),
+          Promise.all(localFiles.map(readLocalMediaSize)),
+        ]);
         const base = uploadPositionRef.current;
         setNodes((current) => {
           const firstLayer = getNextCanvasLayer(current);
           return [
             ...current,
             ...assets.map((asset, index) => ({
-              ...assetToCanvasNode(asset, current.length + index),
+              ...assetToCanvasNode(asset, current.length + index, {
+                intrinsicSize: mediaSizes[index],
+                mediaSource: "upload",
+              }),
               position: { x: base.x + index * 24, y: base.y + index * 24 },
               zIndex: firstLayer + index,
             })),

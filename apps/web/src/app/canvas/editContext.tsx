@@ -2,6 +2,7 @@
 
 import { createContext, type MutableRefObject } from "react";
 import type { AssetRef } from "@weavl/shared";
+import type { MediaNodeVariant } from "./types/nodes";
 
 /**
  * 画布编辑态共享 context：
@@ -32,10 +33,12 @@ export interface EditCtx {
           quality?: string;
           resolution?: string;
           generationSize?: { width: number; height: number };
+          size?: { w: number; h: number };
           count?: number;
           model?: string;
           url?: string;
           assetRef?: AssetRef;
+          variants?: MediaNodeVariant[];
           title?: string;
         },
       ) => void)
@@ -48,11 +51,13 @@ export interface EditCtx {
           ratio?: string;
           quality?: string;
           generationSize?: { width: number; height: number };
+          size?: { w: number; h: number };
           duration?: number;
           count?: number;
           model?: string;
           url?: string;
           assetRef?: AssetRef;
+          variants?: MediaNodeVariant[];
           title?: string;
         },
       ) => void)
@@ -72,6 +77,7 @@ export interface EditCtx {
     model?: string;
     url?: string;
     assetRef?: AssetRef;
+    variants?: MediaNodeVariant[];
     title?: string;
   } | null>;
   videoEditStateRef: MutableRefObject<{
@@ -84,6 +90,7 @@ export interface EditCtx {
     model?: string;
     url?: string;
     assetRef?: AssetRef;
+    variants?: MediaNodeVariant[];
     title?: string;
   } | null>;
 }

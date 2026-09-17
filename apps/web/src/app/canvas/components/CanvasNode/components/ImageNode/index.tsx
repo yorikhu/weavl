@@ -10,23 +10,28 @@ import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
+import { NodeGenerationOverlay } from "../NodeGenerationOverlay";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { ImageNodeData } from "../../../../types/nodes";
-import { getMediaCardSize, getMediaDimensions, type MediaDimensionOption } from "../../../../utils/mediaSizing";
-import { appendGeneratedMediaNodes } from "../../../../utils/generatedMediaNodes";
+import {
+  getMediaCardSize,
+  getResolutionTier,
+  resolveMediaCapabilities,
+  type MediaDimensionOption,
+} from "../../../../utils/mediaSizing";
+import { updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
 const FALLBACK_IMAGE_MODELS: GenerationModelOption[] = [
   {
-    id: "weavl-image",
+    id: "gpt-image-2.5-flare",
     kind: "image",
-    label: "Weavl Image",
-    maker: "Weavl",
-    description: "自动选择可用图片模型",
+    label: "GPT-Image-2.5-Flare",
+    maker: "OpenAI",
+    description: "偏速度与高频创作的图片生成模型",
     configured: false,
-    isAuto: true,
   },
 ];
 
@@ -52,11 +57,13 @@ function ImageCardStatic({
   nodeId,
   onActivate,
   editing = false,
+  onIntrinsicSize,
 }: {
   d: ImageNodeData;
   nodeId?: string;
   onActivate?: () => void;
   editing?: boolean;
+  onIntrinsicSize?: (size: { width: number; height: number }) => void;
 }) {
   const edit = useContext(EnterEditContext);
   const w = d.size?.w ?? 300;
@@ -97,7 +104,17 @@ function ImageCardStatic({
         {url ? (
           <div className={styles.imagePreview}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={d.title} className={styles.imageReal} />
+            <img
+              src={url}
+              alt={d.title}
+              className={styles.imageReal}
+              onLoad={(event) =>
+                onIntrinsicSize?.({
+                  width: event.currentTarget.naturalWidth,
+                  height: event.currentTarget.naturalHeight,
+                })
+              }
+            />
           </div>
         ) : (
           <div className={`${styles.imagePreview} ${styles.emptyMediaPreview}`}>
@@ -106,6 +123,7 @@ function ImageCardStatic({
             </div>
           </div>
         )}
+        <NodeGenerationOverlay status={d.generationStatus} label="图片" />
         <Handle type="source" position={Position.Right} className={styles.cardHandle} />
       </div>
     </>
@@ -120,7 +138,26 @@ function ImageCardStatic({
  */
 export function ImageNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
+  const { setNodes } = useReactFlow();
   const d = data as unknown as ImageNodeData;
+  const updateIntrinsicSize = useCallback(
+    (intrinsicSize: { width: number; height: number }) => {
+      if (d.mediaSource !== "upload" && d.mediaSource !== "asset") return;
+      if (intrinsicSize.width <= 0 || intrinsicSize.height <= 0) return;
+      if (d.intrinsicSize?.width === intrinsicSize.width && d.intrinsicSize.height === intrinsicSize.height) return;
+      setNodes((current) =>
+        current.map((node) =>
+          node.id === id
+            ? {
+                ...node,
+                data: { ...node.data, intrinsicSize, size: getMediaCardSize(intrinsicSize) },
+              }
+            : node,
+        ),
+      );
+    },
+    [d.intrinsicSize?.height, d.intrinsicSize?.width, d.mediaSource, id, setNodes],
+  );
 
   if (edit.editingId === id) {
     return <ImageNodeEditor data={d} />;
@@ -128,7 +165,12 @@ export function ImageNode({ data, id }: NodeProps) {
 
   return (
     <div className={styles.imageNodeWrap}>
-      <ImageCardStatic d={d} nodeId={id} onActivate={() => edit.enterEdit(id)} />
+      <ImageCardStatic
+        d={d}
+        nodeId={id}
+        onActivate={d.mediaSource === "upload" || d.mediaSource === "asset" ? undefined : () => edit.enterEdit(id)}
+        onIntrinsicSize={updateIntrinsicSize}
+      />
     </div>
   );
 }
@@ -154,19 +196,24 @@ export function ImageEditPanel() {
   const [quality, setQuality] = useState(normalizeImageQuality(data?.quality));
   const [resolution, setResolution] = useState(data?.resolution ?? "2K");
   const [count, setCount] = useState(data?.count ?? 1);
-  const [model, setModel] = useState(data?.model ?? "weavl-image");
+  const [model, setModel] = useState(data?.model ?? "gpt-image-2.5-flare");
   const [models, setModels] = useState<GenerationModelOption[]>(FALLBACK_IMAGE_MODELS);
   const [busy, setBusy] = useState(false);
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const syncedNodeIdRef = useRef<string | null>(null);
-  const dimensions = getMediaDimensions("image", model);
+  const selectedModel = models.find((item) => item.id === model);
+  const capabilities = resolveMediaCapabilities("image", selectedModel?.capabilities);
+  const dimensions = capabilities.dimensions;
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
-  const priceQuote = useGenerationQuote({
+  const effectiveResolution = capabilities.resolutions.includes(resolution)
+    ? resolution
+    : getResolutionTier(selectedDimension);
+  const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
     modelId: model,
     parameters: {
       count,
       ratio,
-      resolution,
+      resolution: effectiveResolution,
       quality: quality === "低画质" ? "low" : quality === "高画质" ? "high" : "medium",
       size: selectedDimension ? `${selectedDimension.width}x${selectedDimension.height}` : undefined,
     },
@@ -180,7 +227,10 @@ export function ImageEditPanel() {
   useEffect(() => {
     if (!isImage) return;
     void studioApi<GenerationModelOption[]>("/studio/generations/models?kind=image")
-      .then(setModels)
+      .then((options) => {
+        setModels(options);
+        setModel((current) => (options.some((option) => option.id === current) ? current : options[0]?.id || current));
+      })
       .catch(() => setModels(FALLBACK_IMAGE_MODELS));
   }, [isImage]);
 
@@ -197,7 +247,7 @@ export function ImageEditPanel() {
     setQuality(normalizeImageQuality(data.quality));
     setResolution(data.resolution ?? "2K");
     setCount(data.count ?? 1);
-    setModel(data.model ?? "weavl-image");
+    setModel(data.model ?? "gpt-image-2.5-flare");
     syncedNodeIdRef.current = editingId;
   }, [editingId, data]);
 
@@ -222,7 +272,7 @@ export function ImageEditPanel() {
               ...currentData,
               ratio: nextDimension.ratio,
               generationSize: { width: nextDimension.width, height: nextDimension.height },
-              size: nextSize,
+              size: currentData.url ? currentData.size : nextSize,
             },
           };
         }),
@@ -240,12 +290,25 @@ export function ImageEditPanel() {
   const changeModel = useCallback(
     (nextModel: string) => {
       setModel(nextModel);
-      const nextDimensions = getMediaDimensions("image", nextModel);
+      const nextCapabilities = resolveMediaCapabilities(
+        "image",
+        models.find((item) => item.id === nextModel)?.capabilities,
+      );
+      const nextDimensions = nextCapabilities.dimensions;
       if (!nextDimensions.some((item) => item.ratio === ratio) && nextDimensions[0]) {
         changeDimension(nextDimensions[0]);
       }
+      if (!nextCapabilities.qualities.includes(quality) && nextCapabilities.qualities[0]) {
+        setQuality(nextCapabilities.qualities[0]);
+      }
+      if (nextCapabilities.resolutions.length && !nextCapabilities.resolutions.includes(resolution)) {
+        setResolution(nextCapabilities.resolutions[0]!);
+      }
+      if (!nextCapabilities.counts.includes(count) && nextCapabilities.counts[0]) {
+        setCount(nextCapabilities.counts[0]);
+      }
     },
-    [changeDimension, ratio],
+    [changeDimension, count, models, quality, ratio, resolution],
   );
 
   /** 实时同步到 imageEditStateRef，供外部 commitEdit / commitImageEdit 取最新值 */
@@ -254,7 +317,7 @@ export function ImageEditPanel() {
       prompt,
       ratio,
       quality,
-      resolution,
+      resolution: effectiveResolution,
       count,
       model,
       generationSize: selectedDimension
@@ -262,10 +325,10 @@ export function ImageEditPanel() {
         : undefined,
       title: edit.buffer.title,
     };
-  }, [prompt, ratio, quality, resolution, count, model, selectedDimension, edit]);
+  }, [prompt, ratio, quality, effectiveResolution, count, model, selectedDimension, edit]);
 
   /**
-   * 生成图片，首个产物写回当前节点，其余产物创建为相邻节点。
+   * 生成图片并把全部产物版本归入当前节点，画布只更新原节点。
    *
    * @returns 图片生成和节点写回完成后的 Promise。
    */
@@ -273,6 +336,9 @@ export function ImageEditPanel() {
     const nodeId = edit.editingId;
     if (!nodeId || !prompt.trim() || busy) return;
     setBusy(true);
+    setNodes((nodes) =>
+      updateNodeGenerationState(nodes, nodeId, { generationStatus: "running", generationError: undefined }),
+    );
     try {
       const result = await studioApi<{ assets: Asset[] }>("/studio/generations/image", {
         method: "POST",
@@ -283,33 +349,45 @@ export function ImageEditPanel() {
           quality: quality === "低画质" ? "low" : quality === "高画质" ? "high" : "medium",
           count,
           size: selectedDimension ? `${selectedDimension.width}x${selectedDimension.height}` : undefined,
-          resolution,
+          resolution: effectiveResolution,
         }),
       });
       const generatedAsset = result.assets[0];
       const generatedVersion = generatedAsset?.versions.at(-1);
       if (!generatedAsset || !generatedVersion?.content) throw new Error("图片模型没有返回可用产物");
+      const variants = result.assets.flatMap((asset) => {
+        const version = asset.versions.at(-1);
+        return version?.content
+          ? [{ url: version.content, assetRef: { assetId: asset.id, versionId: version.id } }]
+          : [];
+      });
       edit.commitImageEdit?.(nodeId, {
         prompt,
         ratio,
         quality,
-        resolution,
+        resolution: effectiveResolution,
         count,
         model,
         url: generatedVersion.content,
         assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
+        variants,
+        size: selectedDimension ? getMediaCardSize(selectedDimension) : undefined,
         generationSize: selectedDimension
           ? { width: selectedDimension.width, height: selectedDimension.height }
           : undefined,
       });
-      setNodes((current) => appendGeneratedMediaNodes(current, nodeId, result.assets.slice(1)));
+      setNodes((nodes) => updateNodeGenerationState(nodes, nodeId, { generationStatus: "succeeded" }));
       toast(result.assets.length > 1 ? `${result.assets.length} 张图片已生成` : "图片已生成", "success");
     } catch (cause) {
-      toast((cause as Error).message || "图片生成失败");
+      const message = (cause as Error).message || "图片生成失败";
+      setNodes((nodes) =>
+        updateNodeGenerationState(nodes, nodeId, { generationStatus: "failed", generationError: message }),
+      );
+      toast(message);
     } finally {
       setBusy(false);
     }
-  }, [busy, count, edit, model, prompt, quality, ratio, resolution, selectedDimension, setNodes]);
+  }, [busy, count, edit, effectiveResolution, model, prompt, quality, ratio, selectedDimension, setNodes]);
 
   if (!edit.editingId || !isImage) return null;
 
@@ -326,6 +404,7 @@ export function ImageEditPanel() {
       }))}
       modelMenuLabel="图片模型"
       cost={formatGenerationPrice(priceQuote)}
+      costLoading={priceLoading}
       busy={busy}
       rows={3}
       header={
@@ -359,11 +438,11 @@ export function ImageEditPanel() {
             ratio={ratio}
             dimensions={dimensions}
             quality={quality}
-            qualities={["低画质", "标准画质", "高画质"]}
-            resolution={resolution}
-            resolutions={["1K", "2K", "4K"]}
+            qualities={capabilities.qualities}
+            resolution={capabilities.resolutions.length ? resolution : undefined}
+            resolutions={capabilities.resolutions.length ? capabilities.resolutions : undefined}
             count={count}
-            counts={[1, 2, 4]}
+            counts={capabilities.counts}
             countUnit="张"
             onOpenChange={setShowRatioMenu}
             onDimensionChange={changeDimension}
@@ -400,7 +479,7 @@ function ImageNodeEditor({ data }: { data: ImageNodeData }) {
         quality: normalizeImageQuality(data.quality),
         resolution: data.resolution ?? "2K",
         count: data.count ?? 1,
-        model: data.model ?? "weavl-image",
+        model: data.model ?? "gpt-image-2.5-flare",
         url: data.url,
         title: edit.buffer.title,
       };

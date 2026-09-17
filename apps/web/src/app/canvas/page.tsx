@@ -635,6 +635,7 @@ function CanvasInner() {
       const node = nodesRef.current.find((item) => item.id === nodeId);
       const data = node?.data as Record<string, unknown> | undefined;
       if (!data) return;
+      if (data.mediaSource === "upload" || data.mediaSource === "asset") return;
       if (data.nodeKind === "image" || data.nodeKind === "video") {
         enterEdit(nodeId);
         return;

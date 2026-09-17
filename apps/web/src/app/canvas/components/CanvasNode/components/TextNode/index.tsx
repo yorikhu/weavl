@@ -16,9 +16,11 @@ import { useGenerationQuote } from "@/hooks/useGenerationQuote";
 import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { NodePromptPanel } from "../../../NodePromptPanel";
+import { NodeGenerationOverlay } from "../NodeGenerationOverlay";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { TextNodeData } from "../../../../types/nodes";
+import { updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import sharedStyles from "../../index.module.scss";
 import localStyles from "./index.module.scss";
 
@@ -115,6 +117,7 @@ export function TextNode({ data, id }: NodeProps) {
         }}
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
+        <NodeGenerationOverlay status={d.generationStatus} label="文案" />
         {hasText || isManualNode ? (
           <div
             className={styles.textNodeBody}
@@ -183,6 +186,7 @@ function EmptyTextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
         }
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
+        <NodeGenerationOverlay status={data.generationStatus} label="文案" />
         <div className={styles.textEmptyPlaceholder} aria-hidden="true">
           <AlignLeft size={30} strokeWidth={1.7} />
         </div>
@@ -211,7 +215,6 @@ interface TextModelOption {
 }
 
 const FALLBACK_TEXT_MODELS: TextModelOption[] = [
-  { id: "weavl-text", label: "Weavl Text", configured: false },
   { id: "deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash", configured: false },
   { id: "atria-dawn-preview", label: "Atria Dawn Preview (Free)", configured: false },
   { id: "ling-3.0-flash-vl", label: "Ling-3.0-flash-VL", configured: false },
@@ -225,44 +228,56 @@ const FALLBACK_TEXT_MODELS: TextModelOption[] = [
  */
 export function TextEditPanel() {
   const edit = useContext(EnterEditContext);
+  const { setNodes } = useReactFlow();
   const editingId = edit.editingId;
   const node = useStore((state) => (editingId ? (state.nodes.find((item) => item.id === editingId) ?? null) : null));
   const isText =
     (node?.data as Record<string, unknown> | undefined)?.nodeKind === "text" && edit.editingMode === "generate";
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState("weavl-text");
+  const [model, setModel] = useState("deepseek-v4.1-flash");
   const [models, setModels] = useState(FALLBACK_TEXT_MODELS);
   const [busy, setBusy] = useState(false);
-  const priceQuote = useGenerationQuote({
+  const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
     modelId: model,
-    parameters: { maxOutputTokens: 1000 },
+    parameters: { promptLength: prompt.length, maxOutputTokens: 1000 },
     enabled: isText,
   });
 
   useEffect(() => {
     if (!isText) return;
     void studioApi<TextModelOption[]>("/studio/generations/text/models")
-      .then(setModels)
+      .then((options) => {
+        setModels(options);
+        setModel((current) => (options.some((option) => option.id === current) ? current : options[0]?.id || current));
+      })
       .catch(() => setModels(FALLBACK_TEXT_MODELS));
   }, [isText]);
 
   const generate = useCallback(async () => {
     if (!editingId || !prompt.trim() || busy) return;
     setBusy(true);
+    setNodes((nodes) =>
+      updateNodeGenerationState(nodes, editingId, { generationStatus: "running", generationError: undefined }),
+    );
     try {
       const result = await studioApi<{ content: string; mode: "live" | "mock" }>("/studio/generations/text", {
         method: "POST",
         body: jsonBody({ model, prompt }),
       });
       edit.saveEdit(editingId, edit.buffer.title || "文本", result.content);
+      setNodes((nodes) => updateNodeGenerationState(nodes, editingId, { generationStatus: "succeeded" }));
       setPrompt("");
       toast(result.mode === "live" ? "文案已生成" : "演示文案已生成", "success");
     } catch (cause) {
-      toast((cause as Error).message || "文本生成失败");
+      const message = (cause as Error).message || "文本生成失败";
+      setNodes((nodes) =>
+        updateNodeGenerationState(nodes, editingId, { generationStatus: "failed", generationError: message }),
+      );
+      toast(message);
     } finally {
       setBusy(false);
     }
-  }, [busy, edit, editingId, model, prompt]);
+  }, [busy, edit, editingId, model, prompt, setNodes]);
 
   if (!editingId || !isText) return null;
   return (
@@ -278,6 +293,7 @@ export function TextEditPanel() {
       }))}
       modelMenuLabel="文本模型"
       cost={formatGenerationPrice(priceQuote)}
+      costLoading={priceLoading}
       busy={busy}
       rows={4}
       onPromptChange={setPrompt}

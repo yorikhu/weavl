@@ -139,6 +139,7 @@ export function MediaSettingsControl({
         collisionPadding={16}
         showArrow={false}
         autoFocusOnOpen={false}
+        contentScope="node-prompt"
         contentClassName={styles.panel}
         trigger={
           <button type="button" className={styles.trigger}>

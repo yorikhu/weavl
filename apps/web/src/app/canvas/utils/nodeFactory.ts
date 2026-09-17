@@ -35,6 +35,7 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       category: "图片",
       tint: "rgba(212, 83, 126, 0.18)",
       size: { w: 300, h: 200 },
+      mediaSource: "generator",
     },
     connectedData: {
       nodeKind: "image",
@@ -43,6 +44,7 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       category: "图片",
       tint: "rgba(212, 83, 126, 0.18)",
       size: { w: 300, h: 200 },
+      mediaSource: "generator",
     },
   },
   video: {
@@ -53,6 +55,7 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       category: "视频",
       tint: "rgba(55, 138, 221, 0.20)",
       size: { w: 300, h: 200 },
+      mediaSource: "generator",
     },
     connectedData: {
       nodeKind: "video",
@@ -60,6 +63,7 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       category: "视频",
       tint: "rgba(55, 138, 221, 0.20)",
       size: { w: 300, h: 200 },
+      mediaSource: "generator",
     },
   },
 };

@@ -148,6 +148,10 @@
   }
 }
 
+.costLoadingIcon {
+  animation: prompt-loading-spin 760ms linear infinite;
+}
+
 .submit {
   display: inline-flex;
   align-items: center;
@@ -171,6 +175,16 @@
   &:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+  }
+}
+
+.loadingIcon {
+  animation: prompt-loading-spin 760ms linear infinite;
+}
+
+@keyframes prompt-loading-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

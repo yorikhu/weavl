@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { getViewportForBounds, useReactFlow, useStore, type Node } from "@xyflow/react";
 import type { EditCtx } from "../editContext";
 import type { AssetRef } from "@weavl/shared";
-import type { AnyNodeData, CardField } from "../types/nodes";
+import type { AnyNodeData, CardField, MediaNodeVariant } from "../types/nodes";
 import toolbarStyles from "../components/FloatingToolbar/index.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
 
@@ -145,10 +145,12 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         quality?: string;
         resolution?: string;
         generationSize?: { width: number; height: number };
+        size?: { w: number; h: number };
         count?: number;
         model?: string;
         url?: string;
         assetRef?: AssetRef;
+        variants?: MediaNodeVariant[];
         title?: string;
       },
     ) => {
@@ -162,10 +164,12 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (payload.quality) d.quality = payload.quality;
           if (payload.resolution) d.resolution = payload.resolution;
           if (payload.generationSize) d.generationSize = payload.generationSize;
+          if (payload.size) d.size = payload.size;
           if (typeof payload.count === "number") d.count = payload.count;
           if (payload.model) d.model = payload.model;
           if (payload.url !== undefined) d.url = payload.url;
           if (payload.assetRef) d.assetRef = payload.assetRef;
+          if (payload.variants) d.variants = payload.variants;
           return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
         }),
       );
@@ -186,11 +190,13 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         ratio?: string;
         quality?: string;
         generationSize?: { width: number; height: number };
+        size?: { w: number; h: number };
         duration?: number;
         count?: number;
         model?: string;
         url?: string;
         assetRef?: AssetRef;
+        variants?: MediaNodeVariant[];
         title?: string;
       },
     ) => {
@@ -203,11 +209,13 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (payload.ratio) d.ratio = payload.ratio;
           if (payload.quality) d.quality = payload.quality;
           if (payload.generationSize) d.generationSize = payload.generationSize;
+          if (payload.size) d.size = payload.size;
           if (typeof payload.duration === "number") d.duration = payload.duration;
           if (typeof payload.count === "number") d.count = payload.count;
           if (payload.model) d.model = payload.model;
           if (payload.url !== undefined) d.url = payload.url;
           if (payload.assetRef) d.assetRef = payload.assetRef;
+          if (payload.variants) d.variants = payload.variants;
           return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
         }),
       );
@@ -279,6 +287,8 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
       if (target.closest(`.${nodeStyles.imageNodeEditWrap}`)) return;
       /** 节点提示词面板通过 Portal 挂到 body，点击内部不退出编辑态。 */
       if (target.closest("[data-node-prompt-panel]")) return;
+      /** 提示词面板内的二级 Popover 也通过 Portal 挂载，点选规格时保持节点编辑态。 */
+      if (target.closest('[data-popover-scope="node-prompt"]')) return;
       /** 点在顶部格式化工具栏上 → 不处理（工具栏按钮要保持焦点操作正文） */
       if (target.closest(`.${toolbarStyles.floatingToolbar}`)) return;
       /* 先保存当前内容，但继续传递 pointerdown，让目标节点可在同一次操作中开始拖动。 */

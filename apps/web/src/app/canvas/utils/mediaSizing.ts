@@ -1,3 +1,5 @@
+import type { MediaGenerationCapabilities } from "@weavl/shared";
+
 export type MediaCapabilityKind = "image" | "video";
 
 export interface MediaDimensionOption {
@@ -6,62 +8,140 @@ export interface MediaDimensionOption {
   height: number;
 }
 
-export type MediaCapabilityCatalog = Record<
-  MediaCapabilityKind,
-  { fallback: MediaDimensionOption[]; models: Record<string, MediaDimensionOption[]> }
->;
+export interface IntrinsicMediaSize {
+  width: number;
+  height: number;
+}
 
-const COMMON_DIMENSIONS: MediaDimensionOption[] = [
+export interface ResolvedMediaCapabilities {
+  verified: boolean;
+  dimensions: MediaDimensionOption[];
+  qualities: string[];
+  resolutions: string[];
+  durations: number[];
+  counts: number[];
+}
+
+const IMAGE_DIMENSIONS: MediaDimensionOption[] = [
   { ratio: "1:1", width: 1024, height: 1024 },
-  { ratio: "1:2", width: 768, height: 1536 },
-  { ratio: "2:1", width: 1536, height: 768 },
-  { ratio: "9:16", width: 1080, height: 1920 },
-  { ratio: "16:9", width: 1920, height: 1080 },
-  { ratio: "3:4", width: 960, height: 1280 },
-  { ratio: "4:3", width: 1280, height: 960 },
   { ratio: "3:2", width: 1536, height: 1024 },
   { ratio: "2:3", width: 1024, height: 1536 },
-  { ratio: "5:4", width: 1280, height: 1024 },
-  { ratio: "4:5", width: 1024, height: 1280 },
-  { ratio: "21:9", width: 2560, height: 1080 },
-  { ratio: "9:21", width: 1080, height: 2560 },
 ];
 
-/** 后端接入后可传入同结构的模型能力目录，画布与选择组件无需修改。 */
-export const FALLBACK_MEDIA_CAPABILITIES: MediaCapabilityCatalog = {
-  image: { fallback: COMMON_DIMENSIONS, models: {} },
-  video: { fallback: COMMON_DIMENSIONS, models: {} },
+const VIDEO_DIMENSIONS: MediaDimensionOption[] = [
+  { ratio: "16:9", width: 1920, height: 1080 },
+  { ratio: "9:16", width: 1080, height: 1920 },
+];
+
+const FALLBACKS: Record<MediaCapabilityKind, ResolvedMediaCapabilities> = {
+  image: {
+    verified: false,
+    dimensions: IMAGE_DIMENSIONS,
+    qualities: ["低画质", "标准画质", "高画质"],
+    resolutions: [],
+    durations: [],
+    counts: [1, 2, 4],
+  },
+  video: {
+    verified: false,
+    dimensions: VIDEO_DIMENSIONS,
+    qualities: [],
+    resolutions: ["720P"],
+    durations: [5, 10],
+    counts: [1],
+  },
 };
 
 /**
- * 获取指定媒体模型支持的输出尺寸，模型没有专属配置时回退到通用尺寸。
+ * 合并数据库中的模型能力与安全回退值。供应商参数不完整时只暴露保守选项。
  *
- * @param kind - 图片或视频能力类型。
- * @param model - 当前模型标识。
- * @param catalog - 可由后端能力接口替换的模型尺寸目录。
- * @returns 当前模型可选的真实输出尺寸。
+ * @param kind - 图片或视频模型。
+ * @param capabilities - 模型目录返回的能力配置。
+ * @returns 可直接渲染为规格选择器的参数集合。
  */
-export function getMediaDimensions(
+export function resolveMediaCapabilities(
   kind: MediaCapabilityKind,
-  model: string,
-  catalog: MediaCapabilityCatalog = FALLBACK_MEDIA_CAPABILITIES,
-) {
-  return catalog[kind].models[model] ?? catalog[kind].fallback;
+  capabilities?: MediaGenerationCapabilities,
+): ResolvedMediaCapabilities {
+  const fallback = FALLBACKS[kind];
+  return {
+    verified: capabilities?.verified ?? fallback.verified,
+    dimensions: capabilities?.dimensions?.length ? capabilities.dimensions : fallback.dimensions,
+    qualities: capabilities?.qualities?.length ? capabilities.qualities : fallback.qualities,
+    resolutions: capabilities?.resolutions ?? fallback.resolutions,
+    durations: capabilities?.durations?.length ? capabilities.durations : fallback.durations,
+    counts: capabilities?.counts?.length ? capabilities.counts : fallback.counts,
+  };
 }
 
 /**
- * 按模型真实输出尺寸计算画布卡片大小。
- * 1024 方图保持紧凑，大尺寸媒体的长边不超过 300px。
+ * 按媒体真实比例计算画布卡片大小。
+ * 横向媒体固定高度，纵向媒体固定宽度，较长的一边按原始比例自适应。
  *
  * @param option - 模型提供的真实像素尺寸。
  * @returns 用于节点数据的画布宽高。
  */
-export function getMediaCardSize(option: MediaDimensionOption) {
+export function getMediaCardSize(option: IntrinsicMediaSize, shortSide = 180) {
   const sourceWidth = Math.max(1, option.width);
   const sourceHeight = Math.max(1, option.height);
-  const scale = Math.min(200 / 1024, 300 / Math.max(sourceWidth, sourceHeight));
+  const scale = shortSide / Math.min(sourceWidth, sourceHeight);
   return {
-    w: Math.max(80, Math.round(sourceWidth * scale)),
-    h: Math.max(80, Math.round(sourceHeight * scale)),
+    w: Math.round(sourceWidth * scale),
+    h: Math.round(sourceHeight * scale),
   };
+}
+
+/**
+ * 读取本地图片或视频的原始像素尺寸，供上传节点保持真实宽高比。
+ *
+ * @param file - 用户选择的图片或视频文件。
+ * @returns 媒体尺寸；非媒体文件或无法解析时返回 `null`。
+ */
+export function readLocalMediaSize(file: File): Promise<IntrinsicMediaSize | null> {
+  if (file.type.startsWith("image/")) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(
+          image.naturalWidth > 0 && image.naturalHeight > 0
+            ? { width: image.naturalWidth, height: image.naturalHeight }
+            : null,
+        );
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      image.src = url;
+    });
+  }
+  if (file.type.startsWith("video/")) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        resolve(
+          video.videoWidth > 0 && video.videoHeight > 0 ? { width: video.videoWidth, height: video.videoHeight } : null,
+        );
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      video.src = url;
+    });
+  }
+  return Promise.resolve(null);
+}
+
+/** 根据输出长边推导用于积分估算的分辨率档位。 */
+export function getResolutionTier(option?: MediaDimensionOption) {
+  const longest = Math.max(option?.width ?? 0, option?.height ?? 0);
+  if (longest > 2560) return "4K";
+  if (longest > 1280) return "2K";
+  return "1K";
 }

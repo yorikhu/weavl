@@ -17,10 +17,12 @@ export { VideoEditPanel } from "./components/VideoNode";
 export function CanvasNode(props: NodeProps) {
   switch (props.type) {
     case "image":
+    case "uploadedImage":
       return <ImageNode {...props} />;
     case "text":
       return <TextNode {...props} />;
     case "video":
+    case "uploadedVideo":
       return <VideoNode {...props} />;
     case "card":
     default:
@@ -32,6 +34,8 @@ export function CanvasNode(props: NodeProps) {
 export const nodeTypes = {
   card: CanvasNode,
   image: CanvasNode,
+  uploadedImage: CanvasNode,
   text: CanvasNode,
   video: CanvasNode,
+  uploadedVideo: CanvasNode,
 };

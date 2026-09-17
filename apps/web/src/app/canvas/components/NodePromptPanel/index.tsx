@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@xyflow/react";
-import { ChevronDown, Coins, Send, Sparkles } from "lucide-react";
+import { ChevronDown, Coins, LoaderCircle, Send, Sparkles } from "lucide-react";
 import styles from "./index.module.scss";
 
 export interface NodePromptModelOption {
@@ -20,6 +20,7 @@ interface NodePromptPanelProps {
   models: NodePromptModelOption[];
   modelMenuLabel: string;
   cost?: number | string;
+  costLoading?: boolean;
   busy?: boolean;
   header?: ReactNode;
   footerMiddle?: ReactNode;
@@ -92,6 +93,7 @@ export function NodePromptPanel({
   models,
   modelMenuLabel,
   cost,
+  costLoading = false,
   busy = false,
   header,
   footerMiddle,
@@ -220,20 +222,20 @@ export function NodePromptPanel({
           )}
         </div>
         {footerMiddle}
-        {cost !== undefined && (
-          <span className={styles.cost}>
+        {(cost !== undefined || costLoading) && (
+          <span className={styles.cost} aria-live="polite" aria-label={costLoading ? "正在计算积分" : undefined}>
             <Coins size={10} />
-            {cost}
+            {costLoading ? <LoaderCircle size={10} className={styles.costLoadingIcon} /> : cost}
           </span>
         )}
         <button
           className={styles.submit}
           disabled={busy || !prompt.trim()}
-          title="生成"
-          aria-label="生成"
+          title={busy ? "生成中" : "生成"}
+          aria-label={busy ? "生成中" : "生成"}
           onClick={onSubmit}
         >
-          <Send size={13} />
+          {busy ? <LoaderCircle size={13} className={styles.loadingIcon} /> : <Send size={13} />}
         </button>
       </div>
     </div>,

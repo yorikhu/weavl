@@ -25,6 +25,22 @@ export interface GroupableNodeData {
   groupZIndex?: number;
 }
 
+export type NodeGenerationStatus = "queued" | "running" | "finalizing" | "succeeded" | "failed";
+
+/** 节点持久化的生成状态，保证 Loading、失败状态和异步任务标识随画布保存。 */
+export interface GenerationTrackedNodeData {
+  generationStatus?: NodeGenerationStatus;
+  generationJobId?: string;
+  generationError?: string;
+}
+
+export interface MediaNodeVariant {
+  url: string;
+  assetRef: AssetRef;
+}
+
+export type MediaNodeSource = "generator" | "upload" | "asset";
+
 export interface CardNodeData extends GroupableNodeData {
   nodeKind: "card";
   kind: NodeKind;
@@ -34,7 +50,7 @@ export interface CardNodeData extends GroupableNodeData {
   isGate?: boolean;
 }
 
-export interface ImageNodeData extends GroupableNodeData {
+export interface ImageNodeData extends GroupableNodeData, GenerationTrackedNodeData {
   nodeKind: "image";
   kind: "image" | "video";
   title: string;
@@ -51,9 +67,12 @@ export interface ImageNodeData extends GroupableNodeData {
   count?: number;
   model?: string;
   assetRef?: AssetRef;
+  variants?: MediaNodeVariant[];
+  mediaSource?: MediaNodeSource;
+  intrinsicSize?: { width: number; height: number };
 }
 
-export interface TextNodeData extends GroupableNodeData {
+export interface TextNodeData extends GroupableNodeData, GenerationTrackedNodeData {
   nodeKind: "text";
   title: string;
   text: string;
@@ -62,7 +81,7 @@ export interface TextNodeData extends GroupableNodeData {
   height?: number;
 }
 
-export interface VideoNodeData extends GroupableNodeData {
+export interface VideoNodeData extends GroupableNodeData, GenerationTrackedNodeData {
   nodeKind: "video";
   title: string;
   category: string;
@@ -77,6 +96,9 @@ export interface VideoNodeData extends GroupableNodeData {
   count?: number;
   model?: string;
   assetRef?: AssetRef;
+  variants?: MediaNodeVariant[];
+  mediaSource?: MediaNodeSource;
+  intrinsicSize?: { width: number; height: number };
 }
 
 export type AnyNodeData = CardNodeData | ImageNodeData | TextNodeData | VideoNodeData;

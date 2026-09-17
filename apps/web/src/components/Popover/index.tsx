@@ -30,6 +30,8 @@ export interface PopoverProps {
   preserveOpenOnOutsideSelector?: string;
   autoFocusOnOpen?: boolean;
   openWhen?: (element: HTMLElement) => boolean;
+  /** 标记 Portal 内容所属的交互区域，供外层点击边界识别嵌套浮层。 */
+  contentScope?: string;
 }
 
 const classes = (...names: Array<string | undefined>) => names.filter(Boolean).join(" ");
@@ -60,6 +62,7 @@ export function Popover({
   preserveOpenOnOutsideSelector,
   autoFocusOnOpen = true,
   openWhen,
+  contentScope,
 }: PopoverProps) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [internalClickOpen, setInternalClickOpen] = useState(false);
@@ -152,6 +155,7 @@ export function Popover({
                 collisionPadding={collisionPadding}
                 aria-label={ariaLabel}
                 role={contentRole}
+                data-popover-scope={contentScope}
                 onOpenAutoFocus={(event) => {
                   if (!autoFocusOnOpen) event.preventDefault();
                 }}
