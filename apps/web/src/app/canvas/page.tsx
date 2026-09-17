@@ -42,6 +42,8 @@ import { CanvasEmptyState } from "./components/CanvasEmptyState";
 import { useCanvasEditing } from "./hooks/useCanvasEditing";
 import { useCanvasConnections } from "./hooks/useCanvasConnections";
 import { useCanvasHistory } from "./hooks/useCanvasHistory";
+import { useCanvasHistoryShortcuts } from "./hooks/useCanvasHistoryShortcuts";
+import { useCanvasNodeDeleteShortcut } from "./hooks/useCanvasNodeDeleteShortcut";
 import { useCanvasGroups } from "./hooks/useCanvasGroups";
 import { useCanvasAssets } from "./hooks/useCanvasAssets";
 import type { BasicNodeKind } from "./types/nodes";
@@ -97,6 +99,7 @@ function CanvasInner() {
   const promptFallbackFrameRef = useRef<number | null>(null);
   const nodeIdsKey = nodes.map((node) => node.id).join("|");
   const { canUndo, canRedo, undo, redo } = useCanvasHistory(nodes, edges, setNodes, setEdges, canvasReady, canvasId);
+  useCanvasHistoryShortcuts(undo, canvasReady);
 
   useEffect(() => {
     if (initializingRef.current) return;
@@ -281,6 +284,7 @@ function CanvasInner() {
     setEdges,
     setCanvases,
   });
+  useCanvasNodeDeleteShortcut(focusedGroupMemberId, deleteNode, clearFocusedGroupMember);
 
   const persistCurrentCanvas = useCallback(async () => {
     if (!projectId || !canvasId) return;
