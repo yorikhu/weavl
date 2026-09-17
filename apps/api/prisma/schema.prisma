@@ -7,23 +7,25 @@ datasource db {
 }
 
 model User {
-  id             String          @id
-  email          String          @unique
-  name           String
-  passwordHash   String          @map("password_hash")
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  account        Account?
-  accountEvents  AccountEvent[]
-  sessions       Session[]
-  assetFolders   AssetFolder[]
-  assets         Asset[]
-  projectFolders ProjectFolder[]
-  projects       Project[]
-  conversations  Conversation[]
-  skills         Skill[]
-  workflows      Workflow[]
-  workflowRuns   WorkflowRun[]
-  generationJobs GenerationJob[]
+  id               String              @id
+  email            String              @unique
+  name             String
+  passwordHash     String              @map("password_hash")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  account          Account?
+  accountEvents    AccountEvent[]
+  sessions         Session[]
+  assetFolders     AssetFolder[]
+  assets           Asset[]
+  projectFolders   ProjectFolder[]
+  projects         Project[]
+  conversations    Conversation[]
+  skills           Skill[]
+  workflows        Workflow[]
+  workflowRuns     WorkflowRun[]
+  generationJobs   GenerationJob[]
+  generationUsages GenerationUsage[]
+  creditLedger     CreditLedgerEntry[]
 
   @@map("users")
 }
@@ -262,16 +264,54 @@ model WorkflowRun {
   @@map("workflow_runs")
 }
 
+model ModelProvider {
+  id              String              @id
+  code            String              @unique
+  label           String
+  apiKeyEnv       String              @map("api_key_env")
+  enabled         Boolean             @default(true)
+  metadata        Json                @default("{}")
+  pricingAdapter  String?             @map("pricing_adapter")
+  pricingUrl      String?             @map("pricing_url")
+  lastPriceSyncAt DateTime?           @map("last_price_sync_at") @db.Timestamptz(6)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  channels        ProviderChannel[]
+  priceSyncs      ProviderPriceSync[]
+
+  @@map("model_providers")
+}
+
+model ModelDefinition {
+  id           String             @id
+  kind         String
+  label        String
+  maker        String
+  description  String
+  isAuto       Boolean            @default(false) @map("is_auto")
+  enabled      Boolean            @default(true)
+  capabilities Json               @default("{}")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  channels     ProviderChannel[]
+  pricingRules ModelPricingRule[]
+  usages       GenerationUsage[]
+
+  @@index([kind, enabled], map: "model_definitions_kind_idx")
+  @@map("model_definitions")
+}
+
 model ProviderChannel {
   id               String               @id
-  provider         String
+  providerId       String               @map("provider_id")
   protocol         String               @default("openai-chat")
-  modelKind        String               @map("model_kind")
   modelId          String               @map("model_id")
   remoteModel      String               @map("remote_model")
   label            String
   baseUrl          String               @map("base_url")
-  apiKeyEnv        String               @map("api_key_env")
+  costPricing      Json?                @map("cost_pricing")
+  costCurrency     String?              @map("cost_currency")
+  costUpdatedAt    DateTime?            @map("cost_updated_at") @db.Timestamptz(6)
   priority         Int                  @default(100)
   enabled          Boolean              @default(true)
   failureThreshold Int                  @default(3) @map("failure_threshold")
@@ -280,9 +320,48 @@ model ProviderChannel {
   updatedAt        DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
   requestLogs      ProviderRequestLog[]
   generationJobs   GenerationJob[]
+  generationUsages GenerationUsage[]
+  costVersions     ChannelCostVersion[]
+  provider         ModelProvider        @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  model            ModelDefinition      @relation(fields: [modelId], references: [id], onDelete: Restrict)
 
-  @@index([modelKind, modelId, enabled, priority], map: "provider_channel_route_idx")
+  @@index([modelId, enabled, priority], map: "provider_channel_route_idx")
+  @@index([providerId, enabled], map: "provider_channel_provider_idx")
   @@map("provider_channels")
+}
+
+model ProviderPriceSync {
+  id           String               @id
+  providerId   String               @map("provider_id")
+  status       String
+  sourceUrl    String               @map("source_url")
+  checksum     String?
+  payload      Json?
+  matchedCount Int                  @default(0) @map("matched_count")
+  changedCount Int                  @default(0) @map("changed_count")
+  missingCount Int                  @default(0) @map("missing_count")
+  errorMessage String?              @map("error_message")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt  DateTime?            @map("completed_at") @db.Timestamptz(6)
+  provider     ModelProvider        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  costVersions ChannelCostVersion[]
+
+  @@index([providerId, createdAt(sort: Desc)], map: "provider_price_syncs_provider_idx")
+  @@map("provider_price_syncs")
+}
+
+model ChannelCostVersion {
+  id        String            @id
+  channelId String            @map("channel_id")
+  syncId    String            @map("sync_id")
+  pricing   Json
+  currency  String?
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  channel   ProviderChannel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sync      ProviderPriceSync @relation(fields: [syncId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt(sort: Desc)], map: "channel_cost_versions_channel_idx")
+  @@map("channel_cost_versions")
 }
 
 model GenerationJob {
@@ -300,10 +379,82 @@ model GenerationJob {
   updatedAt       DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
   owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   channel         ProviderChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  usage           GenerationUsage?
 
   @@index([ownerId, updatedAt(sort: Desc)], map: "generation_jobs_owner_idx")
   @@index([status, updatedAt], map: "generation_jobs_status_idx")
   @@map("generation_jobs")
+}
+
+model ModelPricingRule {
+  id             String            @id
+  modelId        String            @map("model_id")
+  name           String
+  conditions     Json              @default("{}")
+  unitField      String?           @map("unit_field")
+  creditsPerUnit Int               @map("credits_per_unit")
+  minimumCredits Int               @default(0) @map("minimum_credits")
+  priority       Int               @default(100)
+  enabled        Boolean           @default(true)
+  version        Int               @default(1)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  model          ModelDefinition   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  usages         GenerationUsage[]
+
+  @@index([modelId, enabled, priority], map: "model_pricing_rules_route_idx")
+  @@map("model_pricing_rules")
+}
+
+model GenerationUsage {
+  id              String              @id
+  ownerId         String              @map("owner_id")
+  jobId           String?             @unique @map("job_id")
+  modelId         String              @map("model_id")
+  channelId       String?             @map("channel_id")
+  pricingRuleId   String?             @map("pricing_rule_id")
+  status          String
+  inputSnapshot   Json                @map("input_snapshot")
+  pricingSnapshot Json                @map("pricing_snapshot")
+  credits         Int
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner           User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  job             GenerationJob?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  model           ModelDefinition     @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  channel         ProviderChannel?    @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  pricingRule     ModelPricingRule?   @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  ledgerEntries   CreditLedgerEntry[]
+
+  @@index([ownerId, createdAt(sort: Desc)], map: "generation_usages_owner_idx")
+  @@index([modelId, createdAt(sort: Desc)], map: "generation_usages_model_idx")
+  @@map("generation_usages")
+}
+
+model CreditLedgerEntry {
+  id           String           @id
+  ownerId      String           @map("owner_id")
+  usageId      String?          @map("usage_id")
+  type         String
+  delta        Int
+  balanceAfter Int              @map("balance_after")
+  reason       String
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner        User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  usage        GenerationUsage? @relation(fields: [usageId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, createdAt(sort: Desc)], map: "credit_ledger_owner_idx")
+  @@map("credit_ledger_entries")
+}
+
+model BillingPolicy {
+  id             String   @id
+  creditValueCny Decimal  @map("credit_value_cny") @db.Decimal(12, 6)
+  markupRate     Decimal  @map("markup_rate") @db.Decimal(8, 6)
+  usdCnyRate     Decimal  @map("usd_cny_rate") @db.Decimal(12, 6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("billing_policies")
 }
 
 model ProviderRequestLog {
