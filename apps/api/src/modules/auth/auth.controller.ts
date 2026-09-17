@@ -6,10 +6,13 @@ import { AuthService } from "./auth.service";
 import { SessionService } from "./session.service";
 
 const credentials = z.object({ email: z.email(), password: z.string().min(8) });
+const secureCookie = process.env.WEAVL_COOKIE_SECURE
+  ? process.env.WEAVL_COOKIE_SECURE.toLowerCase() === "true"
+  : process.env.NODE_ENV === "production";
 const cookieBase = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  secure: secureCookie,
   path: "/",
 };
 

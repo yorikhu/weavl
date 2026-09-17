@@ -14,17 +14,24 @@ export interface StoredContent {
 export class ObjectStorageService implements OnModuleInit {
   private readonly bucket = process.env.OBJECT_STORAGE_BUCKET || "weavl";
   private readonly client: Client;
+  private readonly publicClient: Client;
 
   constructor() {
-    const raw = process.env.OBJECT_STORAGE_ENDPOINT || "http://127.0.0.1:9000";
-    const endpoint = new URL(raw);
-    this.client = new Client({
-      endPoint: endpoint.hostname,
-      port: Number(endpoint.port || (endpoint.protocol === "https:" ? 443 : 80)),
-      useSSL: endpoint.protocol === "https:",
-      accessKey: process.env.OBJECT_STORAGE_ACCESS_KEY || "minioadmin",
-      secretKey: process.env.OBJECT_STORAGE_SECRET_KEY || "minioadmin",
-    });
+    const accessKey = process.env.OBJECT_STORAGE_ACCESS_KEY || "minioadmin";
+    const secretKey = process.env.OBJECT_STORAGE_SECRET_KEY || "minioadmin";
+    const createClient = (raw: string) => {
+      const endpoint = new URL(raw);
+      return new Client({
+        endPoint: endpoint.hostname,
+        port: Number(endpoint.port || (endpoint.protocol === "https:" ? 443 : 80)),
+        useSSL: endpoint.protocol === "https:",
+        accessKey,
+        secretKey,
+      });
+    };
+    const internalEndpoint = process.env.OBJECT_STORAGE_ENDPOINT || "http://127.0.0.1:9000";
+    this.client = createClient(internalEndpoint);
+    this.publicClient = createClient(process.env.OBJECT_STORAGE_PUBLIC_ENDPOINT || internalEndpoint);
   }
 
   /**
@@ -121,7 +128,7 @@ export class ObjectStorageService implements OnModuleInit {
    * @returns 解析对象存储访问地址后的结果。
    */
   async resolve(content: string | null, storageKey: string | null): Promise<string> {
-    if (storageKey) return this.client.presignedGetObject(this.bucket, storageKey, 24 * 60 * 60);
+    if (storageKey) return this.publicClient.presignedGetObject(this.bucket, storageKey, 24 * 60 * 60);
     return content || "";
   }
 
