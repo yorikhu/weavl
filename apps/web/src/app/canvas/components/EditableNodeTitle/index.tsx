@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
+import { Popover } from "@/components/Popover";
 import styles from "./index.module.scss";
 
 interface EditableNodeTitleProps {
@@ -50,7 +51,7 @@ export function EditableNodeTitle({ nodeId, value, fallback, className }: Editab
         className={`${styles.input} ${className ?? ""} nodrag nopan`}
         value={draft}
         autoFocus
-        size={Math.max(4, Math.min(24, draft.length || fallback.length))}
+        style={{ width: `${Math.max(4, (draft.length || fallback.length) + 1)}ch` }}
         aria-label="节点名称"
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
@@ -68,15 +69,27 @@ export function EditableNodeTitle({ nodeId, value, fallback, className }: Editab
     );
   }
 
+  const title = value || fallback;
   return (
-    <span
-      className={`${styles.label} ${className ?? ""} nodrag nopan`}
-      onDoubleClick={(event) => {
-        event.stopPropagation();
-        setEditing(true);
-      }}
+    <Popover
+      mode="hover"
+      side="top"
+      sideOffset={6}
+      showArrow={false}
+      openWhen={(element) => element.scrollWidth > element.clientWidth}
+      trigger={
+        <span
+          className={`${styles.label} ${className ?? ""} nodrag nopan`}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            setEditing(true);
+          }}
+        >
+          {title}
+        </span>
+      }
     >
-      {value || fallback}
-    </span>
+      {title}
+    </Popover>
   );
 }

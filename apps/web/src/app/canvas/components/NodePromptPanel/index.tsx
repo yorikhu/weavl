@@ -4,11 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from "react-dom";
 import { useReactFlow, useStore } from "@xyflow/react";
 import { ChevronDown, Coins, Image as ImageIcon, LoaderCircle, Send, Sparkles, Video, X } from "lucide-react";
-import {
-  InlineComposer,
-  type ComposerPart,
-  type InlineComposerHandle,
-} from "@/components/InlineComposer";
+import { InlineComposer, type ComposerPart, type InlineComposerHandle } from "@/components/InlineComposer";
 import { Popover } from "@/components/Popover";
 import { getPromptMaterials, type PromptMaterial } from "../../utils/promptMaterials";
 import type { PromptPart } from "../../types/nodes";
@@ -214,7 +210,7 @@ export function NodePromptPanel({
         {
           type: "asset",
           id: material.nodeId,
-          label: `@${material.name}`,
+          label: material.name,
           previewUrl: material.url,
           mediaKind: material.kind,
         },
@@ -267,7 +263,7 @@ export function NodePromptPanel({
               token: {
                 type: "asset",
                 id: material.nodeId,
-                label: `@${material.name}`,
+                label: material.name,
                 previewUrl: material.url,
                 mediaKind: material.kind,
               },
@@ -292,7 +288,7 @@ export function NodePromptPanel({
           {
             type: "asset",
             id: material.nodeId,
-            label: `@${material.name}`,
+            label: material.name,
             previewUrl: material.url,
             mediaKind: material.kind,
           },

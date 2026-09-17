@@ -3,13 +3,7 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
 import type { Asset, GenerationModelOption } from "@weavl/shared";
-import {
-  ChevronDown,
-  Film,
-  Layers,
-  Maximize2,
-  Video as VideoIcon,
-} from "lucide-react";
+import { ChevronDown, Film, Layers, Maximize2, Video as VideoIcon } from "lucide-react";
 import { toast } from "@/hooks/useToast";
 import { useGenerationQuote } from "@/hooks/useGenerationQuote";
 import { formatGenerationPrice } from "@/lib/generationPricing";
@@ -79,6 +73,7 @@ function VideoCardStatic({
           <input
             className={`${styles.imageNodeTitleInput} nodrag`}
             value={edit.buffer.title ?? ""}
+            style={{ width: `${Math.max(4, (edit.buffer.title?.length ?? 0) + 1)}ch` }}
             onChange={(e) => edit.setBuffer({ ...edit.buffer, title: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
