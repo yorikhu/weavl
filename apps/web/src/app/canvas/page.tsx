@@ -229,6 +229,7 @@ function CanvasInner() {
   const clearCanvasSelection = useCallback(() => setSelectedNodeId(null), []);
   const {
     selection,
+    isMarqueeSelecting,
     focusedGroupId,
     focusedGroupMemberId,
     focusedGroupNodeIds,
@@ -599,6 +600,8 @@ function CanvasInner() {
   }, []);
 
   const { selectedNodeCount, selectedNodeIds, selectedGroupId, insets: selectionInsets, actionTopInset } = selection;
+  /* React Flow 会在框选移动过程中持续写入 selected；操作入口必须等松手后再出现。 */
+  const actionableSelectedNodeIds = isMarqueeSelecting ? [] : selectedNodeIds;
   const editingKind = getEditingNodeKind(nodes, editingId);
   /** 组成员聚焦是独立交互状态，不能依赖 React Flow 对不可选节点的 selected 清理逻辑。 */
   const renderedNodes = useMemo(
@@ -888,7 +891,7 @@ function CanvasInner() {
             <Background variant={BackgroundVariant.Dots} gap={12} size={1} className={styles.bg} />
             <CanvasGroupLayer
               focusedGroupId={focusedGroupId}
-              selectedNodeIds={selectedNodeIds}
+              selectedNodeIds={actionableSelectedNodeIds}
               selectedGroupId={selectedGroupId}
               selectionInsets={selectionInsets}
               pendingBatchSourceIds={connectMenu?.sourceNodeIds}
@@ -898,7 +901,7 @@ function CanvasInner() {
               onBatchCreate={openBatchConnectMenu}
             />
             <CanvasSelectionToolbar
-              nodeIds={selectedNodeIds}
+              nodeIds={actionableSelectedNodeIds}
               topInset={actionTopInset}
               groupId={selectedGroupId}
               onGroup={groupNodes}

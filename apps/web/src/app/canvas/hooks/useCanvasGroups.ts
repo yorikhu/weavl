@@ -83,6 +83,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
   const nodeDragRef = useRef<GroupNodeDrag | null>(null);
   const backgroundDragRef = useRef<GroupBackgroundDrag | null>(null);
   const marqueeStartRef = useRef<XYPosition | null>(null);
+  const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
   const [focusedGroupMemberId, setFocusedGroupMemberId] = useState<string | null>(null);
   const selection = useMemo(() => getCanvasSelectionState(nodes), [nodes]);
@@ -166,6 +167,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
     (event: ReactMouseEvent) => {
       setFocusedGroupId(null);
       setFocusedGroupMemberId(null);
+      setIsMarqueeSelecting(true);
       marqueeStartRef.current = screenToFlowPosition({ x: event.clientX, y: event.clientY });
     },
     [screenToFlowPosition],
@@ -175,6 +177,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
     (event: ReactMouseEvent) => {
       const start = marqueeStartRef.current;
       marqueeStartRef.current = null;
+      setIsMarqueeSelecting(false);
       if (!start) return;
       const end = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const selectedRect = marqueeRect(start, end);
@@ -391,6 +394,7 @@ export function useCanvasGroups({ nodes, setNodes, screenToFlowPosition, onClear
 
   return {
     selection,
+    isMarqueeSelecting,
     focusedGroupId,
     focusedGroupMemberId: focusedGroupMemberActive ? focusedGroupMemberId : null,
     focusedGroupNodeIds: focusedGroupNodes.map((node) => node.id),
