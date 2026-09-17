@@ -333,6 +333,11 @@ export default function HomePage() {
                   if (token.type === "skill") setMethodIds((current) => removeFirst(current, token.id));
                   if (token.type === "model") setModelKinds((current) => removeFirst(current, token.id as ModelKind));
                 }}
+                onTokenRestore={(token) => {
+                  if (token.type === "asset") setAssetIds((current) => [...current, token.id]);
+                  if (token.type === "skill") setMethodIds((current) => [...current, token.id]);
+                  if (token.type === "model") setModelKinds((current) => [...current, token.id as ModelKind]);
+                }}
                 onSubmit={() => begin()}
                 placeholder="描述你想完成的内容…"
               />

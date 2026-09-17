@@ -40,6 +40,7 @@ export interface EditCtx {
           assetRef?: AssetRef;
           variants?: MediaNodeVariant[];
           title?: string;
+          generationStatus?: "succeeded";
         },
       ) => void)
     | null;
@@ -59,6 +60,8 @@ export interface EditCtx {
           assetRef?: AssetRef;
           variants?: MediaNodeVariant[];
           title?: string;
+          generationStatus?: "succeeded";
+          generationJobId?: string;
         },
       ) => void)
     | null;

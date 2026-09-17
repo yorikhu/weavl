@@ -152,6 +152,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         assetRef?: AssetRef;
         variants?: MediaNodeVariant[];
         title?: string;
+        generationStatus?: "succeeded";
       },
     ) => {
       setNodes((ns) =>
@@ -170,6 +171,10 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (payload.url !== undefined) d.url = payload.url;
           if (payload.assetRef) d.assetRef = payload.assetRef;
           if (payload.variants) d.variants = payload.variants;
+          if (payload.generationStatus) {
+            d.generationStatus = payload.generationStatus;
+            d.generationError = undefined;
+          }
           return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
         }),
       );
@@ -198,6 +203,8 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         assetRef?: AssetRef;
         variants?: MediaNodeVariant[];
         title?: string;
+        generationStatus?: "succeeded";
+        generationJobId?: string;
       },
     ) => {
       setNodes((ns) =>
@@ -216,6 +223,11 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (payload.url !== undefined) d.url = payload.url;
           if (payload.assetRef) d.assetRef = payload.assetRef;
           if (payload.variants) d.variants = payload.variants;
+          if (payload.generationStatus) {
+            d.generationStatus = payload.generationStatus;
+            d.generationError = undefined;
+          }
+          if (payload.generationJobId) d.generationJobId = payload.generationJobId;
           return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
         }),
       );

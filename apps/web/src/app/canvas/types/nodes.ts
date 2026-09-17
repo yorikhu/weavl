@@ -23,7 +23,13 @@ export interface GroupableNodeData {
   groupId?: string;
   groupName?: string;
   groupZIndex?: number;
+  /** 在提示词中通过 @ 明确引用的直接上游媒体节点。 */
+  inputMaterialNodeIds?: string[];
+  /** 提示词中正文与素材标签的有序结构；模型请求由此编译图片编号。 */
+  promptParts?: PromptPart[];
 }
+
+export type PromptPart = { type: "text"; text: string } | { type: "asset"; nodeId: string };
 
 export type NodeGenerationStatus = "queued" | "running" | "finalizing" | "succeeded" | "failed";
 

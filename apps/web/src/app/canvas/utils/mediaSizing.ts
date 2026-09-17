@@ -13,6 +13,9 @@ export interface IntrinsicMediaSize {
   height: number;
 }
 
+/** 新建图片生成节点使用的默认输出规格。 */
+export const DEFAULT_IMAGE_DIMENSION: MediaDimensionOption = { ratio: "3:2", width: 1536, height: 1024 };
+
 export interface ResolvedMediaCapabilities {
   verified: boolean;
   dimensions: MediaDimensionOption[];
@@ -24,7 +27,7 @@ export interface ResolvedMediaCapabilities {
 
 const IMAGE_DIMENSIONS: MediaDimensionOption[] = [
   { ratio: "1:1", width: 1024, height: 1024 },
-  { ratio: "3:2", width: 1536, height: 1024 },
+  DEFAULT_IMAGE_DIMENSION,
   { ratio: "2:3", width: 1024, height: 1536 },
 ];
 
@@ -38,7 +41,7 @@ const FALLBACKS: Record<MediaCapabilityKind, ResolvedMediaCapabilities> = {
     verified: false,
     dimensions: IMAGE_DIMENSIONS,
     qualities: ["低画质", "标准画质", "高画质"],
-    resolutions: [],
+    resolutions: ["1K", "2K", "4K"],
     durations: [],
     counts: [1, 2, 4],
   },
@@ -68,7 +71,7 @@ export function resolveMediaCapabilities(
     verified: capabilities?.verified ?? fallback.verified,
     dimensions: capabilities?.dimensions?.length ? capabilities.dimensions : fallback.dimensions,
     qualities: capabilities?.qualities?.length ? capabilities.qualities : fallback.qualities,
-    resolutions: capabilities?.resolutions ?? fallback.resolutions,
+    resolutions: capabilities?.resolutions?.length ? capabilities.resolutions : fallback.resolutions,
     durations: capabilities?.durations?.length ? capabilities.durations : fallback.durations,
     counts: capabilities?.counts?.length ? capabilities.counts : fallback.counts,
   };

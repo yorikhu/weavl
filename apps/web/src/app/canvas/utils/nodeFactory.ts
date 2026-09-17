@@ -2,10 +2,12 @@ import type { Node } from "@xyflow/react";
 import type { BasicNodeKind, ImageNodeData, TextNodeData, VideoNodeData } from "../types/nodes";
 import type { NodeLibraryItem } from "../constants";
 import { getNextCanvasLayer } from "./canvasGroups";
+import { DEFAULT_IMAGE_DIMENSION, getMediaCardSize } from "./mediaSizing";
 
 export type FlowPosition = { x: number; y: number };
 
 let idSequence = 0;
+const DEFAULT_IMAGE_CARD_SIZE = getMediaCardSize(DEFAULT_IMAGE_DIMENSION);
 /**
  * 生成当前页面会话内唯一的节点标识。
  *
@@ -34,7 +36,9 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       title: "图片",
       category: "图片",
       tint: "rgba(212, 83, 126, 0.18)",
-      size: { w: 300, h: 200 },
+      size: DEFAULT_IMAGE_CARD_SIZE,
+      ratio: DEFAULT_IMAGE_DIMENSION.ratio,
+      generationSize: { width: DEFAULT_IMAGE_DIMENSION.width, height: DEFAULT_IMAGE_DIMENSION.height },
       mediaSource: "generator",
     },
     connectedData: {
@@ -43,7 +47,9 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
       title: "图片节点",
       category: "图片",
       tint: "rgba(212, 83, 126, 0.18)",
-      size: { w: 300, h: 200 },
+      size: DEFAULT_IMAGE_CARD_SIZE,
+      ratio: DEFAULT_IMAGE_DIMENSION.ratio,
+      generationSize: { width: DEFAULT_IMAGE_DIMENSION.width, height: DEFAULT_IMAGE_DIMENSION.height },
       mediaSource: "generator",
     },
   },

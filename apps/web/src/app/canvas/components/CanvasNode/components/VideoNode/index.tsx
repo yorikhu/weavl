@@ -6,13 +6,8 @@ import type { Asset, GenerationModelOption } from "@weavl/shared";
 import {
   ChevronDown,
   Film,
-  ImagePlus,
   Layers,
   Maximize2,
-  RefreshCw,
-  Sparkles,
-  Tag,
-  User as UserIcon,
   Video as VideoIcon,
 } from "lucide-react";
 import { toast } from "@/hooks/useToast";
@@ -26,7 +21,7 @@ import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { VideoNodeData } from "../../../../types/nodes";
 import { getMediaCardSize, resolveMediaCapabilities, type MediaDimensionOption } from "../../../../utils/mediaSizing";
-import { updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
+import { getGenerationErrorMessage, updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
@@ -74,6 +69,7 @@ function VideoCardStatic({
   const h = d.size?.h ?? 200;
   const displayTitle = d.title || "视频节点";
   const url = d.url;
+  const outputOnly = d.mediaSource === "upload" || d.mediaSource === "asset";
 
   return (
     <>
@@ -103,7 +99,7 @@ function VideoCardStatic({
           if (!(event.target as Element).closest(".react-flow__handle")) onActivate?.();
         }}
       >
-        <Handle type="target" position={Position.Left} className={styles.cardHandle} />
+        {!outputOnly && <Handle type="target" position={Position.Left} className={styles.cardHandle} />}
         {/* 已有视频则显示视频预览，否则仅显示中性占位图标。 */}
         {url ? (
           <div className={styles.imagePreview}>
@@ -127,7 +123,7 @@ function VideoCardStatic({
             </div>
           </div>
         )}
-        <NodeGenerationOverlay status={d.generationStatus} label="视频" />
+        <NodeGenerationOverlay status={d.generationStatus} label="视频" error={d.generationError} />
         <Handle type="source" position={Position.Right} className={styles.cardHandle} />
       </div>
     </>
@@ -146,7 +142,7 @@ export function VideoNode({ data, id }: NodeProps) {
   const d = data as unknown as VideoNodeData;
   const updateIntrinsicSize = useCallback(
     (intrinsicSize: { width: number; height: number }) => {
-      if (d.mediaSource !== "upload" && d.mediaSource !== "asset") return;
+      if (!d.url) return;
       if (intrinsicSize.width <= 0 || intrinsicSize.height <= 0) return;
       if (d.intrinsicSize?.width === intrinsicSize.width && d.intrinsicSize.height === intrinsicSize.height) return;
       setNodes((current) =>
@@ -160,7 +156,7 @@ export function VideoNode({ data, id }: NodeProps) {
         ),
       );
     },
-    [d.intrinsicSize?.height, d.intrinsicSize?.width, d.mediaSource, id, setNodes],
+    [d.intrinsicSize?.height, d.intrinsicSize?.width, d.url, id, setNodes],
   );
 
   if (edit.editingId === id) {
@@ -209,9 +205,23 @@ export function VideoEditPanel() {
   const capabilities = resolveMediaCapabilities("video", selectedModel?.capabilities);
   const dimensions = capabilities.dimensions;
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
+  const effectiveRatio = selectedDimension?.ratio ?? ratio;
+  const effectiveQuality = capabilities.resolutions.includes(quality)
+    ? quality
+    : (capabilities.resolutions[0] ?? quality);
+  const effectiveCount = capabilities.counts.includes(count) ? count : (capabilities.counts[0] ?? count);
+  const minimumDuration = Math.min(...capabilities.durations);
+  const maximumDuration = Math.max(...capabilities.durations);
+  const effectiveDuration = Math.min(maximumDuration, Math.max(minimumDuration, duration));
   const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
     modelId: model,
-    parameters: { count, ratio, resolution: quality.toLowerCase(), durationSeconds: duration, generateAudio: false },
+    parameters: {
+      count: effectiveCount,
+      ratio: effectiveRatio,
+      resolution: effectiveQuality.toLowerCase(),
+      durationSeconds: effectiveDuration,
+      generateAudio: false,
+    },
     enabled: isVideo,
   });
   /** 编辑目标变化时清理所有附属菜单，避免新提示词面板继承旧节点状态。 */
@@ -227,7 +237,7 @@ export function VideoEditPanel() {
         setModel((current) => (options.some((option) => option.id === current) ? current : options[0]?.id || current));
       })
       .catch(() => setModels(FALLBACK_VIDEO_MODELS));
-  }, [isVideo]);
+  }, [editingId, isVideo]);
   useEffect(() => {
     if (!editingId) {
       syncedNodeIdRef.current = null;
@@ -292,29 +302,31 @@ export function VideoEditPanel() {
       if (!nextCapabilities.resolutions.includes(quality) && nextCapabilities.resolutions[0]) {
         setQuality(nextCapabilities.resolutions[0]);
       }
-      if (!nextCapabilities.durations.includes(duration) && nextCapabilities.durations[0]) {
-        setDuration(nextCapabilities.durations[0]);
+      if (nextCapabilities.durations.length) {
+        const minimum = Math.min(...nextCapabilities.durations);
+        const maximum = Math.max(...nextCapabilities.durations);
+        setDuration((current) => Math.min(maximum, Math.max(minimum, current)));
       }
       if (!nextCapabilities.counts.includes(count) && nextCapabilities.counts[0]) {
         setCount(nextCapabilities.counts[0]);
       }
     },
-    [changeDimension, count, duration, models, quality, ratio],
+    [changeDimension, count, models, quality, ratio],
   );
   useEffect(() => {
     edit.videoEditStateRef.current = {
       prompt,
-      ratio,
-      quality,
-      duration,
-      count,
+      ratio: effectiveRatio,
+      quality: effectiveQuality,
+      duration: effectiveDuration,
+      count: effectiveCount,
       model,
       generationSize: selectedDimension
         ? { width: selectedDimension.width, height: selectedDimension.height }
         : undefined,
       title: edit.buffer.title,
     };
-  }, [prompt, ratio, quality, duration, count, model, selectedDimension, edit]);
+  }, [prompt, effectiveRatio, effectiveQuality, effectiveDuration, effectiveCount, model, selectedDimension, edit]);
   /**
    * 提交视频长任务并按官方建议的间隔轮询，全部产物版本归入原节点。
    *
@@ -333,10 +345,10 @@ export function VideoEditPanel() {
         body: jsonBody({
           model,
           prompt,
-          count,
-          ratio,
-          resolution: quality.toLowerCase(),
-          durationSeconds: duration,
+          count: effectiveCount,
+          ratio: effectiveRatio,
+          resolution: effectiveQuality.toLowerCase(),
+          durationSeconds: effectiveDuration,
         }),
       });
       setNodes((nodes) =>
@@ -371,10 +383,10 @@ export function VideoEditPanel() {
       });
       edit.commitVideoEdit?.(nodeId, {
         prompt,
-        ratio,
-        quality,
-        duration,
-        count,
+        ratio: effectiveRatio,
+        quality: effectiveQuality,
+        duration: effectiveDuration,
+        count: effectiveCount,
         model,
         url: generatedVersion.content,
         assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
@@ -383,16 +395,12 @@ export function VideoEditPanel() {
         generationSize: selectedDimension
           ? { width: selectedDimension.width, height: selectedDimension.height }
           : undefined,
+        generationStatus: "succeeded",
+        generationJobId: job.id,
       });
-      setNodes((nodes) =>
-        updateNodeGenerationState(nodes, nodeId, {
-          generationStatus: "succeeded",
-          generationJobId: job.id,
-        }),
-      );
       toast(generatedAssets.length > 1 ? `${generatedAssets.length} 个视频已生成` : "视频已生成", "success");
     } catch (cause) {
-      const message = (cause as Error).message || "视频生成失败";
+      const message = getGenerationErrorMessage(cause, "视频生成失败");
       setNodes((nodes) =>
         updateNodeGenerationState(nodes, nodeId, { generationStatus: "failed", generationError: message }),
       );
@@ -400,7 +408,18 @@ export function VideoEditPanel() {
     } finally {
       setBusy(false);
     }
-  }, [busy, count, duration, edit, model, prompt, quality, ratio, selectedDimension, setNodes]);
+  }, [
+    busy,
+    edit,
+    effectiveCount,
+    effectiveDuration,
+    effectiveQuality,
+    effectiveRatio,
+    model,
+    prompt,
+    selectedDimension,
+    setNodes,
+  ]);
   const refOptions = ["全能参考", "人脸参考", "首尾帧", "角色一致性"];
   if (!edit.editingId || !isVideo) return null;
 
@@ -419,27 +438,9 @@ export function VideoEditPanel() {
       cost={formatGenerationPrice(priceQuote)}
       costLoading={priceLoading}
       busy={busy}
-      rows={3}
       header={
         <div className={styles.imageEditBarHead}>
           <div className={styles.imageEditBarTags}>
-            <button className={styles.imageEditTag}>
-              <ImagePlus size={11} />
-              参考
-              <RefreshCw size={10} className={styles.imageEditTagIcon} />
-            </button>
-            <button className={styles.imageEditTag}>
-              <Tag size={11} />
-              标记
-            </button>
-            <button className={styles.imageEditTag}>
-              <Sparkles size={11} />
-              特效
-            </button>
-            <button className={styles.imageEditTag}>
-              <UserIcon size={11} />
-              角色库
-            </button>
             <button className={styles.imageEditTag}>
               <Film size={11} />
               运镜
@@ -487,14 +488,14 @@ export function VideoEditPanel() {
           <span className={styles.imageEditParamSep} />
           <MediaSettingsControl
             open={showRatioMenu}
-            ratio={ratio}
+            ratio={effectiveRatio}
             dimensions={dimensions}
-            quality={quality}
+            quality={effectiveQuality}
             qualities={capabilities.resolutions}
             qualityLabel="清晰度"
-            duration={duration}
+            duration={effectiveDuration}
             durations={capabilities.durations}
-            count={count}
+            count={effectiveCount}
             counts={capabilities.counts}
             countUnit="个"
             onOpenChange={(open) => {

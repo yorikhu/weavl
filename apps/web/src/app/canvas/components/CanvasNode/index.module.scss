@@ -302,17 +302,19 @@
   align-items: center;
   gap: 4px;
   padding: 3px 9px;
-  border-radius: 10px;
   border: 0.5px solid #27272c;
+  border-radius: 10px;
   background: #202023;
   color: #e6e8ec;
-  font-size: 11px;
   font-family: inherit;
+  font-size: 11px;
   cursor: pointer;
+
   &:hover {
     border-color: #3a3a41;
     background: #1a1a1e;
   }
+
   svg {
     color: #a8a8b2;
   }
@@ -422,13 +424,13 @@
 }
 
 :global(html:not(.dark)) .imageEditTag {
-  background: #f3f5f7;
   border-color: rgba(15, 23, 42, 0.12);
+  background: #f3f5f7;
   color: #334155;
 
   &:hover {
-    background: #e9edf1;
     border-color: rgba(15, 23, 42, 0.2);
+    background: #e9edf1;
   }
 
   svg {

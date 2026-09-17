@@ -614,6 +614,11 @@ export default function AgentPage() {
                 value={draft}
                 onValueChange={setDraft}
                 onTokenRemove={removeToken}
+                onTokenRestore={(token) => {
+                  if (token.type === "asset") setAssetIds((current) => [...current, token.id]);
+                  if (token.type === "skill") setMethodIds((current) => [...current, token.id]);
+                  if (token.type === "model") setModelKinds((current) => [...current, token.id as ModelKind]);
+                }}
                 onSubmit={() => void send()}
                 placeholder="告诉 Weavl Agent 你想完成什么…"
                 ariaLabel="告诉 Weavl Agent 你想完成什么"

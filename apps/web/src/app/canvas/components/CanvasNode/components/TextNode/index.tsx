@@ -20,7 +20,7 @@ import { NodeGenerationOverlay } from "../NodeGenerationOverlay";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { TextNodeData } from "../../../../types/nodes";
-import { updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
+import { getGenerationErrorMessage, updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import sharedStyles from "../../index.module.scss";
 import localStyles from "./index.module.scss";
 
@@ -117,7 +117,7 @@ export function TextNode({ data, id }: NodeProps) {
         }}
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
-        <NodeGenerationOverlay status={d.generationStatus} label="文案" />
+        <NodeGenerationOverlay status={d.generationStatus} label="文案" error={d.generationError} />
         {hasText || isManualNode ? (
           <div
             className={styles.textNodeBody}
@@ -186,7 +186,7 @@ function EmptyTextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
         }
       >
         <Handle type="target" position={Position.Left} className={styles.cardHandle} />
-        <NodeGenerationOverlay status={data.generationStatus} label="文案" />
+        <NodeGenerationOverlay status={data.generationStatus} label="文案" error={data.generationError} />
         <div className={styles.textEmptyPlaceholder} aria-hidden="true">
           <AlignLeft size={30} strokeWidth={1.7} />
         </div>
@@ -269,7 +269,7 @@ export function TextEditPanel() {
       setPrompt("");
       toast(result.mode === "live" ? "文案已生成" : "演示文案已生成", "success");
     } catch (cause) {
-      const message = (cause as Error).message || "文本生成失败";
+      const message = getGenerationErrorMessage(cause, "文本生成失败");
       setNodes((nodes) =>
         updateNodeGenerationState(nodes, editingId, { generationStatus: "failed", generationError: message }),
       );
@@ -295,7 +295,6 @@ export function TextEditPanel() {
       cost={formatGenerationPrice(priceQuote)}
       costLoading={priceLoading}
       busy={busy}
-      rows={4}
       onPromptChange={setPrompt}
       onModelChange={setModel}
       onSubmit={() => void generate()}

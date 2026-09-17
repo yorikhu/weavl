@@ -6,7 +6,7 @@
   outline: 0;
   color: var(--foreground);
   font-size: 13px;
-  line-height: 1.65;
+  line-height: 24px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   cursor: text;
@@ -17,25 +17,47 @@
   pointer-events: none;
 }
 .token {
+  box-sizing: border-box;
   display: inline-flex;
-  vertical-align: baseline;
+  position: relative;
+  top: -1px;
+  vertical-align: middle;
+  height: 22px;
   align-items: center;
   gap: 5px;
   max-width: min(220px, 80%);
   margin: 1px 3px;
-  padding: 2px 5px 2px 7px;
+  padding: 2px 4px 2px 3px;
   border: 1px solid var(--surface-border);
   border-radius: 6px;
   background: var(--surface-hover);
   color: var(--foreground);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1;
   white-space: nowrap;
-  user-select: none;
-  -webkit-user-select: none;
+  user-select: text;
+  -webkit-user-select: text;
 }
-.token svg { flex: 0 0 auto; }
-.tokenLabel { overflow: hidden; text-overflow: ellipsis; }
+.token[data-selected] {
+  border-color: #1677ff;
+}
+.token svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+.tokenMedia {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.tokenLabel {
+  overflow: hidden;
+  line-height: 16px;
+  text-overflow: ellipsis;
+}
 .remove {
   display: inline-grid;
   place-items: center;
@@ -46,3 +68,7 @@
   cursor: pointer;
 }
 .remove:hover { color: var(--foreground); background: var(--surface); }
+.remove svg {
+  width: 11px;
+  height: 11px;
+}
