@@ -81,7 +81,6 @@ export interface EditCtx {
     url?: string;
     assetRef?: AssetRef;
     variants?: MediaNodeVariant[];
-    title?: string;
   } | null>;
   videoEditStateRef: MutableRefObject<{
     prompt?: string;

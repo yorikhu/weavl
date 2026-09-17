@@ -243,6 +243,25 @@ export class AssetsService {
   }
 
   /**
+   * 读取用户资产的最新版本用于下载。
+   *
+   * @param id - 资产标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 文件名、MIME 类型和原始文件字节。
+   * @throws {BadRequestException} 资产不存在、已删除或没有可下载版本时抛出。
+   */
+  async download(id: string, ownerId: string) {
+    const asset = await this.prisma.asset.findFirst({
+      where: { id, ownerId, deletedAt: null },
+      include: { versions: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    const version = asset?.versions[0];
+    if (!asset || !version) throw new BadRequestException("资产不存在或没有可下载版本");
+    const file = await this.storage.read(version.content, version.storageKey, version.mimeType);
+    return { name: version.name || asset.name, mimeType: file.mimeType, data: file.data };
+  }
+
+  /**
    * 更新资产。
    *
    * @param id - 资源标识。

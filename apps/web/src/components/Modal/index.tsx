@@ -2,12 +2,15 @@
 
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
+import { X } from "lucide-react";
 import styles from "./index.module.scss";
 
 /** 内容弹窗与确认弹窗共享的基础属性。 */
 interface ModalBaseProps {
   open: boolean;
   title: string;
+  presentation?: "default" | "media";
+  showClose?: boolean;
   eyebrow?: string;
   description?: string;
   busy?: boolean;
@@ -41,19 +44,43 @@ export type ModalProps = ContentModalProps | ConfirmModalProps;
  * @returns 基于 Radix Dialog 的全局弹窗。
  */
 function ModalRoot(props: ModalProps) {
-  const { open, title, eyebrow, description, busy = false, onOpenChange } = props;
+  const {
+    open,
+    title,
+    presentation = "default",
+    showClose = false,
+    eyebrow,
+    description,
+    busy = false,
+    onOpenChange,
+  } = props;
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => !busy && onOpenChange(nextOpen)}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={styles.overlay} />
-        <DialogPrimitive.Content className={styles.content}>
-          <header className={styles.header}>
+        <DialogPrimitive.Content
+          className={[styles.content, presentation === "media" ? styles.mediaContent : undefined]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <header
+            className={[styles.header, presentation === "media" ? styles.mediaHeader : undefined]
+              .filter(Boolean)
+              .join(" ")}
+          >
             {eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}
             <DialogPrimitive.Title className={styles.title}>{title}</DialogPrimitive.Title>
             {description && (
               <DialogPrimitive.Description className={styles.description}>{description}</DialogPrimitive.Description>
             )}
           </header>
+          {showClose && (
+            <DialogPrimitive.Close asChild>
+              <button className={styles.closeButton} type="button" aria-label="关闭弹窗" disabled={busy}>
+                <X size={18} />
+              </button>
+            </DialogPrimitive.Close>
+          )}
           {props.mode === "confirm" ? (
             <Footer>
               <Button type="button" variant="quiet" disabled={busy} onClick={() => onOpenChange(false)}>

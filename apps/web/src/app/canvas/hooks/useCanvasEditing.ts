@@ -151,7 +151,6 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         url?: string;
         assetRef?: AssetRef;
         variants?: MediaNodeVariant[];
-        title?: string;
         generationStatus?: "succeeded";
       },
     ) => {
@@ -159,7 +158,6 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         ns.map((n) => {
           if (n.id !== id) return n;
           const d = { ...(n.data as Record<string, unknown>) };
-          if (payload.title !== undefined && payload.title.trim()) d.title = payload.title.trim();
           if (payload.prompt !== undefined) d.prompt = payload.prompt;
           if (payload.ratio) d.ratio = payload.ratio;
           if (payload.quality) d.quality = payload.quality;

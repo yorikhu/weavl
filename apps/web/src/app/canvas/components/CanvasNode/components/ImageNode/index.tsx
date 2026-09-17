@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
+import { Handle, NodeToolbar, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
 import type { Asset, GenerationModelOption } from "@weavl/shared";
-import { Image as ImageIcon, Maximize2, Palette } from "lucide-react";
+import { Download, Image as ImageIcon, Maximize2, Palette } from "lucide-react";
+import { Modal } from "@/components/Modal";
 import { toast } from "@/hooks/useToast";
 import { useGenerationQuote } from "@/hooks/useGenerationQuote";
 import { formatGenerationPrice } from "@/lib/generationPricing";
+import { API } from "@/lib/env";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
@@ -23,9 +25,14 @@ import {
 } from "../../../../utils/mediaSizing";
 import { getGenerationErrorMessage, updateNodeGenerationState } from "../../../../utils/nodeGenerationState";
 import { compilePromptDocument } from "../../../../utils/promptDocument";
+import { downloadFile } from "@/utils/downloadFile";
+import { CanvasActionToolbar } from "../../../CanvasActionToolbar";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
+const IMAGE_TITLE_TOP_OFFSET = 8;
+const IMAGE_TITLE_LINE_HEIGHT = 16;
+const IMAGE_ACTIONS_TITLE_GAP = 10;
 const FALLBACK_IMAGE_MODELS: GenerationModelOption[] = [
   {
     id: "gpt-image-2",
@@ -58,16 +65,13 @@ function ImageCardStatic({
   d,
   nodeId,
   onActivate,
-  editing = false,
   onIntrinsicSize,
 }: {
   d: ImageNodeData;
   nodeId?: string;
   onActivate?: () => void;
-  editing?: boolean;
   onIntrinsicSize?: (size: { width: number; height: number }) => void;
 }) {
-  const edit = useContext(EnterEditContext);
   const w = d.size?.w ?? 300;
   const h = d.size?.h ?? 200;
   const displayTitle = d.title || "图片节点";
@@ -78,17 +82,7 @@ function ImageCardStatic({
     <>
       <div className={styles.imageNodeTitleAbove}>
         <ImageIcon size={12} />
-        {editing ? (
-          <input
-            className={`${styles.imageNodeTitleInput} nodrag`}
-            value={edit.buffer.title ?? ""}
-            onChange={(e) => edit.setBuffer({ ...edit.buffer, title: e.target.value })}
-            onKeyDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            placeholder="图片节点"
-            spellCheck={false}
-          />
-        ) : nodeId ? (
+        {nodeId ? (
           <EditableNodeTitle nodeId={nodeId} value={d.title} fallback="图片节点" />
         ) : (
           <span>{displayTitle}</span>
@@ -139,10 +133,18 @@ function ImageCardStatic({
  * @param props - React Flow 注入的节点属性。
  * @returns 图片节点浏览态或编辑态组件。
  */
-export function ImageNode({ data, id }: NodeProps) {
+export function ImageNode({ data, id, selected }: NodeProps) {
   const edit = useContext(EnterEditContext);
   const { setNodes } = useReactFlow();
   const d = data as unknown as ImageNodeData;
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const zoom = useStore((state) => state.transform[2]);
+  const selectedNodeCount = useStore((state) =>
+    state.nodes.reduce((count, node) => count + Number(Boolean(node.selected)), 0),
+  );
+  const groupMemberFocused = useStore((state) =>
+    Boolean(state.nodeLookup.get(id)?.className?.split(/\s+/).includes("canvas-group-member-focused")),
+  );
   useEffect(() => {
     if (d.url || d.ratio) return;
     setNodes((current) =>
@@ -183,19 +185,76 @@ export function ImageNode({ data, id }: NodeProps) {
     [d.intrinsicSize?.height, d.intrinsicSize?.width, d.url, id, setNodes],
   );
 
-  if (edit.editingId === id) {
-    return <ImageNodeEditor data={d} />;
-  }
+  /** 节点操作栏只属于单选态；框选、多选时由画布级操作栏接管。 */
+  const isSoleSelection = (selected && selectedNodeCount === 1) || (groupMemberFocused && selectedNodeCount === 0);
+  const actions =
+    d.url && isSoleSelection ? (
+      <NodeToolbar
+        nodeId={id}
+        isVisible
+        position={Position.Top}
+        offset={(IMAGE_TITLE_TOP_OFFSET + IMAGE_TITLE_LINE_HEIGHT) * zoom + IMAGE_ACTIONS_TITLE_GAP}
+        className={styles.imageNodeActions}
+      >
+        <CanvasActionToolbar
+          ariaLabel="图片操作"
+          variant="icons"
+          actions={[
+            {
+              key: "download",
+              icon: <Download />,
+              title: "下载图片",
+              onClick: () => {
+                const downloadUrl = d.assetRef?.assetId
+                  ? `${API}/studio/assets/${encodeURIComponent(d.assetRef.assetId)}/download`
+                  : d.url!;
+                void downloadFile(downloadUrl, d.title || "图片");
+              },
+            },
+            {
+              key: "preview",
+              icon: <Maximize2 />,
+              title: "全屏查看图片",
+              onClick: () => setPreviewOpen(true),
+            },
+          ]}
+        />
+      </NodeToolbar>
+    ) : null;
+
+  const card =
+    edit.editingId === id ? (
+      <ImageNodeEditor nodeId={id} data={d} />
+    ) : (
+      <div className={styles.imageNodeWrap}>
+        <ImageCardStatic
+          d={d}
+          nodeId={id}
+          onActivate={d.mediaSource === "upload" || d.mediaSource === "asset" ? undefined : () => edit.enterEdit(id)}
+          onIntrinsicSize={updateIntrinsicSize}
+        />
+      </div>
+    );
 
   return (
-    <div className={styles.imageNodeWrap}>
-      <ImageCardStatic
-        d={d}
-        nodeId={id}
-        onActivate={d.mediaSource === "upload" || d.mediaSource === "asset" ? undefined : () => edit.enterEdit(id)}
-        onIntrinsicSize={updateIntrinsicSize}
-      />
-    </div>
+    <>
+      {actions}
+      {card}
+      {d.url && (
+        <Modal
+          open={previewOpen}
+          title={d.title || "图片预览"}
+          presentation="media"
+          showClose
+          onOpenChange={setPreviewOpen}
+        >
+          <div className={styles.imagePreviewDialogStage}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={d.url} alt={d.title || "图片预览"} />
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -352,7 +411,6 @@ export function ImageEditPanel() {
       generationSize: selectedDimension
         ? { width: selectedDimension.width, height: selectedDimension.height }
         : undefined,
-      title: edit.buffer.title,
     };
   }, [prompt, effectiveRatio, effectiveQuality, effectiveResolution, effectiveCount, model, selectedDimension, edit]);
 
@@ -508,7 +566,7 @@ export function ImageEditPanel() {
  * @param props - 当前图片节点标识与数据。
  * @returns 图片节点编辑态组件。
  */
-function ImageNodeEditor({ data }: { data: ImageNodeData }) {
+function ImageNodeEditor({ nodeId, data }: { nodeId: string; data: ImageNodeData }) {
   const edit = useContext(EnterEditContext);
   /** 编辑栏已外置，节点的 imageEditStateRef 由外层 ImageEditPanel 维护。
      这里只需要为节点"占位"留个空 ref（避免 commitEdit 走 image 分支时拿到 null） */
@@ -522,7 +580,6 @@ function ImageNodeEditor({ data }: { data: ImageNodeData }) {
         count: data.count ?? 1,
         model: data.model ?? "gpt-image-2",
         url: data.url,
-        title: edit.buffer.title,
       };
     }
   }, [edit, data]);
@@ -530,7 +587,7 @@ function ImageNodeEditor({ data }: { data: ImageNodeData }) {
   return (
     <div className={styles.imageNodeEditWrap}>
       <div className={styles.imageNodeEditCardCol}>
-        <ImageCardStatic d={data} editing />
+        <ImageCardStatic d={data} nodeId={nodeId} />
       </div>
     </div>
   );

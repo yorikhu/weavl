@@ -1,4 +1,19 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  StreamableFile,
+  UseGuards,
+} from "@nestjs/common";
+import type { Response } from "express";
 import type { Readable } from "node:stream";
 import type { AssetSource } from "@weavl/shared";
 import { z } from "zod";
@@ -110,6 +125,23 @@ export class AssetsController {
       contentLength: input.contentLength,
       stream: req as Readable,
     });
+  }
+
+  /**
+   * 下载当前用户拥有的资产最新版本。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param response - 用于设置下载响应头的响应对象。
+   * @param id - 资产标识。
+   * @returns 由 Nest 流式写出的资产文件。
+   */
+  @Get(":id/download")
+  async download(@Req() req: AuthRequest, @Res({ passthrough: true }) response: Response, @Param("id") id: string) {
+    const file = await this.assets.download(id, req.studioUser.id);
+    response.setHeader("Content-Type", file.mimeType);
+    response.setHeader("Content-Length", String(file.data.length));
+    response.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`);
+    return new StreamableFile(file.data);
   }
   /**
    * 更新资产。
