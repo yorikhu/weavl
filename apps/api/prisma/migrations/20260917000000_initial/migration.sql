@@ -614,17 +614,12 @@ VALUES
 INSERT INTO "model_definitions"
   ("id", "kind", "label", "maker", "description", "is_auto")
 VALUES
-  ('weavl-text', 'text', 'Weavl Text', 'Weavl', '按可用性和优先级自动选择文本模型', true),
-  ('weavl-image', 'image', 'Weavl Image', 'Weavl', '按可用性和优先级自动选择图片模型', true),
-  ('weavl-video', 'video', 'Weavl Video', 'Weavl', '按可用性和优先级自动选择视频模型', true),
   ('deepseek-v4.1-flash', 'text', 'DeepSeek V4.1 Flash', 'DeepSeek', '高吞吐长上下文文本与视觉理解模型', false),
   ('atria-dawn-preview', 'text', 'Atria Dawn Preview (Free)', 'Atria', '面向复杂任务执行与研究工作的免费预览模型', false),
   ('ling-3.0-flash-vl', 'text', 'Ling-3.0-flash-VL', 'inclusionAI', '支持视觉理解的快速多模态模型', false),
   ('kimi-k2.8-preview', 'text', 'Kimi K2.8 Preview', 'MoonshotAI', '支持长上下文与可调推理强度的预览模型', false),
   ('gpt-image-2.5-flare', 'image', 'GPT-Image-2.5-Flare', 'OpenAI', '偏速度与高频创作的图片生成模型', false),
   ('gpt-image-2.5-sunburst', 'image', 'GPT-Image-2.5-Sunburst', 'OpenAI', '偏高质量输出的图片生成模型', false),
-  ('gemini-3.1-flash-image', 'image', 'Nano Banana 2', 'Google', 'Gemini 3.1 Flash Image 图片生成模型', false),
-  ('gemini-omni-1.1-flash-preview', 'image', 'Gemini Omni 1.1 Flash Preview', 'Google', '支持图像与多模态输出的预览模型', false),
   ('doubao-seedance-2.0', 'video', 'Doubao-Seedance-2.0', 'ByteDance', '支持文生视频、图生视频和参考音频的视频模型', false),
   ('doubao-seedance-2.5', 'video', 'Doubao-Seedance-2.5', 'ByteDance', 'Seedance 新一代视频生成模型', false),
   ('minimax-h3-max', 'video', 'MiniMax H3 Max', 'MiniMax', '兼顾生成速度的文生视频与图生视频模型', false),
@@ -639,12 +634,30 @@ VALUES
   ('channel.zenmux.text.kimi-k2.8-preview', 'provider.zenmux', 'openai-chat', 'kimi-k2.8-preview', 'moonshotai/kimi-k2.8-preview', 'ZenMux · Kimi K2.8 Preview', 'https://zenmux.ai/api/v1', 40),
   ('channel.zenmux.image.gpt-image-2.5-flare', 'provider.zenmux', 'vertex-image', 'gpt-image-2.5-flare', 'openai/gpt-image-2.5-flare', 'ZenMux · GPT-Image-2.5-Flare', 'https://zenmux.ai/api/vertex-ai', 10),
   ('channel.zenmux.image.gpt-image-2.5-sunburst', 'provider.zenmux', 'vertex-image', 'gpt-image-2.5-sunburst', 'openai/gpt-image-2.5-sunburst', 'ZenMux · GPT-Image-2.5-Sunburst', 'https://zenmux.ai/api/vertex-ai', 20),
-  ('channel.zenmux.image.gemini-3.1-flash-image', 'provider.zenmux', 'vertex-generate-content', 'gemini-3.1-flash-image', 'google/gemini-3.1-flash-image', 'ZenMux · Nano Banana 2', 'https://zenmux.ai/api/vertex-ai', 30),
-  ('channel.zenmux.image.gemini-omni-1.1-flash-preview', 'provider.zenmux', 'vertex-generate-content', 'gemini-omni-1.1-flash-preview', 'google/gemini-omni-1.1-flash-preview', 'ZenMux · Gemini Omni 1.1 Flash Preview', 'https://zenmux.ai/api/vertex-ai', 40),
   ('channel.zenmux.video.doubao-seedance-2.0', 'provider.zenmux', 'vertex-video', 'doubao-seedance-2.0', 'bytedance/doubao-seedance-2.0', 'ZenMux · Doubao-Seedance-2.0', 'https://zenmux.ai/api/vertex-ai', 10),
   ('channel.zenmux.video.doubao-seedance-2.5', 'provider.zenmux', 'vertex-video', 'doubao-seedance-2.5', 'bytedance/doubao-seedance-2.5', 'ZenMux · Doubao-Seedance-2.5', 'https://zenmux.ai/api/vertex-ai', 20),
   ('channel.zenmux.video.minimax-h3-max', 'provider.zenmux', 'vertex-video', 'minimax-h3-max', 'minimax/minimax-h3-max', 'ZenMux · MiniMax H3 Max', 'https://zenmux.ai/api/vertex-ai', 30),
   ('channel.zenmux.video.wan3.0-video-prime', 'provider.zenmux', 'vertex-video', 'wan3.0-video-prime', 'alibaba/wan3.0-video-prime', 'ZenMux · Wan3.0-Video-Prime', 'https://zenmux.ai/api/vertex-ai', 40);
+
+UPDATE "model_definitions"
+SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"1:1","width":1024,"height":1024},{"ratio":"3:2","width":1536,"height":1024},{"ratio":"2:3","width":1024,"height":1536}],"qualities":["低画质","标准画质","高画质"],"resolutions":[],"counts":[1,2,4]}'::jsonb
+WHERE "id" IN ('gpt-image-2.5-flare', 'gpt-image-2.5-sunburst');
+
+UPDATE "model_definitions"
+SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["480P","720P","1080P"],"durations":[5,8,10],"counts":[1]}'::jsonb
+WHERE "id" = 'doubao-seedance-2.0';
+
+UPDATE "model_definitions"
+SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["720P","1080P"],"durations":[5,8,10],"counts":[1]}'::jsonb
+WHERE "id" = 'doubao-seedance-2.5';
+
+UPDATE "model_definitions"
+SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1280,"height":720},{"ratio":"9:16","width":720,"height":1280}],"resolutions":["720P"],"durations":[5,10],"counts":[1]}'::jsonb
+WHERE "id" = 'minimax-h3-max';
+
+UPDATE "model_definitions"
+SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["720P","1080P"],"durations":[5,10],"counts":[1]}'::jsonb
+WHERE "id" = 'wan3.0-video-prime';
 
 INSERT INTO "billing_policies"
   ("id", "credit_value_cny", "markup_rate", "usd_cny_rate")

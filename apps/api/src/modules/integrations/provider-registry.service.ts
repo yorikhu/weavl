@@ -82,11 +82,10 @@ export class ProviderRegistryService {
    */
   async models(kind?: ProviderChannel["modelKind"]): Promise<Array<GenerationModel & { configured: boolean }>> {
     const models = await this.prisma.modelDefinition.findMany({
-      where: { enabled: true, kind },
+      where: { enabled: true, kind, isAuto: false },
       include: { channels: { where: { enabled: true }, include: { provider: true } } },
-      orderBy: [{ isAuto: "desc" }, { createdAt: "asc" }],
+      orderBy: [{ createdAt: "asc" }],
     });
-    const allChannels = models.flatMap((model) => model.channels);
     return models.map((model) => ({
       id: model.id,
       kind: model.kind as ProviderChannel["modelKind"],
@@ -96,11 +95,9 @@ export class ProviderRegistryService {
       isAuto: model.isAuto,
       enabled: model.enabled,
       capabilities: this.objectValue(model.capabilities),
-      configured: model.isAuto
-        ? allChannels.some((channel) => channel.provider.enabled && Boolean(process.env[channel.provider.apiKeyEnv]))
-        : model.channels.some(
-            (channel) => channel.provider.enabled && Boolean(process.env[channel.provider.apiKeyEnv]),
-          ),
+      configured: model.channels.some(
+        (channel) => channel.provider.enabled && Boolean(process.env[channel.provider.apiKeyEnv]),
+      ),
     }));
   }
 

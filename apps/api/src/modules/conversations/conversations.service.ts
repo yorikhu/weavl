@@ -110,7 +110,7 @@ export class ConversationsService {
     };
     const generated = await this.generation.generate(
       ownerId,
-      "weavl-text",
+      "deepseek-v4.1-flash",
       `目标：${input.content}${source}${method}\n输出类型：${kinds.map((x) => labels[x]).join("、")}`,
     );
     const asset = await this.assets.create({

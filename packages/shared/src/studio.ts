@@ -2,6 +2,22 @@
 export type AssetKind = "text" | "image" | "video" | "audio" | "pdf" | "word" | "ppt" | "file";
 export type ModelKind = "text" | "image" | "video" | "audio" | "avatar";
 
+export interface MediaDimensionCapability {
+  ratio: string;
+  width: number;
+  height: number;
+}
+
+/** 后端维护的模型级生成参数，verified=false 表示仍需实际调用校准。 */
+export interface MediaGenerationCapabilities {
+  verified?: boolean;
+  dimensions?: MediaDimensionCapability[];
+  qualities?: string[];
+  resolutions?: string[];
+  durations?: number[];
+  counts?: number[];
+}
+
 /** 前后端共享的模型选择项；configured 表示当前至少有一条已配置密钥的渠道。 */
 export interface GenerationModelOption {
   id: string;
@@ -11,13 +27,14 @@ export interface GenerationModelOption {
   description: string;
   configured: boolean;
   isAuto?: boolean;
+  capabilities?: MediaGenerationCapabilities;
 }
 
 /** 平台按当前模型、供应商成本和全局策略计算出的积分预估。 */
 export interface GenerationPriceQuote {
   configured: boolean;
   quotable: boolean;
-  strategy: "manual-rule" | "provider-cost" | "unavailable";
+  strategy: "manual-rule" | "provider-cost" | "platform-estimate" | "unavailable";
   billingMode: "fixed" | "metered" | "unavailable";
   ruleId: string | null;
   credits: number;

@@ -6,7 +6,7 @@ import { SessionGuard } from "../auth/session.guard";
 import { MediaGenerationService } from "./media-generation.service";
 
 const imageSchema = z.object({
-  model: z.string().trim().min(1).default("weavl-image"),
+  model: z.string().trim().min(1).default("gpt-image-2.5-flare"),
   prompt: z.string().trim().min(1).max(5000),
   count: z.number().int().min(1).max(4).default(1),
   ratio: z.string().trim().max(20).optional(),
@@ -19,7 +19,7 @@ const imageSchema = z.object({
 });
 
 const videoSchema = z.object({
-  model: z.string().trim().min(1).default("weavl-video"),
+  model: z.string().trim().min(1).default("doubao-seedance-2.0"),
   prompt: z.string().trim().min(1).max(5000),
   count: z.number().int().min(1).max(4).default(1),
   ratio: z.string().trim().max(20).optional(),

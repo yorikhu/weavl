@@ -78,46 +78,49 @@ export class PricingService {
    */
   async reserve(ownerId: string, modelId: string, input: PricingInput) {
     const quote = await this.quote(modelId, input);
-    return this.prisma.$transaction(async (transaction) => {
-      const account = await transaction.account.findUnique({ where: { userId: ownerId } });
-      if (!account) throw new BadRequestException("账户不存在");
-      if (quote.credits) {
-        const debit = await transaction.account.updateMany({
-          where: { userId: ownerId, credits: { gte: quote.credits } },
-          data: { credits: { decrement: quote.credits } },
-        });
-        if (!debit.count) throw new BadRequestException(`积分不足，本次生成需要 ${quote.credits} 积分`);
-      }
-      const updatedAccount = quote.credits
-        ? await transaction.account.findUniqueOrThrow({ where: { userId: ownerId } })
-        : account;
-      const usage = await transaction.generationUsage.create({
-        data: {
-          id: newId("usage"),
-          ownerId,
-          modelId,
-          pricingRuleId: quote.ruleId,
-          status: "reserved",
-          inputSnapshot: input as Prisma.InputJsonValue,
-          pricingSnapshot: quote.snapshot as Prisma.InputJsonValue,
-          credits: quote.credits,
-        },
-      });
-      const balanceAfter = updatedAccount.credits;
-      if (quote.credits)
-        await transaction.creditLedgerEntry.create({
+    return this.prisma.$transaction(
+      async (transaction) => {
+        const account = await transaction.account.findUnique({ where: { userId: ownerId } });
+        if (!account) throw new BadRequestException("账户不存在");
+        if (quote.credits) {
+          const debit = await transaction.account.updateMany({
+            where: { userId: ownerId, credits: { gte: quote.credits } },
+            data: { credits: { decrement: quote.credits } },
+          });
+          if (!debit.count) throw new BadRequestException(`积分不足，本次生成需要 ${quote.credits} 积分`);
+        }
+        const updatedAccount = quote.credits
+          ? await transaction.account.findUniqueOrThrow({ where: { userId: ownerId } })
+          : account;
+        const usage = await transaction.generationUsage.create({
           data: {
-            id: newId("credit"),
+            id: newId("usage"),
             ownerId,
-            usageId: usage.id,
-            type: "generation_debit",
-            delta: -quote.credits,
-            balanceAfter,
-            reason: `生成预扣：${modelId}`,
+            modelId,
+            pricingRuleId: quote.ruleId,
+            status: "reserved",
+            inputSnapshot: input as Prisma.InputJsonValue,
+            pricingSnapshot: quote.snapshot as Prisma.InputJsonValue,
+            credits: quote.credits,
           },
         });
-      return { usageId: usage.id, balanceAfter, ...quote };
-    }, { isolationLevel: "Serializable" });
+        const balanceAfter = updatedAccount.credits;
+        if (quote.credits)
+          await transaction.creditLedgerEntry.create({
+            data: {
+              id: newId("credit"),
+              ownerId,
+              usageId: usage.id,
+              type: "generation_debit",
+              delta: -quote.credits,
+              balanceAfter,
+              reason: `生成预扣：${modelId}`,
+            },
+          });
+        return { usageId: usage.id, balanceAfter, ...quote };
+      },
+      { isolationLevel: "Serializable" },
+    );
   }
 
   /**
@@ -153,45 +156,48 @@ export class PricingService {
     const finalCredits = finalQuote?.quotable ? finalQuote.credits : pending.credits;
     const adjustment = finalCredits - pending.credits;
 
-    return this.prisma.$transaction(async (transaction) => {
-      const claim = await transaction.generationUsage.updateMany({
-        where: { id: usageId, status: { in: ["reserved", "pending_reconciliation"] } },
-        data: {
-          // TODO(billing-reconciliation): ZenMux 媒体账单延迟 3–5 分钟，接入持久化对账任务后再完成最终扣费。
-          status: awaitsProviderBill ? "pending_reconciliation" : "charged",
-          ...references,
-          credits: finalCredits,
-          pricingSnapshot: finalQuote
-            ? ({
-                ...finalQuote.snapshot,
-                estimateCredits: pending.credits,
-                actualUsage,
-                settledFromActualUsage: true,
-              } as Prisma.InputJsonValue)
-            : (pending.pricingSnapshot as Prisma.InputJsonValue),
-          updatedAt: new Date(),
-        },
-      });
-      if (!claim.count) return transaction.generationUsage.findUnique({ where: { id: usageId } });
-      if (adjustment) {
-        const account = await transaction.account.update({
-          where: { userId: pending.ownerId },
-          data: { credits: adjustment > 0 ? { decrement: adjustment } : { increment: Math.abs(adjustment) } },
-        });
-        await transaction.creditLedgerEntry.create({
+    return this.prisma.$transaction(
+      async (transaction) => {
+        const claim = await transaction.generationUsage.updateMany({
+          where: { id: usageId, status: { in: ["reserved", "pending_reconciliation"] } },
           data: {
-            id: newId("credit"),
-            ownerId: pending.ownerId,
-            usageId,
-            type: "generation_adjustment",
-            delta: -adjustment,
-            balanceAfter: account.credits,
-            reason: adjustment > 0 ? "按实际 Token 用量补扣" : "按实际 Token 用量退还",
+            // TODO(billing-reconciliation): ZenMux 媒体账单延迟 3–5 分钟，接入持久化对账任务后再完成最终扣费。
+            status: awaitsProviderBill ? "pending_reconciliation" : "charged",
+            ...references,
+            credits: finalCredits,
+            pricingSnapshot: finalQuote
+              ? ({
+                  ...finalQuote.snapshot,
+                  estimateCredits: pending.credits,
+                  actualUsage,
+                  settledFromActualUsage: true,
+                } as Prisma.InputJsonValue)
+              : (pending.pricingSnapshot as Prisma.InputJsonValue),
+            updatedAt: new Date(),
           },
         });
-      }
-      return transaction.generationUsage.findUnique({ where: { id: usageId } });
-    }, { isolationLevel: "Serializable" });
+        if (!claim.count) return transaction.generationUsage.findUnique({ where: { id: usageId } });
+        if (adjustment) {
+          const account = await transaction.account.update({
+            where: { userId: pending.ownerId },
+            data: { credits: adjustment > 0 ? { decrement: adjustment } : { increment: Math.abs(adjustment) } },
+          });
+          await transaction.creditLedgerEntry.create({
+            data: {
+              id: newId("credit"),
+              ownerId: pending.ownerId,
+              usageId,
+              type: "generation_adjustment",
+              delta: -adjustment,
+              balanceAfter: account.credits,
+              reason: adjustment > 0 ? "按实际 Token 用量补扣" : "按实际 Token 用量退还",
+            },
+          });
+        }
+        return transaction.generationUsage.findUnique({ where: { id: usageId } });
+      },
+      { isolationLevel: "Serializable" },
+    );
   }
 
   /**
@@ -228,32 +234,35 @@ export class PricingService {
    * @returns 退款后的用量状态。
    */
   async refund(usageId: string, reason: string) {
-    return this.prisma.$transaction(async (transaction) => {
-      const usage = await transaction.generationUsage.findUnique({ where: { id: usageId } });
-      if (!usage || usage.status !== "reserved") return usage;
-      const claim = await transaction.generationUsage.updateMany({
-        where: { id: usage.id, status: "reserved" },
-        data: { status: "refunded", updatedAt: new Date() },
-      });
-      if (!claim.count) return transaction.generationUsage.findUnique({ where: { id: usage.id } });
-      const account = await transaction.account.update({
-        where: { userId: usage.ownerId },
-        data: { credits: { increment: usage.credits } },
-      });
-      if (usage.credits)
-        await transaction.creditLedgerEntry.create({
-          data: {
-            id: newId("credit"),
-            ownerId: usage.ownerId,
-            usageId: usage.id,
-            type: "generation_refund",
-            delta: usage.credits,
-            balanceAfter: account.credits,
-            reason: reason.slice(0, 200),
-          },
+    return this.prisma.$transaction(
+      async (transaction) => {
+        const usage = await transaction.generationUsage.findUnique({ where: { id: usageId } });
+        if (!usage || usage.status !== "reserved") return usage;
+        const claim = await transaction.generationUsage.updateMany({
+          where: { id: usage.id, status: "reserved" },
+          data: { status: "refunded", updatedAt: new Date() },
         });
-      return transaction.generationUsage.findUnique({ where: { id: usage.id } });
-    }, { isolationLevel: "Serializable" });
+        if (!claim.count) return transaction.generationUsage.findUnique({ where: { id: usage.id } });
+        const account = await transaction.account.update({
+          where: { userId: usage.ownerId },
+          data: { credits: { increment: usage.credits } },
+        });
+        if (usage.credits)
+          await transaction.creditLedgerEntry.create({
+            data: {
+              id: newId("credit"),
+              ownerId: usage.ownerId,
+              usageId: usage.id,
+              type: "generation_refund",
+              delta: usage.credits,
+              balanceAfter: account.credits,
+              reason: reason.slice(0, 200),
+            },
+          });
+        return transaction.generationUsage.findUnique({ where: { id: usage.id } });
+      },
+      { isolationLevel: "Serializable" },
+    );
   }
 
   /**
@@ -279,8 +288,7 @@ export class PricingService {
   /** 根据同步后的供应商成本、积分价值和加价率生成保守报价。 */
   private async costBasedQuote(modelId: string, input: PricingInput, channelId?: string) {
     const model = await this.prisma.modelDefinition.findUnique({ where: { id: modelId } });
-    if (!model)
-      return this.unavailableQuote(modelId, "模型不存在");
+    if (!model) return this.unavailableQuote(modelId, "模型不存在");
     const channels = await this.prisma.providerChannel.findMany({
       where: channelId
         ? { id: channelId, enabled: true, provider: { enabled: true } }
@@ -293,23 +301,20 @@ export class PricingService {
     const creditValueCny = Number(policy?.creditValueCny ?? 0.035);
     const markupRate = Number(policy?.markupRate ?? 0.1);
     const usdCnyRate = Number(policy?.usdCnyRate ?? 7.2);
-    const meteredRates = this.meteredRates(channels.map((channel) => channel.costPricing), input, {
-      creditValueCny,
-      markupRate,
-      usdCnyRate,
-    });
     const estimates = channels.flatMap((channel) => {
       const estimate = this.estimateChannel(model.kind, channel.costPricing, input);
       return estimate
         ? [{ ...estimate, channelId: channel.id, channelLabel: channel.label, costPricing: channel.costPricing }]
         : [];
     });
-    if (!estimates.length)
-      return this.unavailableQuote(
-        modelId,
-        "该模型按实际用量结算，生成完成后以供应商账单为准",
-        meteredRates,
-      );
+    if (!estimates.length) {
+      return this.platformEstimateQuote(modelId, model.kind, input, {
+        configured: channels.length > 0,
+        creditValueCny,
+        markupRate,
+        usdCnyRate,
+      });
+    }
     const normalized = estimates.map((estimate) => ({
       ...estimate,
       costCny: estimate.currency === "USD" ? estimate.amount * usdCnyRate : estimate.amount,
@@ -345,7 +350,7 @@ export class PricingService {
     return {
       configured: true,
       quotable: true,
-      billingMode: selectedMeteredRates.length ? "metered" as const : "fixed" as const,
+      billingMode: selectedMeteredRates.length ? ("metered" as const) : ("fixed" as const),
       strategy: "provider-cost" as const,
       ruleId: null,
       credits,
@@ -372,18 +377,27 @@ export class PricingService {
     const promptLength =
       this.optionalNumber(input, "promptLength") ?? (typeof input.prompt === "string" ? input.prompt.length : 0);
     const promptTokens = this.optionalNumber(input, "inputTokens") ?? Math.max(1, Math.ceil(promptLength / 2));
-    const outputTokens = this.optionalNumber(input, "outputTokens") ?? this.optionalNumber(input, "maxOutputTokens") ?? 1000;
+    const outputTokens =
+      this.optionalNumber(input, "outputTokens") ?? this.optionalNumber(input, "maxOutputTokens") ?? 1000;
     const cachedInputTokens = Math.min(promptTokens, this.optionalNumber(input, "cachedInputTokens") ?? 0);
     const billableTokens = this.optionalNumber(input, "billableTokens");
     const components: Array<{ amount: number; currency: string; confidence: "high" | "medium" | "low" }> = [];
 
-    const add = (key: string, units: { tokens?: number; seconds?: number; count?: number }, confidence: "high" | "medium" | "low") => {
+    const add = (
+      key: string,
+      units: { tokens?: number; seconds?: number; count?: number },
+      confidence: "high" | "medium" | "low",
+    ) => {
       const component = this.priceComponent(pricing[key], input, units);
       if (component) components.push({ ...component, confidence });
     };
     add("request", { count: 1 }, "high");
     if (kind === "text") {
-      add("prompt", { tokens: promptTokens - cachedInputTokens }, this.optionalNumber(input, "inputTokens") ? "high" : "medium");
+      add(
+        "prompt",
+        { tokens: promptTokens - cachedInputTokens },
+        this.optionalNumber(input, "inputTokens") ? "high" : "medium",
+      );
       if (cachedInputTokens) {
         const cached = this.priceComponent(pricing.input_cache_read, input, { tokens: cachedInputTokens });
         if (cached) components.push({ ...cached, confidence: "high" });
@@ -393,12 +407,17 @@ export class PricingService {
       if (!this.optionalNumber(input, "inputTokens")) assumptions.push(`输入按约 ${promptTokens} tokens 估算`);
       if (!this.optionalNumber(input, "outputTokens")) assumptions.push(`输出按 ${outputTokens} tokens 估算`);
     } else if (kind === "image") {
-      add("image", { count }, "high");
+      const image = this.priceComponent(pricing.image, input, { count });
+      if (!image) return null;
+      components.push({ ...image, confidence: "high" });
       add("prompt", { tokens: promptTokens * count }, "low");
-      if (!pricing.image) assumptions.push("供应商目录仅公开媒体 token 价格，最终账单可能不同");
     } else if (kind === "video") {
       const key = input.generateAudio ? "audio_and_video" : "video";
-      add(key, { seconds: seconds * count, tokens: billableTokens ? billableTokens * count : undefined }, billableTokens ? "medium" : "high");
+      add(
+        key,
+        { seconds: seconds * count, tokens: billableTokens ? billableTokens * count : undefined },
+        billableTokens ? "medium" : "high",
+      );
       if (this.optionalNumber(input, "durationSeconds") === undefined) assumptions.push("未指定时长，按 5 秒估算");
       if (!billableTokens && this.onlyTokenRates(pricing[key])) return null;
     }
@@ -448,10 +467,81 @@ export class PricingService {
   }
 
   private onlyTokenRates(rawEntries: unknown) {
-    return Array.isArray(rawEntries) && rawEntries.length > 0 && rawEntries.every((entry) => {
-      const unit = entry && typeof entry === "object" ? String((entry as CostRate).unit || "") : "";
-      return ["perMTokens", "perKTokens", "perToken"].includes(unit);
-    });
+    return (
+      Array.isArray(rawEntries) &&
+      rawEntries.length > 0 &&
+      rawEntries.every((entry) => {
+        const unit = entry && typeof entry === "object" ? String((entry as CostRate).unit || "") : "";
+        return ["perMTokens", "perKTokens", "perToken"].includes(unit);
+      })
+    );
+  }
+
+  /**
+   * 在供应商尚未提供可换算成本时给出保守的平台积分价。
+   * 该价格只作为临时兜底；渠道成本同步后会自动改用真实成本加成报价。
+   */
+  private platformEstimateQuote(
+    modelId: string,
+    kind: string,
+    input: PricingInput,
+    policy: { configured: boolean; creditValueCny: number; markupRate: number; usdCnyRate: number },
+  ) {
+    const count = Math.max(1, this.optionalNumber(input, "count") ?? 1);
+    let credits = 1;
+    const assumptions: string[] = [];
+
+    if (kind === "text") {
+      const maxOutputTokens = Math.max(1, this.optionalNumber(input, "maxOutputTokens") ?? 1000);
+      const promptLength = this.optionalNumber(input, "promptLength") ?? 0;
+      credits = Math.max(2, Math.ceil(maxOutputTokens / 1000) * 2 + Math.floor(promptLength / 4000));
+      assumptions.push("按最多输出 Token 和输入长度估算");
+    } else if (kind === "image") {
+      const resolution = String(input.resolution || "2K").toUpperCase();
+      const resolutionCredits = resolution === "4K" ? 120 : resolution === "1K" ? 30 : 60;
+      const quality = String(input.quality || "medium").toLowerCase();
+      const qualityFactor = quality === "high" ? 1.5 : quality === "low" ? 0.8 : 1;
+      credits = Math.ceil(resolutionCredits * qualityFactor * count);
+      assumptions.push("按分辨率、画质和生成数量估算");
+    } else if (kind === "video") {
+      const seconds = Math.max(1, this.optionalNumber(input, "durationSeconds") ?? 5);
+      const resolution = String(input.resolution || "720p").toLowerCase();
+      const creditsPerSecond = resolution.includes("4k")
+        ? 350
+        : resolution.includes("2k")
+          ? 220
+          : resolution.includes("1080")
+            ? 150
+            : 100;
+      credits = Math.ceil(creditsPerSecond * seconds * count);
+      assumptions.push("按视频时长、分辨率和生成数量估算");
+    }
+
+    const snapshot = {
+      configured: policy.configured,
+      strategy: "platform-estimate",
+      billingMode: "fixed",
+      modelId,
+      credits,
+      assumptions,
+      policy: {
+        creditValueCny: policy.creditValueCny,
+        markupRate: policy.markupRate,
+        usdCnyRate: policy.usdCnyRate,
+      },
+    };
+    return {
+      configured: policy.configured,
+      quotable: true,
+      billingMode: "fixed" as const,
+      strategy: "platform-estimate" as const,
+      ruleId: null,
+      credits,
+      confidence: "low" as const,
+      assumptions,
+      policy: snapshot.policy,
+      snapshot,
+    };
   }
 
   /** 将供应商 Token 单价换算为面向用户展示的每百万 Token 积分单价。 */
@@ -511,7 +601,7 @@ export class PricingService {
     return {
       configured: meteredRates.length > 0,
       quotable: false,
-      billingMode: meteredRates.length ? "metered" as const : "unavailable" as const,
+      billingMode: meteredRates.length ? ("metered" as const) : ("unavailable" as const),
       strategy: "unavailable" as const,
       ruleId: null,
       credits: 0,

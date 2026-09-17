@@ -4,7 +4,7 @@ import { parseBody, type AuthRequest } from "../../common/http";
 import { SessionGuard } from "../auth/session.guard";
 import { TextGenerationService } from "./text-generation.service";
 const schema = z.object({
-  model: z.string().trim().min(1).default("weavl-text"),
+  model: z.string().trim().min(1).default("deepseek-v4.1-flash"),
   prompt: z.string().trim().min(1).max(10000),
 });
 
