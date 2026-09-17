@@ -1,7 +1,17 @@
 import { BadGatewayException, Injectable } from "@nestjs/common";
-import type { ProviderAdapter, ProviderChannel, TextGenerationRequest } from "../provider.types";
+import type { ProviderChannel, TextGenerationRequest, TextProviderAdapter } from "../provider.types";
+
+/** 将平台文本请求转换为 OpenAI Chat Completions 兼容请求。 */
 @Injectable()
-export class OpenAiCompatibleAdapter implements ProviderAdapter {
+export class OpenAiCompatibleAdapter implements TextProviderAdapter {
+  /**
+   * 调用渠道并提取首个 assistant 文本，同时保留 HTTP 状态供日志记录。
+   *
+   * @param channel - OpenAI Chat 兼容供应渠道。
+   * @param request - 标准化文本生成参数。
+   * @returns 首个 assistant 文本和 HTTP 状态码。
+   * @throws {BadGatewayException} 渠道未配置密钥时抛出。
+   */
   async generateText(channel: ProviderChannel, request: TextGenerationRequest) {
     const key = process.env[channel.apiKeyEnv];
     if (!key) throw new BadGatewayException(`渠道 ${channel.label} 缺少 ${channel.apiKeyEnv}`);

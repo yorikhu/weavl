@@ -23,6 +23,7 @@ model User {
   skills         Skill[]
   workflows      Workflow[]
   workflowRuns   WorkflowRun[]
+  generationJobs GenerationJob[]
 
   @@map("users")
 }
@@ -264,6 +265,7 @@ model WorkflowRun {
 model ProviderChannel {
   id               String               @id
   provider         String
+  protocol         String               @default("openai-chat")
   modelKind        String               @map("model_kind")
   modelId          String               @map("model_id")
   remoteModel      String               @map("remote_model")
@@ -277,9 +279,31 @@ model ProviderChannel {
   createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
   requestLogs      ProviderRequestLog[]
+  generationJobs   GenerationJob[]
 
   @@index([modelKind, modelId, enabled, priority], map: "provider_channel_route_idx")
   @@map("provider_channels")
+}
+
+model GenerationJob {
+  id              String           @id
+  ownerId         String           @map("owner_id")
+  channelId       String?          @map("channel_id")
+  modelKind       String           @map("model_kind")
+  modelId         String           @map("model_id")
+  remoteOperation String?          @map("remote_operation")
+  status          String
+  request         Json
+  result          Json?
+  errorMessage    String?          @map("error_message")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  channel         ProviderChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, updatedAt(sort: Desc)], map: "generation_jobs_owner_idx")
+  @@index([status, updatedAt], map: "generation_jobs_status_idx")
+  @@map("generation_jobs")
 }
 
 model ProviderRequestLog {

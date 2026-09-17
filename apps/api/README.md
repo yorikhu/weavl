@@ -43,24 +43,36 @@ pnpm --filter @weavl/api db:studio
 
 `integrations` 将前端使用的逻辑模型与供应商的实际模型分开。一项逻辑模型可以配置多个渠道；路由按 `priority` 从小到大尝试，记录耗时、状态码和失败原因。渠道连续失败达到 `failureThreshold` 后，会在 `cooldownSeconds` 内暂时跳过，并自动尝试下一渠道。
 
-火山、阿里和 ZenMux 可以通过独立环境变量接入。更多渠道使用 `WEAVL_MODEL_CHANNELS_JSON`：
+首批文本、图片和视频模型已通过 ZenMux 接入。只需在 `.env` 中填写 `ZENMUX_API_KEY`；OpenAI Chat 与 Vertex AI 端点已有默认值，也可以分别通过 `ZENMUX_BASE_URL`、`ZENMUX_VERTEX_BASE_URL` 覆盖。
+模型目录集中维护在 `src/modules/integrations/model-catalog.ts`，当前包含 4 个文本模型、4 个图片模型和 4 个视频模型，以及每种模态的 Weavl 自动路由入口。
+
+平台使用稳定的内部 `modelId`，供应商渠道保存自己的 `remoteModel` 和 `protocol`。后续接入直连供应商时，为同一个 `modelId` 增加渠道即可参与优先级路由与故障切换，无需修改画布数据。更多渠道使用 `WEAVL_MODEL_CHANNELS_JSON`：
+渠道首次注册后，`priority`、`enabled`、`failureThreshold` 和 `cooldownSeconds` 由数据库保留，服务重启不会覆盖运维调整。
 
 ```json
 [
   {
-    "id": "channel.zenmux.backup",
-    "provider": "zenmux",
+    "id": "channel.direct.deepseek",
+    "provider": "deepseek",
+    "protocol": "openai-chat",
     "modelKind": "text",
-    "modelId": "weavl-text",
-    "remoteModel": "provider-model-name",
-    "label": "ZenMux 备用",
+    "modelId": "deepseek-v4.1-flash",
+    "remoteModel": "deepseek-v4.1-flash",
+    "label": "DeepSeek 直连",
     "baseUrl": "https://example.com/v1",
-    "apiKeyEnv": "ZENMUX_BACKUP_API_KEY",
-    "priority": 20,
+    "apiKeyEnv": "DEEPSEEK_API_KEY",
+    "priority": 5,
     "failureThreshold": 3,
     "cooldownSeconds": 60
   }
 ]
 ```
 
-`apiKeyEnv` 只保存密钥所在的环境变量名，数据库和配置 JSON 都不保存密钥明文。调用历史可通过 `GET /api/studio/integrations/history` 查看，`GET /api/studio/integrations/metrics?hours=24` 返回渠道成功率和平均延迟；未配置真实渠道时，文本生成保留本地模拟响应，现有页面仍可完整运行。
+`protocol` 首批支持 `openai-chat`、`vertex-image`、`vertex-generate-content` 和 `vertex-video`。`apiKeyEnv` 只保存密钥所在的环境变量名，数据库和配置 JSON 都不保存密钥明文。调用历史可通过 `GET /api/studio/integrations/history` 查看，`GET /api/studio/integrations/metrics?hours=24` 返回渠道成功率和平均延迟；未配置真实渠道时，文本生成保留本地模拟响应。
+
+媒体生成接口：
+
+- `GET /api/studio/generations/models?kind=image|video`：获取模型目录与配置状态。
+- `POST /api/studio/generations/image`：同步生成图片并保存为项目产物，不会自动进入全局资产库。
+- `POST /api/studio/generations/video`：提交视频任务并持久化到 `generation_jobs`。
+- `GET /api/studio/generations/video/:jobId`：轮询任务，完成后落库产物。

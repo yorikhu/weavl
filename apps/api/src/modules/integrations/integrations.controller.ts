@@ -3,6 +3,8 @@ import { AuthRequest } from "../../common/http";
 import { PrismaService } from "../../infrastructure/database/prisma.service";
 import { SessionGuard } from "../auth/session.guard";
 import { ProviderRegistryService } from "./provider-registry.service";
+
+/** 提供供应渠道状态、调用历史和聚合指标的内部管理接口。 */
 @Controller("studio/integrations")
 @UseGuards(SessionGuard)
 export class IntegrationsController {
@@ -10,6 +12,13 @@ export class IntegrationsController {
     private readonly registry: ProviderRegistryService,
     private readonly prisma: PrismaService,
   ) {}
+
+  /**
+   * 返回基础设施状态和不含密钥值的供应渠道摘要。
+   *
+   * @param _request - 已通过会话守卫校验的请求对象。
+   * @returns 数据库、缓存、对象存储及模型渠道状态。
+   */
   @Get() async status(@Req() _request: AuthRequest) {
     void _request;
     const channels = await this.registry.list();
@@ -21,6 +30,7 @@ export class IntegrationsController {
       providers: channels.map((x) => ({
         id: x.id,
         provider: x.provider,
+        protocol: x.protocol,
         modelKind: x.modelKind,
         modelId: x.modelId,
         label: x.label,
@@ -31,6 +41,13 @@ export class IntegrationsController {
       nextStorage: { postgresConfigured: true, redisConfigured: true, objectStoreConfigured: true },
     };
   }
+
+  /**
+   * 查询最近 200 条调用记录，可按渠道过滤。
+   *
+   * @param channelId - 可选供应渠道 ID。
+   * @returns 按时间倒序排列的调用历史。
+   */
   @Get("history") history(@Query("channelId") channelId?: string) {
     return this.prisma.providerRequestLog.findMany({
       where: { channelId },
@@ -40,6 +57,12 @@ export class IntegrationsController {
     });
   }
 
+  /**
+   * 按时间窗口聚合各渠道成功率、调用量和平均延迟。
+   *
+   * @param rawHours - 查询窗口小时数，限制在 1 小时至 90 天。
+   * @returns 每条渠道在指定时间窗口内的聚合指标。
+   */
   @Get("metrics")
   async metrics(@Query("hours") rawHours?: string) {
     const hours = Math.min(24 * 90, Math.max(1, Number(rawHours) || 24));

@@ -2,20 +2,35 @@ import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import { parseBody } from "../../common/http";
 import { SessionGuard } from "../auth/session.guard";
-import { TextGenerationService, type TextModelId } from "./text-generation.service";
+import { TextGenerationService } from "./text-generation.service";
 const schema = z.object({
-  model: z.enum(["weavl-text", "volcengine-text", "aliyun-text", "zenmux-text"]).default("weavl-text"),
+  model: z.string().trim().min(1).default("weavl-text"),
   prompt: z.string().trim().min(1).max(10000),
 });
+
+/** 对外提供文本模型目录和同步生成接口。 */
 @Controller("studio/generations/text")
 @UseGuards(SessionGuard)
 export class TextGenerationController {
   constructor(private readonly generation: TextGenerationService) {}
+
+  /**
+   * 返回文本模型及其渠道配置状态。
+   *
+   * @returns 文本模型选择项列表。
+   */
   @Get("models") models() {
     return this.generation.models();
   }
+
+  /**
+   * 校验输入后调用统一文本生成网关。
+   *
+   * @param body - 尚未校验的文本生成请求体。
+   * @returns 实时模型结果或无密钥时的演示结果。
+   */
   @Post() generate(@Body() body: unknown) {
     const x = parseBody(schema, body);
-    return this.generation.generate(x.model as TextModelId, x.prompt);
+    return this.generation.generate(x.model, x.prompt);
   }
 }

@@ -14,6 +14,13 @@ export class AssetsService {
     private readonly storage: ObjectStorageService,
   ) {}
 
+  /**
+   * 读取资产列表。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @param filters - 列表过滤条件。
+   * @returns 读取资产列表后的结果。
+   */
   async list(
     ownerId: string,
     filters: { source?: AssetSource; q?: string; trash: boolean; includeGenerated: boolean },
@@ -32,6 +39,14 @@ export class AssetsService {
     return Promise.all(rows.map((x) => this.hydrate(x)));
   }
 
+  /**
+   * findOwned 资产。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param includeDeleted - 是否包含回收站数据。
+   * @returns findOwned 资产后的结果。
+   */
   async findOwned(id: string, ownerId: string, includeDeleted = true) {
     const asset = await this.prisma.asset.findFirst({
       where: { id, ownerId, deletedAt: includeDeleted ? undefined : null },
@@ -40,6 +55,16 @@ export class AssetsService {
     return asset;
   }
 
+  /**
+   * 按输入 ID 顺序读取并解析一组用户资产。
+   * 任意资产缺失或不属于当前用户时整体失败，避免任务结果被部分泄露。
+   *
+   * @param ids - 需要读取的资产 ID，返回顺序与其一致。
+   * @param ownerId - 当前用户 ID。
+   * @param includeDeleted - 是否允许读取已进入回收站的资产。
+   * @returns 解析对象存储地址后的资产列表。
+   * @throws {BadRequestException} 任意资产缺失或不属于当前用户时抛出。
+   */
   async getManyOwned(ids: string[], ownerId: string, includeDeleted = false) {
     if (!ids.length) return [];
     const rows = await this.prisma.asset.findMany({
@@ -56,6 +81,14 @@ export class AssetsService {
     );
   }
 
+  /**
+   * 创建资产及首个版本。
+   * copyRemote 用于生成产物，开启后会先把供应商临时地址复制到平台对象存储。
+   *
+   * @param input - 资产归属、名称、内容、来源和持久化策略。
+   * @returns 已解析内容地址的资产对象。
+   * @throws {BadRequestException} 指定文件夹不存在或不属于当前用户时抛出。
+   */
   async create(input: {
     ownerId: string;
     name: string;
@@ -66,9 +99,16 @@ export class AssetsService {
     source: AssetSource;
     sourceId?: string;
     inLibrary?: boolean;
+    copyRemote?: boolean;
   }): Promise<StudioAsset> {
     if (input.folderId) await this.assertFolder(input.folderId, input.ownerId);
-    const stored = await this.storage.persist(input.content, input.mimeType, `assets/${input.ownerId}`);
+    const stored = input.copyRemote
+      ? await this.storage.persistRemote(
+          input.content,
+          input.mimeType || "application/octet-stream",
+          `assets/${input.ownerId}`,
+        )
+      : await this.storage.persist(input.content, input.mimeType, `assets/${input.ownerId}`);
     const stamp = new Date();
     const asset = await this.prisma.asset.create({
       data: {
@@ -99,6 +139,13 @@ export class AssetsService {
     return this.hydrate(asset);
   }
 
+  /**
+   * 读取资产详情。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 读取资产详情后的结果。
+   */
   async get(id: string, ownerId: string) {
     const asset = await this.prisma.asset.findFirst({
       where: { id, ownerId },
@@ -108,6 +155,14 @@ export class AssetsService {
     return this.hydrate(asset);
   }
 
+  /**
+   * 更新资产。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 更新资产后的结果。
+   */
   async update(
     id: string,
     ownerId: string,
@@ -146,17 +201,37 @@ export class AssetsService {
     return this.get(id, ownerId);
   }
 
+  /**
+   * softDelete 资产。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns softDelete 资产后的结果。
+   */
   async softDelete(id: string, ownerId: string) {
     await this.findOwned(id, ownerId);
     await this.prisma.asset.update({ where: { id }, data: { deletedAt: new Date(), updatedAt: new Date() } });
     return this.get(id, ownerId);
   }
+  /**
+   * 恢复资产。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 恢复资产后的结果。
+   */
   async restore(id: string, ownerId: string) {
     await this.findOwned(id, ownerId);
     await this.prisma.asset.update({ where: { id }, data: { deletedAt: null, updatedAt: new Date() } });
     return this.get(id, ownerId);
   }
 
+  /**
+   * listFolders 资产。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @returns listFolders 资产后的结果。
+   */
   async listFolders(ownerId: string): Promise<Folder[]> {
     return (await this.prisma.assetFolder.findMany({ where: { ownerId }, orderBy: { createdAt: "asc" } })).map((x) => ({
       id: x.id,
@@ -166,6 +241,14 @@ export class AssetsService {
       createdAt: x.createdAt.toISOString(),
     }));
   }
+  /**
+   * 创建文件夹。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @param name - 该操作所需的业务参数。
+   * @param parentId - 该操作所需的业务参数。
+   * @returns 创建文件夹后的结果。
+   */
   async createFolder(ownerId: string, name: string, parentId?: string | null) {
     if (parentId) await this.assertFolder(parentId, ownerId);
     const x = await this.prisma.assetFolder.create({
@@ -173,11 +256,26 @@ export class AssetsService {
     });
     return { id: x.id, ownerId: x.ownerId, parentId: x.parentId, name: x.name, createdAt: x.createdAt.toISOString() };
   }
+  /**
+   * 重命名文件夹。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param name - 该操作所需的业务参数。
+   * @returns 重命名文件夹后的结果。
+   */
   async renameFolder(id: string, ownerId: string, name: string) {
     await this.assertFolder(id, ownerId);
     const x = await this.prisma.assetFolder.update({ where: { id }, data: { name } });
     return { id: x.id, ownerId: x.ownerId, parentId: x.parentId, name: x.name, createdAt: x.createdAt.toISOString() };
   }
+  /**
+   * 删除文件夹。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 删除文件夹后的结果。
+   */
   async deleteFolder(id: string, ownerId: string) {
     await this.assertFolder(id, ownerId);
     if (await this.prisma.assetFolder.findFirst({ where: { parentId: id }, select: { id: true } }))
