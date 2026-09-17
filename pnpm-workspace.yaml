@@ -5,9 +5,11 @@ packages:
 allowBuilds:
   "@parcel/watcher": true
   "@prisma/engines": true
+  "@vgpu/adapter-node": true
   prisma: true
   sharp: true
   unrs-resolver: true
+  webgpu: true
 
 # pnpm 11+ 设置已从 package.json 的 pnpm 字段迁移至此
 onlyBuiltDependencies:
@@ -16,5 +18,7 @@ onlyBuiltDependencies:
   - sharp
   - unrs-resolver
   - "@parcel/watcher"
+  - "@vgpu/adapter-node"
+  - webgpu
 
 verifyDepsBeforeRun: false

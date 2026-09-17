@@ -9,7 +9,7 @@
 - `redis`：Session、登录限制和短期缓存。
 - `minio`：图片、视频及文档对象存储。
 
-PostgreSQL、Redis 和 MinIO Console 不暴露公网端口。MinIO S3 API 暂时通过 `9000` 暴露，用于带签名的媒体访问；服务器安全组只需开放 `22`、`80` 和 `9000`。
+PostgreSQL、Redis、MinIO S3 API 和 MinIO Console 均不直接暴露公网端口。Nginx 通过 `/weavl/*` 代理带签名的媒体访问，服务器安全组只需开放 `22` 和 `80`。
 
 ## 首次部署
 
@@ -25,6 +25,8 @@ curl --fail http://127.0.0.1/api/health
 ```
 
 访问地址为 `http://服务器IP`。使用 IP 且未配置 TLS 时，`WEAVL_COOKIE_SECURE` 必须为 `false`；接入 HTTPS 域名后改为 `true`。
+
+如果部署服务器访问 npm 或 Debian 官方源较慢，可在 `.env` 中调整 `NPM_REGISTRY`、`DEBIAN_MIRROR` 和 `DEBIAN_SECURITY_MIRROR`。这些配置只影响镜像构建，不改变应用运行时行为。
 
 ## 更新
 
