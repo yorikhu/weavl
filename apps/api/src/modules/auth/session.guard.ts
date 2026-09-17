@@ -6,6 +6,12 @@ import { SessionService } from "./session.service";
 export class SessionGuard implements CanActivate {
   constructor(private readonly sessions: SessionService) {}
 
+  /**
+   * 校验请求会话。
+   *
+   * @param context - NestJS 请求执行上下文。
+   * @returns 校验请求会话后的结果。
+   */
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<AuthRequest>();
     const token = sessionToken(request);

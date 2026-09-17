@@ -2,6 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import ui from "@/styles/studio.module.scss";
 import styles from "./placeholder.module.scss";
 
+/**
+ * 挂载工作流列表页面。
+ *
+ * @returns 工作流列表页面。
+ */
 export default function WorkflowsPage() {
   return (
     <AppShell>

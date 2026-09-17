@@ -6,6 +6,12 @@ import { PrismaService } from "../../infrastructure/database/prisma.service";
 @Injectable()
 export class SkillsService {
   constructor(private readonly prisma: PrismaService) {}
+  /**
+   * 读取Skill列表。
+   *
+   * @param userId - 当前用户 ID。
+   * @returns 读取Skill列表后的结果。
+   */
   async list(userId: string) {
     return (
       await this.prisma.skill.findMany({
@@ -14,6 +20,13 @@ export class SkillsService {
       })
     ).map((x) => this.map(x));
   }
+  /**
+   * 创建Skill。
+   *
+   * @param userId - 当前用户 ID。
+   * @param x - 该操作所需的业务参数。
+   * @returns 创建Skill后的结果。
+   */
   async create(
     userId: string,
     x: { title: string; description: string; content: string; inputHint: string; outputKind: AssetKind },
@@ -22,6 +35,14 @@ export class SkillsService {
       await this.prisma.skill.create({ data: { id: newId("skill"), ownerId: userId, ...x, visibility: "private" } }),
     );
   }
+  /**
+   * 更新Skill。
+   *
+   * @param id - 资源标识。
+   * @param userId - 当前用户 ID。
+   * @param x - 该操作所需的业务参数。
+   * @returns 更新Skill后的结果。
+   */
   async update(
     id: string,
     userId: string,
@@ -30,11 +51,25 @@ export class SkillsService {
     await this.assertOwned(id, userId);
     return this.map(await this.prisma.skill.update({ where: { id }, data: { ...x, version: { increment: 1 } } }));
   }
+  /**
+   * 删除Skill。
+   *
+   * @param id - 资源标识。
+   * @param userId - 当前用户 ID。
+   * @returns 删除Skill后的结果。
+   */
   async remove(id: string, userId: string) {
     await this.assertOwned(id, userId);
     await this.prisma.skill.delete({ where: { id } });
     return { ok: true };
   }
+  /**
+   * 读取可用 Skill。
+   *
+   * @param ids - 资源标识列表。
+   * @param userId - 当前用户 ID。
+   * @returns 读取可用 Skill后的结果。
+   */
   async accessible(ids: string[], userId: string) {
     if (!ids.length) return [];
     return (

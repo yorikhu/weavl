@@ -8,10 +8,6 @@ import {
   RunStatus,
 } from "@weavl/shared";
 
-/**
- * 模拟引擎 —— 产出结构可信、内容够 demo 的候选产物。
- * 真实引擎接入时替换 mockStep 即可，状态机不动。
- */
 const TONES: Record<string, string> = {
   warm: "温暖治愈",
   pro: "专业测评",
@@ -22,6 +18,14 @@ const TONES: Record<string, string> = {
 const TOPIC_STYLES = ["测评型 · 数据与对比切入", "故事型 · 场景与情绪切入", "清单型 · 干货与合集切入"];
 const COPY_STYLES = ["安利向 · 强情绪开头", "干货向 · 痛点解决方案", "氛围向 · 沉浸式描述"];
 
+/**
+ * 为兼容工作流生成演示候选产物。
+ *
+ * @param step - 当前执行步骤。
+ * @param ctx - 运行标识、模板与表单输入。
+ * @returns 当前步骤的候选产物。
+ * @todo 用真实节点执行器替换模拟产物，保留现有状态机和确认门协议。
+ */
 function mockStep(step: Step, ctx: RunContext): CandidateArtifact[] {
   const p = ctx.inputs;
   const product = String(p.productName ?? "商品");
@@ -147,7 +151,13 @@ export class RunEngine {
     };
   }
 
-  /** Rehydrates the compatibility workflow state from PostgreSQL. */
+  /**
+   * 从 PostgreSQL 快照恢复兼容工作流状态。
+   *
+   * @param template - 任务使用的工作流定义。
+   * @param snapshot - 已持久化的运行快照。
+   * @returns 恢复后的运行引擎。
+   */
   static restore(template: TemplateManifest, snapshot: RunSnapshot) {
     const engine = new RunEngine(snapshot.view.id, template, snapshot.inputs);
     engine.run = {
@@ -159,7 +169,11 @@ export class RunEngine {
     return engine;
   }
 
-  /** 推进直到下一个确认门或结束 */
+  /**
+   * 推进工作流，直到下一个确认门或运行结束。
+   *
+   * @returns 推进后的工作流视图。
+   */
   start(): RunView {
     this.run.status = "running";
     return this.advance();
@@ -192,7 +206,13 @@ export class RunEngine {
     return this.view();
   }
 
-  /** 用户决策：采纳/编辑采纳/重生成 */
+  /**
+   * 应用用户在确认门作出的采纳、编辑采纳或重新生成决策。
+   *
+   * @param decision - 不含服务端时间与确认门字段的用户决策。
+   * @returns 继续推进后的工作流视图。
+   * @throws {Error} 当前不在确认门或确认门不存在时抛出。
+   */
   decide(decision: Omit<ConfirmationDecision, "decidedAt" | "gate">): RunView {
     if (this.run.status !== "awaiting_confirmation") throw new Error("当前不在确认门");
     const gate = (this.run.ctx.template.gates ?? []).find((g) => g.afterStep === this.run.awaitingGate);
@@ -253,12 +273,21 @@ export class RunEngine {
     this.run.updatedAt = new Date().toISOString();
   }
 
+  /**
+   * 返回不含内部上下文和候选索引的运行视图。
+   *
+   * @returns 可直接通过 API 返回的工作流运行状态。
+   */
   view(): RunView {
     const { ctx, candidatesIndex, packageVersion, ...v } = this.run;
     return JSON.parse(JSON.stringify(v));
   }
 
-  /** Produces a JSON-safe state used by the legacy endpoint's Prisma repository. */
+  /**
+   * snapshot RunEngine。
+   *
+   * @returns 可持久化且可重新恢复的运行快照。
+   */
   snapshot(): RunSnapshot {
     return {
       view: this.view(),

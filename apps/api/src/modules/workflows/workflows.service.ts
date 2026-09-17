@@ -12,6 +12,12 @@ export class WorkflowsService {
     private readonly assets: AssetsService,
     private readonly projects: ProjectsService,
   ) {}
+  /**
+   * 读取工作流列表。
+   *
+   * @param userId - 当前用户 ID。
+   * @returns 读取工作流列表后的结果。
+   */
   async list(userId: string) {
     return (
       await this.prisma.workflow.findMany({
@@ -20,9 +26,23 @@ export class WorkflowsService {
       })
     ).map((x) => this.mapWorkflow(x));
   }
+  /**
+   * 读取工作流详情。
+   *
+   * @param id - 资源标识。
+   * @param userId - 当前用户 ID。
+   * @returns 读取工作流详情后的结果。
+   */
   async get(id: string, userId: string) {
     return this.mapWorkflow(await this.accessibleRow(id, userId));
   }
+  /**
+   * 创建工作流。
+   *
+   * @param userId - 当前用户 ID。
+   * @param x - 该操作所需的业务参数。
+   * @returns 创建工作流后的结果。
+   */
   async create(
     userId: string,
     x: {
@@ -49,6 +69,14 @@ export class WorkflowsService {
       }),
     );
   }
+  /**
+   * 更新工作流。
+   *
+   * @param id - 资源标识。
+   * @param userId - 当前用户 ID。
+   * @param x - 该操作所需的业务参数。
+   * @returns 更新工作流后的结果。
+   */
   async update(
     id: string,
     userId: string,
@@ -81,16 +109,38 @@ export class WorkflowsService {
       }),
     );
   }
+  /**
+   * 读取工作流运行列表。
+   *
+   * @param userId - 当前用户 ID。
+   * @param workflowId - 工作流标识。
+   * @returns 读取工作流运行列表后的结果。
+   */
   async runs(userId: string, workflowId?: string) {
     return (
       await this.prisma.workflowRun.findMany({ where: { ownerId: userId, workflowId }, orderBy: { updatedAt: "desc" } })
     ).map((x) => this.mapRun(x));
   }
+  /**
+   * 读取工作流运行详情。
+   *
+   * @param runId - 工作流运行标识。
+   * @param userId - 当前用户 ID。
+   * @returns 读取工作流运行详情后的结果。
+   */
   async run(runId: string, userId: string) {
     const run = await this.prisma.workflowRun.findFirst({ where: { id: runId, ownerId: userId } });
     if (!run) throw new BadRequestException("运行不存在或无权访问");
     return this.mapRun(run);
   }
+  /**
+   * 创建工作流运行。
+   *
+   * @param workflowId - 工作流标识。
+   * @param userId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 创建工作流运行后的结果。
+   */
   async createRun(workflowId: string, userId: string, input: { inputs: Record<string, string>; projectId?: string }) {
     const workflow = await this.get(workflowId, userId);
     if (workflow.status !== "published") throw new BadRequestException("工作流尚未发布");
@@ -128,6 +178,15 @@ export class WorkflowsService {
     });
     return this.advance(run.id, userId);
   }
+  /**
+   * 提交确认门决策。
+   *
+   * @param runId - 工作流运行标识。
+   * @param userId - 当前用户 ID。
+   * @param action - 该操作所需的业务参数。
+   * @param content - 内联文本或 Data URL 内容。
+   * @returns 提交确认门决策后的结果。
+   */
   async decide(runId: string, userId: string, action: "approve" | "retry", content?: string) {
     const run = await this.run(runId, userId);
     if (run.status !== "awaiting_review") throw new BadRequestException("当前没有待审核节点");
@@ -146,12 +205,27 @@ export class WorkflowsService {
     await this.saveRun(run);
     return this.advance(runId, userId);
   }
+  /**
+   * 重试工作流阶段。
+   *
+   * @param runId - 工作流运行标识。
+   * @param userId - 当前用户 ID。
+   * @param stageId - 该操作所需的业务参数。
+   * @returns 重试工作流阶段后的结果。
+   */
   async retry(runId: string, userId: string, stageId: string) {
     const run = await this.run(runId, userId);
     const index = run.stages.findIndex((x) => x.stageId === stageId);
     if (index < 0 || run.stages[index]?.status === "pending") throw new BadRequestException("该阶段尚未运行");
     return this.retryAt(run, index, userId);
   }
+  /**
+   * 取消工作流运行。
+   *
+   * @param runId - 工作流运行标识。
+   * @param userId - 当前用户 ID。
+   * @returns 取消工作流运行后的结果。
+   */
   async cancel(runId: string, userId: string) {
     const run = await this.run(runId, userId);
     if (run.status === "succeeded") throw new BadRequestException("已完成的运行无法终止");

@@ -272,7 +272,7 @@ export const NODE_GROUPS: NodeGroup[] = [
   },
 ];
 
-/** 顶部一级大卡对应的节点（"大模型" = LLM；"插件"/"工作流" 第一版占位） */
+/** TODO(workflow-nodes): 实现插件和子工作流节点后，将对应项的 implemented 改为 true。 */
 export const TOP_GROUP_NODES = {
   llm: {
     id: "llm",

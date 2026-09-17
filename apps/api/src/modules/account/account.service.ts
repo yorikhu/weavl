@@ -12,6 +12,12 @@ export const accountPlans: AccountPlan[] = [
 @Injectable()
 export class AccountService {
   constructor(private readonly prisma: PrismaService) {}
+  /**
+   * 读取账户摘要。
+   *
+   * @param userId - 当前用户 ID。
+   * @returns 读取账户摘要后的结果。
+   */
   async summary(userId: string): Promise<AccountSummary> {
     const [account, assets] = await Promise.all([
       this.prisma.account.findUnique({
@@ -43,6 +49,16 @@ export class AccountService {
       })),
     };
   }
+
+  /**
+   * 记录用户的套餐开通意向。
+   *
+   * @param userId - 当前用户 ID。
+   * @param plan - 申请开通的付费套餐。
+   * @returns 当前待处理套餐。
+   * @throws {BadRequestException} 账户不存在或重复提交相同套餐时抛出。
+   * @todo 接入支付与套餐履约后，将开通意向流程替换为正式订单状态机。
+   */
   async requestPlan(userId: string, plan: Exclude<AccountPlanId, "Free">) {
     const account = await this.prisma.account.findUnique({ where: { userId } });
     if (!account) throw new BadRequestException("账户不存在");
@@ -61,6 +77,13 @@ export class AccountService {
     ]);
     return { pendingPlan: plan };
   }
+  /**
+   * 标记账户事件已读。
+   *
+   * @param userId - 当前用户 ID。
+   * @param id - 资源标识。
+   * @returns 标记账户事件已读后的结果。
+   */
   async markRead(userId: string, id: string) {
     const result = await this.prisma.accountEvent.updateMany({ where: { id, userId }, data: { readAt: new Date() } });
     if (!result.count) throw new BadRequestException("通知不存在");

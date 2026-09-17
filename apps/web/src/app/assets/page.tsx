@@ -21,6 +21,11 @@ const sources = [
   { key: "trash", label: "回收站" },
 ] as const;
 
+/**
+ * 渲染全局资产网盘。
+ *
+ * @returns 资产管理页面。
+ */
 export default function AssetsPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);

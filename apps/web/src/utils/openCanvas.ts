@@ -1,5 +1,11 @@
 type CanvasDestination = { projectId: string; canvasId: string };
 
+/**
+ * 构造指定项目画布的站内地址。
+ *
+ * @param props - 项目和画布标识。
+ * @returns 带查询参数的画布地址。
+ */
 export function canvasHref({ projectId, canvasId }: CanvasDestination) {
   return `/canvas?${new URLSearchParams({ projectId, canvasId })}`;
 }
@@ -10,7 +16,12 @@ function openTab(url: string) {
   else window.location.assign(url);
 }
 
-/** 在点击事件中预留标签页，异步创建项目完成后再跳转，避免被弹窗拦截。 */
+/**
+ * 在点击事件中预留标签页，异步创建项目完成后再跳转，避免被弹窗拦截。
+ *
+ * @param resolve - 异步创建或解析目标画布的方法。
+ * @returns 完成目标标签页跳转后的 Promise。
+ */
 export async function openCanvasAfter(resolve: () => Promise<CanvasDestination>) {
   const tab = window.open("about:blank", "_blank");
   if (tab) tab.opener = null;

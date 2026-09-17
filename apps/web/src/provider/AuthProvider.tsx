@@ -15,6 +15,12 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const isPublic = (pathname: string) => pathname === "/" || pathname === "/home" || pathname === "/login";
 
+/**
+ * 向应用提供登录会话状态和认证操作。
+ *
+ * @param props - 组件属性。
+ * @returns 认证上下文。
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -73,6 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * 读取认证上下文。
+ *
+ * @returns 当前用户、加载状态和认证方法。
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("AuthProvider is missing");

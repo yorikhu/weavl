@@ -21,6 +21,11 @@ const emptyForm = {
   outputKind: "text" as const,
 };
 
+/**
+ * 渲染 Skill 市场。
+ *
+ * @returns Skill 市场页面。
+ */
 export default function MarketPage() {
   const router = useRouter();
   const { user } = useAuth();

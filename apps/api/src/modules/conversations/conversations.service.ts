@@ -17,6 +17,12 @@ export class ConversationsService {
     private readonly projects: ProjectsService,
     private readonly generation: TextGenerationService,
   ) {}
+  /**
+   * 读取Agent 会话列表。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @returns 读取Agent 会话列表后的结果。
+   */
   async list(ownerId: string) {
     const rows = await this.prisma.conversation.findMany({
       where: { ownerId },
@@ -25,6 +31,13 @@ export class ConversationsService {
     });
     return rows.map((x) => this.map(x));
   }
+  /**
+   * 读取Agent 会话详情。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 读取Agent 会话详情后的结果。
+   */
   async get(id: string, ownerId: string) {
     const row = await this.prisma.conversation.findFirst({
       where: { id, ownerId },
@@ -33,6 +46,13 @@ export class ConversationsService {
     if (!row) throw new BadRequestException("会话不存在或无权访问");
     return this.map(row);
   }
+  /**
+   * 创建Agent 会话。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @param title - 该操作所需的业务参数。
+   * @returns 创建Agent 会话后的结果。
+   */
   async create(ownerId: string, title: string) {
     const row = await this.prisma.conversation.create({
       data: { id: newId("conversation"), ownerId, title },
@@ -40,12 +60,28 @@ export class ConversationsService {
     });
     return this.map(row);
   }
+  /**
+   * 更新Agent 会话。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 更新Agent 会话后的结果。
+   */
   async update(id: string, ownerId: string, input: { title?: string; archived?: boolean; projectId?: string }) {
     await this.assertOwned(id, ownerId);
     if (input.projectId) await this.projects.get(input.projectId, ownerId);
     await this.prisma.conversation.update({ where: { id }, data: { ...input, updatedAt: new Date() } });
     return this.get(id, ownerId);
   }
+  /**
+   * 发送 Agent 会话消息。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 发送 Agent 会话消息后的结果。
+   */
   async send(
     id: string,
     ownerId: string,
@@ -120,6 +156,15 @@ export class ConversationsService {
     const updated = await this.get(id, ownerId);
     return { conversation: updated, reply: updated.messages.find((x) => x.id === replyId), asset };
   }
+  /**
+   * 将会话转换为项目。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param assetIds - 该操作所需的业务参数。
+   * @param name - 该操作所需的业务参数。
+   * @returns 将会话转换为项目后的结果。
+   */
   async toProject(id: string, ownerId: string, assetIds: string[], name?: string) {
     const conversation = await this.get(id, ownerId);
     const available = new Set(conversation.messages.flatMap((x) => x.assetRefs.map((ref) => ref.assetId)));
@@ -130,6 +175,13 @@ export class ConversationsService {
     await this.prisma.conversation.update({ where: { id }, data: { projectId: project.id, updatedAt: new Date() } });
     return project;
   }
+  /**
+   * 删除Agent 会话。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 删除Agent 会话后的结果。
+   */
   async remove(id: string, ownerId: string) {
     await this.assertOwned(id, ownerId);
     await this.prisma.conversation.delete({ where: { id } });

@@ -1,5 +1,11 @@
 export type AbilityArtworkKind = "agent" | "canvas" | "skill" | "workflow" | "assets";
 
+/**
+ * 渲染首页能力卡片的主题插画。
+ *
+ * @param props - 组件属性。
+ * @returns 与能力类型匹配的 SVG 插画。
+ */
 export function AbilityArtwork({ kind }: { kind: AbilityArtworkKind }) {
   return (
     <svg viewBox="0 0 220 150" fill="none" aria-hidden="true" focusable="false">

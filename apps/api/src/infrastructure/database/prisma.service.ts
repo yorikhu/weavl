@@ -11,10 +11,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnAppli
     super({ adapter: new PrismaPg(connectionString) });
   }
 
+  /**
+   * 初始化服务依赖。
+   *
+   * @returns 生命周期处理完成后的 Promise。
+   */
   async onModuleInit() {
     await this.$connect();
   }
 
+  /**
+   * 关闭服务持有的外部连接。
+   *
+   * @returns 生命周期处理完成后的 Promise。
+   */
   async onApplicationShutdown() {
     await this.$disconnect();
   }

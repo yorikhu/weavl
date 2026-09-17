@@ -227,6 +227,9 @@ const prepareRenderGraph = async (graph: ReturnType<typeof createRenderGraph>, o
 /**
  * WebGPU 碎片流背景动画，支持布局、材质、交互和动态性能降级。
  * 通过 Animation.AeroShards 使用，以保持客户端延迟加载。
+ *
+ * @param props - 碎片颜色、布局、材质、速度和交互参数。
+ * @returns WebGPU 碎片流背景画布。
  */
 export default function AeroShards({
   backgroundColor = '#120F17',

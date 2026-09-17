@@ -21,7 +21,16 @@ function readFile(file: File): Promise<string> {
   });
 }
 
-/** 当前本地演示存储使用 Data URL；换成对象存储时只需替换此处。 */
+/**
+ * 读取本地文件并通过资产 API 保存到对象存储。
+ *
+ * @param file - 用户选择的本地文件。
+ * @param folderId - 可选目标资产文件夹。
+ * @param inLibrary - 是否立即加入全局资产库。
+ * @returns 服务端创建的资产。
+ * @throws {Error} 文件超过当前前端传输上限或上传失败时抛出。
+ * @todo 改为 multipart 或预签名直传后移除 5 MB 的 Data URL 传输限制。
+ */
 export async function uploadAsset(file: File, folderId: string | null = null, inLibrary = true): Promise<Asset> {
   if (file.size > 5_000_000) throw new Error("演示存储单个文件上限为 5 MB；正式对象存储接入后可上传大文件。");
   return studioApi<Asset>("/studio/assets", {

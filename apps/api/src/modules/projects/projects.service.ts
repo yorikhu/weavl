@@ -14,6 +14,13 @@ export class ProjectsService {
     private readonly storage: ObjectStorageService,
     private readonly assets: AssetsService,
   ) {}
+  /**
+   * 读取项目列表。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @param trash - 是否查询回收站。
+   * @returns 读取项目列表后的结果。
+   */
   async list(ownerId: string, trash: boolean) {
     const rows = await this.prisma.project.findMany({
       where: { ownerId, deletedAt: trash ? { not: null } : null },
@@ -22,6 +29,14 @@ export class ProjectsService {
     });
     return Promise.all(rows.map((x) => this.hydrate(x)));
   }
+  /**
+   * 读取项目详情。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param includeDeleted - 是否包含回收站数据。
+   * @returns 读取项目详情后的结果。
+   */
   async get(id: string, ownerId: string, includeDeleted = false) {
     const project = await this.prisma.project.findFirst({
       where: { id, ownerId, deletedAt: includeDeleted ? undefined : null },
@@ -30,6 +45,13 @@ export class ProjectsService {
     if (!project) throw new BadRequestException("项目不存在或无权访问");
     return this.hydrate(project);
   }
+  /**
+   * 创建项目。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 创建项目后的结果。
+   */
   async create(ownerId: string, input: { name: string; assetIds: string[]; folderId?: string | null }) {
     if (input.folderId) await this.assertFolder(input.folderId, ownerId);
     const assets = await this.assets.getManyOwned(input.assetIds, ownerId);
@@ -82,6 +104,14 @@ export class ProjectsService {
     });
     return this.hydrate(project);
   }
+  /**
+   * 更新项目。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 更新项目后的结果。
+   */
   async update(
     id: string,
     ownerId: string,
@@ -108,6 +138,13 @@ export class ProjectsService {
       await this.storage.remove(project.coverStorageKey);
     return this.get(id, ownerId);
   }
+  /**
+   * 创建项目副本。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 创建项目副本后的结果。
+   */
   async duplicate(id: string, ownerId: string) {
     const source = await this.get(id, ownerId);
     const dbSource = await this.findRow(id, ownerId);
@@ -157,23 +194,52 @@ export class ProjectsService {
     });
     return this.get(copyId, ownerId);
   }
+  /**
+   * softDelete 项目。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns softDelete 项目后的结果。
+   */
   async softDelete(id: string, ownerId: string) {
     await this.findRow(id, ownerId);
     await this.prisma.project.update({ where: { id }, data: { deletedAt: new Date(), updatedAt: new Date() } });
     return this.get(id, ownerId, true);
   }
+  /**
+   * 恢复项目。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 恢复项目后的结果。
+   */
   async restore(id: string, ownerId: string) {
     const project = await this.findRow(id, ownerId, true);
     if (!project.deletedAt) throw new BadRequestException("项目不在回收站");
     await this.prisma.project.update({ where: { id }, data: { deletedAt: null, updatedAt: new Date() } });
     return this.get(id, ownerId);
   }
+  /**
+   * 永久删除项目。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 永久删除项目后的结果。
+   */
   async permanentDelete(id: string, ownerId: string) {
     const project = await this.findRow(id, ownerId, true);
     if (!project.deletedAt) throw new BadRequestException("请先将项目移入回收站");
     await this.prisma.project.delete({ where: { id } });
     return { ok: true };
   }
+  /**
+   * 新增项目画布。
+   *
+   * @param projectId - 该操作所需的业务参数。
+   * @param ownerId - 当前用户 ID。
+   * @param name - 该操作所需的业务参数。
+   * @returns 新增项目画布后的结果。
+   */
   async addCanvas(projectId: string, ownerId: string, name?: string) {
     await this.findRow(projectId, ownerId);
     const count = await this.prisma.canvas.count({ where: { projectId } });
@@ -191,6 +257,15 @@ export class ProjectsService {
     await this.touch(projectId);
     return this.mapCanvas(canvas);
   }
+  /**
+   * 保存项目画布。
+   *
+   * @param projectId - 该操作所需的业务参数。
+   * @param canvasId - 画布标识。
+   * @param ownerId - 当前用户 ID。
+   * @param input - 业务输入数据。
+   * @returns 保存项目画布后的结果。
+   */
   async saveCanvas(
     projectId: string,
     canvasId: string,
@@ -214,6 +289,14 @@ export class ProjectsService {
     await this.touch(projectId);
     return this.mapCanvas(canvas);
   }
+  /**
+   * 删除项目画布。
+   *
+   * @param projectId - 该操作所需的业务参数。
+   * @param canvasId - 画布标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 删除项目画布后的结果。
+   */
   async deleteCanvas(projectId: string, canvasId: string, ownerId: string) {
     await this.findRow(projectId, ownerId);
     if ((await this.prisma.canvas.count({ where: { projectId } })) <= 1)
@@ -224,20 +307,48 @@ export class ProjectsService {
     await this.touch(projectId);
     return this.mapCanvas(canvas);
   }
+  /**
+   * listFolders 项目。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @returns listFolders 项目后的结果。
+   */
   async listFolders(ownerId: string): Promise<ProjectFolder[]> {
     return (await this.prisma.projectFolder.findMany({ where: { ownerId }, orderBy: { createdAt: "asc" } })).map(
       (x) => ({ id: x.id, ownerId: x.ownerId, name: x.name, createdAt: x.createdAt.toISOString() }),
     );
   }
+  /**
+   * 创建文件夹。
+   *
+   * @param ownerId - 当前用户 ID。
+   * @param name - 该操作所需的业务参数。
+   * @returns 创建文件夹后的结果。
+   */
   async createFolder(ownerId: string, name: string) {
     const x = await this.prisma.projectFolder.create({ data: { id: newId("project_folder"), ownerId, name } });
     return { id: x.id, ownerId: x.ownerId, name: x.name, createdAt: x.createdAt.toISOString() };
   }
+  /**
+   * 重命名文件夹。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @param name - 该操作所需的业务参数。
+   * @returns 重命名文件夹后的结果。
+   */
   async renameFolder(id: string, ownerId: string, name: string) {
     await this.assertFolder(id, ownerId);
     const x = await this.prisma.projectFolder.update({ where: { id }, data: { name } });
     return { id: x.id, ownerId: x.ownerId, name: x.name, createdAt: x.createdAt.toISOString() };
   }
+  /**
+   * 删除文件夹。
+   *
+   * @param id - 资源标识。
+   * @param ownerId - 当前用户 ID。
+   * @returns 删除文件夹后的结果。
+   */
   async deleteFolder(id: string, ownerId: string) {
     await this.assertFolder(id, ownerId);
     await this.prisma.$transaction([

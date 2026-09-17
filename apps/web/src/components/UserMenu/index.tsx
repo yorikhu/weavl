@@ -30,6 +30,9 @@ export interface UserMenuProps {
 /**
  * 全局用户菜单，统一会员、积分、存储、账户设置和主题切换。
  * variant 只改变入口外观，菜单内容与账户数据保持一致。
+ *
+ * @param props - 菜单入口形态、收起状态和附加样式。
+ * @returns 复用同一账户内容的用户菜单。
  */
 export function UserMenu({
   variant = "avatar",

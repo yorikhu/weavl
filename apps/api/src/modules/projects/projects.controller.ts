@@ -17,26 +17,75 @@ const coverSchema = z
 @UseGuards(SessionGuard)
 export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}
+  /**
+   * 读取项目列表。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param trash - 是否查询回收站。
+   * @returns 读取项目列表后的结果。
+   */
   @Get() list(@Req() req: AuthRequest, @Query("trash") trash?: string) {
     return this.projects.list(req.studioUser.id, trash === "1");
   }
+  /**
+   * 读取项目文件夹列表。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @returns 读取项目文件夹列表后的结果。
+   */
   @Get("folders") folders(@Req() req: AuthRequest) {
     return this.projects.listFolders(req.studioUser.id);
   }
+  /**
+   * 创建文件夹。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param body - 尚未校验的请求体。
+   * @returns 创建文件夹后的结果。
+   */
   @Post("folders") createFolder(@Req() req: AuthRequest, @Body() body: unknown) {
     const x = parseBody(z.object({ name: z.string().trim().min(1).max(80) }), body);
     return this.projects.createFolder(req.studioUser.id, x.name);
   }
+  /**
+   * 重命名文件夹。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @param body - 尚未校验的请求体。
+   * @returns 重命名文件夹后的结果。
+   */
   @Patch("folders/:id") renameFolder(@Req() req: AuthRequest, @Param("id") id: string, @Body() body: unknown) {
     const x = parseBody(z.object({ name: z.string().trim().min(1).max(80) }), body);
     return this.projects.renameFolder(id, req.studioUser.id, x.name);
   }
+  /**
+   * 删除文件夹。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @returns 删除文件夹后的结果。
+   */
   @Delete("folders/:id") deleteFolder(@Req() req: AuthRequest, @Param("id") id: string) {
     return this.projects.deleteFolder(id, req.studioUser.id);
   }
+  /**
+   * 读取项目详情。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @returns 读取项目详情后的结果。
+   */
   @Get(":id") get(@Req() req: AuthRequest, @Param("id") id: string) {
     return this.projects.get(id, req.studioUser.id);
   }
+  /**
+   * 创建项目。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param body - 尚未校验的请求体。
+   * @returns 创建项目后的结果。
+   */
   @Post() create(@Req() req: AuthRequest, @Body() body: unknown) {
     const x = parseBody(
       z.object({
@@ -48,6 +97,14 @@ export class ProjectsController {
     );
     return this.projects.create(req.studioUser.id, x);
   }
+  /**
+   * 更新项目。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @param body - 尚未校验的请求体。
+   * @returns 更新项目后的结果。
+   */
   @Patch(":id") update(@Req() req: AuthRequest, @Param("id") id: string, @Body() body: unknown) {
     const x = parseBody(
       z.object({
@@ -59,22 +116,67 @@ export class ProjectsController {
     );
     return this.projects.update(id, req.studioUser.id, x);
   }
+  /**
+   * 创建项目副本。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @returns 创建项目副本后的结果。
+   */
   @Post(":id/duplicate") duplicate(@Req() req: AuthRequest, @Param("id") id: string) {
     return this.projects.duplicate(id, req.studioUser.id);
   }
+  /**
+   * 删除项目。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @returns 删除项目后的结果。
+   */
   @Delete(":id") remove(@Req() req: AuthRequest, @Param("id") id: string) {
     return this.projects.softDelete(id, req.studioUser.id);
   }
+  /**
+   * 恢复项目。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @returns 恢复项目后的结果。
+   */
   @Post(":id/restore") restore(@Req() req: AuthRequest, @Param("id") id: string) {
     return this.projects.restore(id, req.studioUser.id);
   }
+  /**
+   * 永久删除项目。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @returns 永久删除项目后的结果。
+   */
   @Delete(":id/permanent") permanent(@Req() req: AuthRequest, @Param("id") id: string) {
     return this.projects.permanentDelete(id, req.studioUser.id);
   }
+  /**
+   * 新增项目画布。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @param body - 尚未校验的请求体。
+   * @returns 新增项目画布后的结果。
+   */
   @Post(":id/canvases") addCanvas(@Req() req: AuthRequest, @Param("id") id: string, @Body() body: unknown) {
     const x = parseBody(z.object({ name: z.string().trim().min(1).max(80).optional() }), body);
     return this.projects.addCanvas(id, req.studioUser.id, x.name);
   }
+  /**
+   * 保存项目画布。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @param canvasId - 画布标识。
+   * @param body - 尚未校验的请求体。
+   * @returns 保存项目画布后的结果。
+   */
   @Patch(":id/canvases/:canvasId") saveCanvas(
     @Req() req: AuthRequest,
     @Param("id") id: string,
@@ -83,6 +185,14 @@ export class ProjectsController {
   ) {
     return this.projects.saveCanvas(id, canvasId, req.studioUser.id, parseBody(canvasSchema, body));
   }
+  /**
+   * 删除项目画布。
+   *
+   * @param req - 已通过认证的请求对象。
+   * @param id - 资源标识。
+   * @param canvasId - 画布标识。
+   * @returns 删除项目画布后的结果。
+   */
   @Delete(":id/canvases/:canvasId") deleteCanvas(
     @Req() req: AuthRequest,
     @Param("id") id: string,

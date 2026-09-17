@@ -18,7 +18,12 @@ export type ComposerTextareaProps = Omit<
     onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   };
 
-/** 纯文本创作输入框：Enter 提交，Shift/Ctrl/Command + Enter 换行。 */
+/**
+ * 纯文本创作输入框：Enter 提交，Shift/Ctrl/Command + Enter 换行。
+ *
+ * @param props - 文本框受控值、提交回调和字段属性。
+ * @returns 支持快捷键和光标跟随的创作输入框。
+ */
 export function ComposerTextarea({
   name,
   label,

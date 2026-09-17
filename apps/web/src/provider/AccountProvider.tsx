@@ -13,6 +13,12 @@ interface AccountContextValue {
 
 const AccountContext = createContext<AccountContextValue | null>(null);
 
+/**
+ * 向应用提供账户摘要和刷新能力。
+ *
+ * @param props - 组件属性。
+ * @returns 账户上下文。
+ */
 export function AccountProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -48,6 +54,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
 
+/**
+ * 读取账户上下文。
+ *
+ * @returns 账户摘要、刷新状态和刷新方法。
+ */
 export function useAccount() {
   const context = useContext(AccountContext);
   if (!context) throw new Error("AccountProvider is missing");

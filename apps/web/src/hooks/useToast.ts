@@ -17,13 +17,23 @@ type ToastTimer = {
   remaining: number;
 };
 
-/** 全局吐一条 toast（任意组件里调，无需在 hook 内） */
+/**
+ * 向全局轻提示流发布一条消息。
+ *
+ * @param text - 提示文案。
+ * @param kind - 提示类型。
+ * @returns 无返回值。
+ */
 export function toast(text: string, kind: ToastItem["kind"] = "info") {
   const item: ToastItem = { id: ++nextId, text, kind };
   listeners.forEach((l) => l(item));
 }
 
-/** 订阅全局 toast 队列，并提供悬停暂停计时能力。 */
+/**
+ * 订阅全局 toast 队列，并提供悬停暂停计时能力。
+ *
+ * @returns 当前提示列表及暂停、恢复操作。
+ */
 export function useToastStream() {
   const [items, setItems] = useState<ToastItem[]>([]);
   const timers = useRef(new Map<number, ToastTimer>());

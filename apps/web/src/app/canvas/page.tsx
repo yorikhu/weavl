@@ -194,6 +194,7 @@ function CanvasInner() {
     const saved = sessionStorage.getItem("weavl:agent-prompt");
     if (saved) {
       sessionStorage.removeItem("weavl:agent-prompt");
+      // TODO(canvas-agent): 将首页指令交给 Agent 编排服务并创建真实画布节点。
       setAgentMessages((ms) => [
         ...ms,
         { role: "user", text: saved },
@@ -589,7 +590,7 @@ function CanvasInner() {
     })();
   }, [chatInput, chatThumb, canvasConversationId, projectName, projectId, selectedNodeId, nodes, setNodes]);
 
-  /** chat 缩略上传（占位：DataURL） */
+  /** TODO(canvas-agent): 改为复用资产上传接口，避免长期在内存中保留 Data URL。 */
   const handleThumb = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;

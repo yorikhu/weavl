@@ -14,6 +14,11 @@ type KeepOpenItem = RefObject<HTMLElement | null> | string;
  *
  * 用 capture 阶段抢在画布平移/节点选择之前判断。
  * keepOpen 数组在内部用 ref 缓存以避免 deps 触发 effect 重建。
+ *
+ * @param active - 是否启用全局点击监听。
+ * @param keepOpen - 点击后应保持打开的元素引用或选择器。
+ * @param onOutside - 点击所有保留区域之外时执行的回调。
+ * @returns 无返回值；Hook 负责监听器的注册和清理。
  */
 export function useClickOutside(active: boolean, keepOpen: KeepOpenItem[], onOutside: () => void) {
   const keepOpenRef = useRef(keepOpen);

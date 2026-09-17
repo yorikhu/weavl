@@ -37,6 +37,12 @@ interface Props {
   onChange: (next: EndNodeData) => void;
 }
 
+/**
+ * 渲染结束节点配置面板。
+ *
+ * @param props - 组件属性。
+ * @returns 结束节点检查器。
+ */
 export default function EndInspector({ data, onChange }: Props) {
   /* 输出变量/回答内容 折叠状态（默认展开） */
   const [outputsOpen, setOutputsOpen] = useState(true);
@@ -119,6 +125,7 @@ export default function EndInspector({ data, onChange }: Props) {
                   <div className={styles.outputValueWrap}>
                     <span className={styles.varTypeIcon}>str</span>
                     <div className={styles.outputValueInner}>
+                      {/* TODO(workflow-inspector): 接入上游输出变量选择器后移除自由输入兜底。 */}
                       <input
                         className={styles.outputValue}
                         placeholder="引用上游节点输出（待接入选择器）"

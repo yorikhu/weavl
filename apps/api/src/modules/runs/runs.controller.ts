@@ -10,6 +10,12 @@ import { RunEngine, type RunSnapshot } from "./run.engine";
 export class RunsController {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * 创建兼容工作流运行。
+   *
+   * @param body - 尚未校验的请求体。
+   * @returns 创建兼容工作流运行后的结果。
+   */
   @Post()
   async create(@Body() body: { templateId: string; inputs: Record<string, unknown> }) {
     const template = registry.get(body?.templateId);
@@ -28,6 +34,11 @@ export class RunsController {
     return view;
   }
 
+  /**
+   * 读取最近一次运行。
+   *
+   * @returns 读取最近一次运行后的结果。
+   */
   @Get("latest/_pick")
   async latest() {
     const run = await this.prisma.legacyRun.findFirst({ orderBy: { updatedAt: "desc" } });
@@ -35,6 +46,12 @@ export class RunsController {
     return (run.state as unknown as RunSnapshot).view;
   }
 
+  /**
+   * 读取兼容工作流运行详情。
+   *
+   * @param id - 资源标识。
+   * @returns 读取兼容工作流运行详情后的结果。
+   */
   @Get(":id")
   async get(@Param("id") id: string) {
     const run = await this.prisma.legacyRun.findUnique({ where: { id } });
@@ -42,6 +59,13 @@ export class RunsController {
     return (run.state as unknown as RunSnapshot).view;
   }
 
+  /**
+   * 提交确认门决策。
+   *
+   * @param id - 资源标识。
+   * @param body - 尚未校验的请求体。
+   * @returns 提交确认门决策后的结果。
+   */
   @Post(":id/decide")
   async decide(
     @Param("id") id: string,

@@ -13,6 +13,11 @@ import { useTheme } from "@/provider/ThemeProvider";
 import ui from "@/styles/studio.module.scss";
 import styles from "./page.module.scss";
 
+/**
+ * 渲染登录页面。
+ *
+ * @returns 登录表单与品牌背景。
+ */
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -104,6 +109,7 @@ export default function LoginPage() {
             {busy ? "请稍候…" : "登录工作台"}
             <ArrowRight size={14} />
           </button>
+          {/* TODO(auth): 开放用户注册后替换为注册页面入口。 */}
           <button type="button" className={styles.switch} onClick={() => toast("内部测试，暂不支持注册账号")}>
             没有账号？创建一个
           </button>

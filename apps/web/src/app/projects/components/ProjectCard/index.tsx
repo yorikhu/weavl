@@ -68,6 +68,12 @@ function DefaultCover() {
   );
 }
 
+/**
+ * 渲染项目列表中的单个项目。
+ *
+ * @param props - 组件属性。
+ * @returns 支持重命名和操作菜单的项目卡片。
+ */
 export function ProjectCard({
   project,
   trash,

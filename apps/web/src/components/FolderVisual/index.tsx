@@ -6,7 +6,12 @@ interface FolderVisualProps {
   className?: string;
 }
 
-/** 通用文件夹图形；用于资产目录、节点分组等需要表达容器关系的场景。 */
+/**
+ * 通用文件夹图形；用于资产目录、节点分组等需要表达容器关系的场景。
+ *
+ * @param props - 文件夹尺寸、开合状态和样式类。
+ * @returns 可复用的文件夹 SVG。
+ */
 export function FolderVisual({ size = "small", open = false, className }: FolderVisualProps) {
   return (
     <svg

@@ -16,7 +16,7 @@ import styles from "./page.module.scss";
  *   左 60%：分类 tab + 卡片网格（AI 推荐的卡片会高亮）
  *   右 40%：织光 Agent 对话窗口（顶部 +新建按钮 + 快捷话题 + 气泡）
  *
- * AI 推荐（mock 关键词匹配）：
+ * AI 推荐（当前为关键词匹配）：
  *   用户输入 → 命中预设话题 → 返回对应模板 id → 卡片加 ⭐ 高亮
  * ====================================================================== */
 
@@ -30,7 +30,7 @@ const QUICK_TOPICS = [
   { icon: "📝", label: "广告文案", keywords: ["文案", "广告"] },
 ] as const;
 
-/** 关键词 → 推荐模板 id 映射（mock，未来对接 LLM） */
+/** TODO(preset-agent): 用 Agent/LLM 推荐接口替换关键词到模板的静态映射。 */
 const KEYWORD_TO_TEMPLATE: Record<string, string> = {
   小红书: "ecom.xhs-note",
   种草: "ecom.xhs-note",
@@ -46,6 +46,11 @@ interface ChatMsg {
   recommend?: string;
 }
 
+/**
+ * 渲染兼容预设市场。
+ *
+ * @returns 预设列表和推荐对话页面。
+ */
 export default function PresetMarketPage() {
   const router = useRouter();
 
@@ -102,8 +107,7 @@ export default function PresetMarketPage() {
     [templates, tab],
   );
 
-  /* ------- AI 匹配（mock 关键词） -------
-   * 真实场景对接 LLM 流式输出；此处用关键词匹配快速返回。 */
+  /* TODO(preset-agent): 接入 LLM 流式推荐；当前关键词匹配仅用于验证交互。 */
   function matchTemplate(text: string): string | null {
     for (const [kw, tid] of Object.entries(KEYWORD_TO_TEMPLATE)) {
       if (text.includes(kw) && templates.some((t) => t.id === tid)) return tid;
@@ -138,7 +142,7 @@ export default function PresetMarketPage() {
     };
   }
 
-  /* 发送：用户输入 → mock AI 回复 → 命中推荐 */
+  /* 用户输入 → 当前推荐实现 → 命中模板。 */
   function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
@@ -150,7 +154,7 @@ export default function PresetMarketPage() {
     setChat((c) => [...c, userMsg]);
     setInput("");
     setBusy(true);
-    /* 模拟思考延迟 */
+    /* TODO(preset-agent): 接入流式响应后移除固定思考延迟。 */
     setTimeout(() => {
       const matchedId = matchTemplate(trimmed);
       setRecommended(matchedId);

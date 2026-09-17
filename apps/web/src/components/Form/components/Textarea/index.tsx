@@ -11,7 +11,12 @@ import { Field } from "../Field";
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> &
   FieldProps & { onValueChange?: (value: string) => void };
 
-/** 自动保持光标可见，并支持 Ctrl/Command + Enter 插入换行的多行输入框。 */
+/**
+ * 自动保持光标可见，并支持 Ctrl/Command + Enter 插入换行的多行输入框。
+ *
+ * @param props - 原生多行输入框、字段展示和 Form 受控属性。
+ * @returns 可独立使用或接入 Form 的多行输入框。
+ */
 export function Textarea({
   name,
   label,

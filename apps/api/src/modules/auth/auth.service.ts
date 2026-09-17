@@ -10,6 +10,13 @@ export class AuthService {
     private readonly sessions: SessionService,
   ) {}
 
+  /**
+   * 登录并创建会话。
+   *
+   * @param rawEmail - 该操作所需的业务参数。
+   * @param password - 该操作所需的业务参数。
+   * @returns 登录并创建会话后的结果。
+   */
   async login(rawEmail: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email: rawEmail.toLowerCase() } });
     if (!user || !compareSync(password, user.passwordHash)) throw new UnauthorizedException("邮箱或密码不正确");

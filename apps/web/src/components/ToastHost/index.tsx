@@ -4,7 +4,11 @@ import { useToastStream } from "@/hooks/useToast";
 
 import styles from "./index.module.scss";
 
-/** 全局轻提示渲染宿主；挂载一次即可显示 useToast 发布的消息，并在悬停时暂停消失。 */
+/**
+ * 全局轻提示渲染宿主；挂载一次即可显示 useToast 发布的消息，并在悬停时暂停消失。
+ *
+ * @returns 居中显示的全局轻提示列表。
+ */
 export function ToastHost() {
   const { items, pause, resume } = useToastStream();
 

@@ -3,7 +3,11 @@ import { registry } from "./registry";
 
 @Controller("templates")
 export class TemplatesController {
-  /** 模板列表 —— 前端预设广场/市场页数据源 */
+  /**
+   * 返回预设市场使用的模板摘要列表。
+   *
+   * @returns 不包含完整步骤定义的模板摘要。
+   */
   @Get()
   list() {
     return registry.list().map((t) => ({
@@ -19,7 +23,13 @@ export class TemplatesController {
     }));
   }
 
-  /** 模板详情（含完整编排） */
+  /**
+   * 返回包含完整编排定义的模板详情。
+   *
+   * @param id - 模板稳定标识。
+   * @returns 完整模板定义。
+   * @throws {NotFoundException} 模板不存在时抛出。
+   */
   @Get(":id")
   detail(@Param("id") id: string) {
     const t = registry.get(id);

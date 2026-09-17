@@ -31,7 +31,12 @@ const NAV_ITEMS = [
 const SIDEBAR_STATE_KEY = "weavl:sidebar-state";
 const SIDEBAR_NARROW_QUERY = "(max-width: 1180px)";
 
-/** 应用主框架，负责全局侧栏、导航、登录入口以及侧栏响应式收起状态。 */
+/**
+ * 应用主框架，负责全局侧栏、导航、登录入口以及侧栏响应式收起状态。
+ *
+ * @param props - 页面内容。
+ * @returns 带全局导航和账户入口的应用布局。
+ */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAgentPage = pathname === "/agent" || pathname.startsWith("/agent/");

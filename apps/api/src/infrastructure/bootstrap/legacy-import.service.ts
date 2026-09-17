@@ -45,6 +45,11 @@ export class LegacyImportService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly storage: ObjectStorageService,
   ) {}
+  /**
+   * 在应用启动后执行兼容数据导入。
+   *
+   * @returns 生命周期处理完成后的 Promise。
+   */
   async onApplicationBootstrap() {
     if (await this.prisma.user.count()) return;
     const path = resolve(process.env.WEAVL_MOCK_DATA_FILE || "./data/weavl.mock.json");

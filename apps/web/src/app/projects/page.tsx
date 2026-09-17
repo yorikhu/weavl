@@ -52,6 +52,11 @@ function getConfirmationCopy(confirmation: Confirmation) {
   };
 }
 
+/**
+ * 渲染项目管理页面。
+ *
+ * @returns 项目搜索、文件夹和回收站页面。
+ */
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<CanvasProject[]>([]);
   const [trash, setTrash] = useState<CanvasProject[]>([]);

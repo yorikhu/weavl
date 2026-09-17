@@ -1,7 +1,14 @@
 import type { Node } from "@xyflow/react";
 import type { Asset } from "@weavl/shared";
 
-/** 资产在画布上是稳定版本引用，节点只保留可编辑的展示快照。 */
+/**
+ * 将资产转换为可放入画布的节点。
+ * 资产在画布上使用稳定版本引用，节点只保留可编辑的展示快照。
+ *
+ * @param asset - 要放入画布的资产。
+ * @param index - 用于计算初始错位位置的节点序号。
+ * @returns 匹配资产类型的 React Flow 节点。
+ */
 export function assetToCanvasNode(asset: Asset, index: number): Node {
   const version = asset.versions.at(-1)!;
   const common = { title: asset.name, assetRef: { assetId: asset.id, versionId: version.id }, source: asset.source };

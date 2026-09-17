@@ -66,7 +66,13 @@ const BASIC_NODE_DEFINITIONS: BasicNodeDefinitionMap = {
 
 const NODE_KIND_LABELS: Record<BasicNodeKind, string> = { text: "文本", image: "图片", video: "视频" };
 
-/** 按同类节点现有最大序号生成名称，避免当前画布出现同名基础节点。 */
+/**
+ * 按同类节点现有最大序号生成名称，避免当前画布出现同名基础节点。
+ *
+ * @param kind - 基础节点类型。
+ * @param nodes - 当前画布节点。
+ * @returns 带递增序号的节点名称。
+ */
 function nextNodeTitle(kind: BasicNodeKind, nodes: Node[]) {
   const label = NODE_KIND_LABELS[kind];
   const pattern = new RegExp(`^${label}(?:\\s*(\\d+))?$`);

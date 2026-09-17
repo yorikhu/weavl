@@ -11,6 +11,11 @@ export class HealthController {
     private readonly storage: ObjectStorageService,
   ) {}
 
+  /**
+   * 检查服务健康状态。
+   *
+   * @returns 检查服务健康状态后的结果。
+   */
   @Get()
   async check() {
     const [database, redis, storage] = await Promise.all([

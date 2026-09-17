@@ -1,5 +1,11 @@
 import type { PointerEventHandler } from "react";
 
+/**
+ * 创建卡片倾斜交互所需的指针事件处理器。
+ *
+ * @param range - 组件属性。
+ * @returns 可直接绑定到卡片的事件处理器。
+ */
 export function createTiltCardHandlers<T extends HTMLElement>(range = 9): {
   onPointerMove: PointerEventHandler<T>;
   onPointerLeave: PointerEventHandler<T>;

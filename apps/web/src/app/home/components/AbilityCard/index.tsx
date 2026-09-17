@@ -17,6 +17,12 @@ type AbilityCardProps = {
 
 const tiltHandlers = createTiltCardHandlers<HTMLButtonElement>();
 
+/**
+ * 渲染首页单张能力入口卡片。
+ *
+ * @param props - 组件属性。
+ * @returns 带倾斜交互的能力卡片。
+ */
 export function AbilityCard({ title, desc, number, artwork, icon: Icon, onClick }: AbilityCardProps) {
   return (
     <button

@@ -226,7 +226,12 @@ const TIMEZONES: Array<{ offset: number; label: string; zones: TzEntry[] }> = [
 
 export { TIMEZONES };
 
-/** 从 IANA 找所在偏移 */
+/**
+ * 查询 IANA 时区所在的 UTC 偏移。
+ *
+ * @param iana - IANA 时区标识。
+ * @returns 分钟单位的 UTC 偏移，未知时区回退为 480。
+ */
 export function findOffset(iana: string): number {
   for (const g of TIMEZONES) {
     if (g.zones.some((z) => z.iana === iana)) return g.offset;
@@ -234,7 +239,12 @@ export function findOffset(iana: string): number {
   return 480;
 }
 
-/** 当前时区显示名 */
+/**
+ * 获取时区的中文展示名称。
+ *
+ * @param iana - IANA 时区标识。
+ * @returns 中文名称和 IANA 标识，未知时区返回原值。
+ */
 export function tzLabel(iana: string): string {
   for (const g of TIMEZONES) {
     for (const z of g.zones) {

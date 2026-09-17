@@ -36,6 +36,9 @@ const classes = (...names: Array<string | undefined>) => names.filter(Boolean).j
 
 /**
  * 全局浮层。hover 用于即时提示，click 用于菜单等可交互内容；action 提供紧凑操作面板样式。
+ *
+ * @param props - 触发模式、定位方式、内容和受控开合状态。
+ * @returns 带 Portal 定位能力的全局浮层。
  */
 export function Popover({
   mode = "click",

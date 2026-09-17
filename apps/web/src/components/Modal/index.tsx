@@ -34,7 +34,12 @@ interface ConfirmModalProps extends ModalBaseProps {
  */
 export type ModalProps = ContentModalProps | ConfirmModalProps;
 
-/** 根据 mode 渲染自定义内容弹窗或标准确认弹窗。 */
+/**
+ * 根据 mode 渲染自定义内容弹窗或标准确认弹窗。
+ *
+ * @param props - 内容弹窗或确认弹窗属性。
+ * @returns 基于 Radix Dialog 的全局弹窗。
+ */
 function ModalRoot(props: ModalProps) {
   const { open, title, eyebrow, description, busy = false, onOpenChange } = props;
   return (
@@ -72,13 +77,23 @@ function ModalRoot(props: ModalProps) {
   );
 }
 
-/** Modal 内统一对齐操作按钮的底部区域。 */
+/**
+ * Modal 内统一对齐操作按钮的底部区域。
+ *
+ * @param props - 原生 div 属性。
+ * @returns 弹窗操作区。
+ */
 function Footer({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} className={[styles.footer, className].filter(Boolean).join(" ")} />;
 }
 
 type ModalButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "quiet" | "danger" };
-/** 适配 Modal 明暗主题的主操作、次操作与危险操作按钮。 */
+/**
+ * 适配 Modal 明暗主题的主操作、次操作与危险操作按钮。
+ *
+ * @param props - 按钮属性和视觉类型。
+ * @returns 弹窗操作按钮。
+ */
 function Button({ variant = "primary", className, ...props }: ModalButtonProps) {
   return <button {...props} className={[styles.button, styles[variant], className].filter(Boolean).join(" ")} />;
 }

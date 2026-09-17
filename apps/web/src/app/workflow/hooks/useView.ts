@@ -8,6 +8,9 @@ import { CANVAS_H, CANVAS_W } from "../types";
  * 画布视口：scale + pan
  * - 鼠标模式：wheel = 缩放（光标为锚点）；拖动 = 平移
  * - 触控板模式：wheel = 平移（deltaX/deltaY）；ctrl+wheel = 捏合缩放
+ *
+ * @param initial - 初始缩放与平移状态。
+ * @returns 视口状态及缩放、平移、重置操作。
  */
 export function useView(initial: ViewState = { scale: 0.55, x: 60, y: 20 }) {
   const [view, setView] = useState<ViewState>(initial);

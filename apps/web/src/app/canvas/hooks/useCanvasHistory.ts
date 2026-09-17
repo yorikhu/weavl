@@ -22,7 +22,14 @@ function objectToken(value: unknown): string {
   return String(id);
 }
 
-/** 节点数据按不可变对象共享，只为会被拖动库更新的位置创建独立副本。 */
+/**
+ * 创建用于撤销与重做的稳定画布快照。
+ * 节点数据按不可变对象共享，只为会被拖动库更新的位置创建独立副本。
+ *
+ * @param nodes - 当前画布节点。
+ * @param edges - 当前画布连线。
+ * @returns 去除瞬时交互状态后的快照及比较签名。
+ */
 function createSnapshot(nodes: Node[], edges: Edge[]): CanvasSnapshot {
   const stableNodes = nodes.map((node) => {
     const stable = { ...node, position: { ...node.position } };
@@ -63,7 +70,7 @@ function createSnapshot(nodes: Node[], edges: Edge[]): CanvasSnapshot {
  * @param edges - 当前连线快照。
  * @param setNodes - 节点状态更新器。
  * @param setEdges - 连线状态更新器。
- * @param enabled - 是否开始记录历史。
+ * @param ready - 是否开始记录历史。
  * @param scopeKey - 用于隔离不同画布历史的稳定标识。
  * @returns 撤销、重做方法及其可用状态。
  */
