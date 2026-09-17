@@ -69,6 +69,7 @@ function TextNodeResizeHandle({ id }: { id: string }) {
  * 渲染 React Flow 文本节点，并根据编辑上下文切换展示状态。
  *
  * @param props - React Flow 注入的节点属性。
+ * @returns 文本节点浏览态或编辑态组件。
  */
 export function TextNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
@@ -78,7 +79,11 @@ export function TextNode({ data, id }: NodeProps) {
   const isManualNode = d.creationMode === "manual";
 
   if (editing) {
-    return edit.editingMode === "manual" ? <TextNodeEditor id={id} data={d} /> : <EmptyTextNodeEditor id={id} data={d} />;
+    return edit.editingMode === "manual" ? (
+      <TextNodeEditor id={id} data={d} />
+    ) : (
+      <EmptyTextNodeEditor id={id} data={d} />
+    );
   }
 
   return (
@@ -205,12 +210,17 @@ interface TextModelOption {
 
 const FALLBACK_TEXT_MODELS: TextModelOption[] = [
   { id: "weavl-text", label: "Weavl Text", configured: false },
-  { id: "volcengine-text", label: "豆包", configured: false },
-  { id: "aliyun-text", label: "通义千问", configured: false },
-  { id: "zenmux-text", label: "ZenMux Text", configured: false },
+  { id: "deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash", configured: false },
+  { id: "atria-dawn-preview", label: "Atria Dawn Preview (Free)", configured: false },
+  { id: "ling-3.0-flash-vl", label: "Ling-3.0-flash-VL", configured: false },
+  { id: "kimi-k2.8-preview", label: "Kimi K2.8 Preview", configured: false },
 ];
 
-/** 文本节点生成态使用与图片、视频一致的节点下方提示词面板。 */
+/**
+ * 渲染文本节点生成态的节点下方提示词面板。
+ *
+ * @returns 当前节点不处于生成态时返回 `null`，否则返回文本生成面板。
+ */
 export function TextEditPanel() {
   const edit = useContext(EnterEditContext);
   const editingId = edit.editingId;
@@ -257,7 +267,7 @@ export function TextEditPanel() {
       models={models.map((item) => ({
         id: item.id,
         label: item.label,
-        detail: item.configured ? undefined : "演示",
+        detail: item.configured ? undefined : "未配置",
       }))}
       modelMenuLabel="文本模型"
       cost={6}
@@ -279,6 +289,7 @@ export function TextEditPanel() {
  * 重渲染导致光标跳转；IME 组合输入期间不会同步缓冲区。
  *
  * @param props - 当前文本节点数据。
+ * @returns 基于 contentEditable 的文本节点编辑器。
  */
 function TextNodeEditor({ id, data }: { id: string; data: TextNodeData }) {
   const edit = useContext(EnterEditContext);

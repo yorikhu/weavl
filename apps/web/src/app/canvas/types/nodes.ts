@@ -3,6 +3,7 @@
  * 这里主要是 React Flow 节点 data 形状，与 shared 的 RunView/TemplateManifest 区分。
  */
 import type { ReactNode } from "react";
+import type { AssetRef } from "@weavl/shared";
 
 export type NodeKind = "llm" | "image" | "video" | "output";
 export type BasicNodeKind = "text" | "image" | "video";
@@ -49,6 +50,7 @@ export interface ImageNodeData extends GroupableNodeData {
   generationSize?: { width: number; height: number };
   count?: number;
   model?: string;
+  assetRef?: AssetRef;
 }
 
 export interface TextNodeData extends GroupableNodeData {
@@ -74,6 +76,7 @@ export interface VideoNodeData extends GroupableNodeData {
   duration?: number;
   count?: number;
   model?: string;
+  assetRef?: AssetRef;
 }
 
 export type AnyNodeData = CardNodeData | ImageNodeData | TextNodeData | VideoNodeData;

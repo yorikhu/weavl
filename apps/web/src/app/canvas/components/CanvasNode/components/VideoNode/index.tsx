@@ -2,6 +2,7 @@
 
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
+import type { Asset, GenerationModelOption } from "@weavl/shared";
 import {
   ChevronDown,
   Film,
@@ -14,20 +15,43 @@ import {
   User as UserIcon,
   Video as VideoIcon,
 } from "lucide-react";
+import { toast } from "@/hooks/useToast";
+import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { VideoNodeData } from "../../../../types/nodes";
 import { getMediaCardSize, getMediaDimensions, type MediaDimensionOption } from "../../../../utils/mediaSizing";
+import { appendGeneratedMediaNodes } from "../../../../utils/generatedMediaNodes";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
+const FALLBACK_VIDEO_MODELS: GenerationModelOption[] = [
+  {
+    id: "weavl-video",
+    kind: "video",
+    label: "Weavl Video",
+    maker: "Weavl",
+    description: "自动选择可用视频模型",
+    configured: false,
+    isAuto: true,
+  },
+];
+
+/** 视频生成接口返回的可轮询任务视图。 */
+interface VideoGenerationJob {
+  id: string;
+  status: "queued" | "running" | "finalizing" | "succeeded" | "failed";
+  error?: string | null;
+  assets?: Asset[];
+}
 
 /**
  * 渲染视频节点在浏览态和编辑态共用的卡片主体。
  *
  * @param props - 视频数据、预览地址、文件选择回调与编辑状态。
+ * @returns 视频节点的标题、预览和连接点。
  */
 function VideoCardStatic({
   d,
@@ -98,6 +122,7 @@ function VideoCardStatic({
  * 渲染 React Flow 视频节点，并根据编辑上下文切换展示状态。
  *
  * @param props - React Flow 注入的节点属性。
+ * @returns 视频节点浏览态或编辑态组件。
  */
 export function VideoNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
@@ -133,7 +158,9 @@ export function VideoEditPanel() {
   const [quality, setQuality] = useState(data?.quality ?? "720P");
   const [duration, setDuration] = useState(data?.duration ?? 5);
   const [count, setCount] = useState(data?.count ?? 1);
-  const [model, setModel] = useState(data?.model ?? "Weavl Video");
+  const [model, setModel] = useState(data?.model ?? "weavl-video");
+  const [models, setModels] = useState<GenerationModelOption[]>(FALLBACK_VIDEO_MODELS);
+  const [busy, setBusy] = useState(false);
   const [refType, setRefType] = useState("全能参考");
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const [showRefMenu, setShowRefMenu] = useState(false);
@@ -146,6 +173,12 @@ export function VideoEditPanel() {
     setShowRefMenu(false);
   }, [editingId]);
   useEffect(() => {
+    if (!isVideo) return;
+    void studioApi<GenerationModelOption[]>("/studio/generations/models?kind=video")
+      .then(setModels)
+      .catch(() => setModels(FALLBACK_VIDEO_MODELS));
+  }, [isVideo]);
+  useEffect(() => {
     if (!editingId) {
       syncedNodeIdRef.current = null;
       return;
@@ -157,9 +190,15 @@ export function VideoEditPanel() {
     setQuality(data.quality ?? "720P");
     setDuration(data.duration ?? 5);
     setCount(data.count ?? 1);
-    setModel(data.model ?? "Weavl Video");
+    setModel(data.model ?? "weavl-video");
     syncedNodeIdRef.current = editingId;
   }, [editingId, data]);
+  /**
+   * 同步视频输出规格与画布卡片比例。
+   *
+   * @param nextDimension - 用户选择的模型输出规格。
+   * @returns 无返回值。
+   */
   const changeDimension = useCallback(
     (nextDimension: MediaDimensionOption) => {
       setRatio(nextDimension.ratio);
@@ -183,6 +222,12 @@ export function VideoEditPanel() {
     },
     [editingId, setNodes],
   );
+  /**
+   * 切换模型，并在必要时回退到新模型支持的首个画面比例。
+   *
+   * @param nextModel - 新的稳定模型标识。
+   * @returns 无返回值。
+   */
   const changeModel = useCallback(
     (nextModel: string) => {
       setModel(nextModel);
@@ -207,22 +252,58 @@ export function VideoEditPanel() {
       title: edit.buffer.title,
     };
   }, [prompt, ratio, quality, duration, count, model, selectedDimension, edit]);
-  const onGenerate = useCallback(() => {
-    if (!edit.editingId) return;
-    edit.commitVideoEdit?.(edit.editingId, {
-      prompt,
-      ratio,
-      quality,
-      duration,
-      count,
-      model,
-      generationSize: selectedDimension
-        ? { width: selectedDimension.width, height: selectedDimension.height }
-        : undefined,
-      title: undefined,
-    });
-  }, [edit, prompt, ratio, quality, duration, count, model, selectedDimension]);
-  const modelOptions = ["Weavl Video", "Lib Video", "Sora", "Veo"];
+  /**
+   * 提交视频长任务并按官方建议的间隔轮询，完成后写回全部产物。
+   *
+   * @returns 视频任务结束并完成节点写回后的 Promise。
+   */
+  const onGenerate = useCallback(async () => {
+    const nodeId = edit.editingId;
+    if (!nodeId || !prompt.trim() || busy) return;
+    setBusy(true);
+    try {
+      let job = await studioApi<VideoGenerationJob>("/studio/generations/video", {
+        method: "POST",
+        body: jsonBody({
+          model,
+          prompt,
+          count,
+          ratio,
+          resolution: quality.toLowerCase(),
+          durationSeconds: duration,
+        }),
+      });
+      for (let attempt = 0; attempt < 40 && job.status !== "succeeded" && job.status !== "failed"; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 15000));
+        job = await studioApi<VideoGenerationJob>(`/studio/generations/video/${job.id}`);
+      }
+      if (job.status === "failed") throw new Error(job.error || "视频生成失败");
+      if (job.status !== "succeeded") throw new Error("视频仍在生成，请稍后重试");
+      const generatedAssets = job.assets || [];
+      const generatedAsset = generatedAssets[0];
+      const generatedVersion = generatedAsset?.versions.at(-1);
+      if (!generatedAsset || !generatedVersion?.content) throw new Error("视频模型没有返回可用产物");
+      edit.commitVideoEdit?.(nodeId, {
+        prompt,
+        ratio,
+        quality,
+        duration,
+        count,
+        model,
+        url: generatedVersion.content,
+        assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
+        generationSize: selectedDimension
+          ? { width: selectedDimension.width, height: selectedDimension.height }
+          : undefined,
+      });
+      setNodes((current) => appendGeneratedMediaNodes(current, nodeId, generatedAssets.slice(1)));
+      toast(generatedAssets.length > 1 ? `${generatedAssets.length} 个视频已生成` : "视频已生成", "success");
+    } catch (cause) {
+      toast((cause as Error).message || "视频生成失败");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, count, duration, edit, model, prompt, quality, ratio, selectedDimension, setNodes]);
   const refOptions = ["全能参考", "人脸参考", "首尾帧", "角色一致性"];
   const cost = count * (quality === "2K" ? 60 : quality === "720P" ? 27 : 18);
   if (!edit.editingId || !isVideo) return null;
@@ -233,9 +314,14 @@ export function VideoEditPanel() {
       prompt={prompt}
       placeholder="描述想生成的视频画面、动作与节奏，或引用已有素材…"
       model={model}
-      models={modelOptions.map((item) => ({ id: item, label: item }))}
+      models={models.map((item) => ({
+        id: item.id,
+        label: item.label,
+        detail: item.configured ? item.maker : `${item.maker} · 未配置`,
+      }))}
       modelMenuLabel="视频模型"
       cost={cost}
+      busy={busy}
       rows={3}
       header={
         <div className={styles.imageEditBarHead}>
@@ -262,6 +348,7 @@ export function VideoEditPanel() {
               运镜
             </button>
           </div>
+          {/* TODO(canvas-media): 实现视频沉浸式编辑器后启用放大编辑入口。 */}
           <button className={styles.imageEditExpand} title="放大编辑（即将上线）" aria-label="放大编辑">
             <Maximize2 size={14} />
           </button>
@@ -331,7 +418,7 @@ export function VideoEditPanel() {
         setShowRatioMenu(false);
         setShowRefMenu(false);
       }}
-      onSubmit={onGenerate}
+      onSubmit={() => void onGenerate()}
       onEscape={edit.exitEdit}
     />
   );
@@ -341,6 +428,7 @@ export function VideoEditPanel() {
  * 渲染视频节点编辑态的卡片，并初始化外置编辑面板所需的共享状态。
  *
  * @param props - 当前视频节点标识与数据。
+ * @returns 视频节点编辑态组件。
  */
 function VideoNodeEditor({ data }: { data: VideoNodeData }) {
   const edit = useContext(EnterEditContext);
@@ -352,7 +440,7 @@ function VideoNodeEditor({ data }: { data: VideoNodeData }) {
         quality: data.quality ?? "720P",
         duration: data.duration ?? 5,
         count: data.count ?? 1,
-        model: data.model ?? "Weavl Video",
+        model: data.model ?? "weavl-video",
         url: data.url,
         title: edit.buffer.title,
       };

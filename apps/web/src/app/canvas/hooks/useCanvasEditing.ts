@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { getViewportForBounds, useReactFlow, useStore, type Node } from "@xyflow/react";
 import type { EditCtx } from "../editContext";
+import type { AssetRef } from "@weavl/shared";
 import type { AnyNodeData, CardField } from "../types/nodes";
 import toolbarStyles from "../components/FloatingToolbar/index.module.scss";
 import nodeStyles from "../components/CanvasNode/index.module.scss";
@@ -147,6 +148,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         count?: number;
         model?: string;
         url?: string;
+        assetRef?: AssetRef;
         title?: string;
       },
     ) => {
@@ -163,7 +165,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (typeof payload.count === "number") d.count = payload.count;
           if (payload.model) d.model = payload.model;
           if (payload.url !== undefined) d.url = payload.url;
-          /** 有 prompt 没有图 → 占位色改成生成中样式（后续接真生图 API 时替换） */
+          if (payload.assetRef) d.assetRef = payload.assetRef;
           return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
         }),
       );
@@ -188,6 +190,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
         count?: number;
         model?: string;
         url?: string;
+        assetRef?: AssetRef;
         title?: string;
       },
     ) => {
@@ -204,6 +207,7 @@ export function useCanvasEditing(nodes: Node[], setNodes: Dispatch<SetStateActio
           if (typeof payload.count === "number") d.count = payload.count;
           if (payload.model) d.model = payload.model;
           if (payload.url !== undefined) d.url = payload.url;
+          if (payload.assetRef) d.assetRef = payload.assetRef;
           return { ...n, data: d as unknown as AnyNodeData } as unknown as Node;
         }),
       );

@@ -60,6 +60,11 @@ function removeFirst<T>(items: T[], value: T): T[] {
   return index < 0 ? items : items.filter((_, itemIndex) => itemIndex !== index);
 }
 
+/**
+ * 渲染 Agent 会话工作台。
+ *
+ * @returns Agent 会话页面。
+ */
 export default function AgentPage() {
   const router = useRouter();
   const [conversations, setConversations] = useState<AgentConversation[]>([]);
@@ -313,7 +318,7 @@ export default function AgentPage() {
               );
             })}
           </div>
-          <p>当前生成服务尚未接入；模型结果为文字模拟稿。</p>
+          <p>选择内容类型，Agent 会根据当前任务组织输出。</p>
         </div>
       );
     }

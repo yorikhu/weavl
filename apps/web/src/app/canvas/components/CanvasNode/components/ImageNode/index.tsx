@@ -2,17 +2,38 @@
 
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
+import type { Asset, GenerationModelOption } from "@weavl/shared";
 import { Image as ImageIcon, ImagePlus, Maximize2, Palette, RefreshCw, Tag } from "lucide-react";
+import { toast } from "@/hooks/useToast";
+import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { EnterEditContext } from "../../../../editContext";
 import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { ImageNodeData } from "../../../../types/nodes";
 import { getMediaCardSize, getMediaDimensions, type MediaDimensionOption } from "../../../../utils/mediaSizing";
+import { appendGeneratedMediaNodes } from "../../../../utils/generatedMediaNodes";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
+const FALLBACK_IMAGE_MODELS: GenerationModelOption[] = [
+  {
+    id: "weavl-image",
+    kind: "image",
+    label: "Weavl Image",
+    maker: "Weavl",
+    description: "自动选择可用图片模型",
+    configured: false,
+    isAuto: true,
+  },
+];
 
+/**
+ * 将历史图片质量值归一化为当前参数面板支持的三档文案。
+ *
+ * @param quality - 节点中保存的当前或历史质量值。
+ * @returns 参数面板支持的标准质量文案。
+ */
 function normalizeImageQuality(quality?: string) {
   if (quality === "低画质" || quality === "标准画质" || quality === "高画质") return quality;
   return quality === "高清" ? "高画质" : "标准画质";
@@ -22,6 +43,7 @@ function normalizeImageQuality(quality?: string) {
  * 渲染图片节点在浏览态和编辑态共用的卡片主体。
  *
  * @param props - 图片数据、预览地址、文件选择回调与编辑状态。
+ * @returns 图片节点的标题、预览和连接点。
  */
 function ImageCardStatic({
   d,
@@ -92,6 +114,7 @@ function ImageCardStatic({
  * 渲染 React Flow 图片节点，并根据编辑上下文切换展示状态。
  *
  * @param props - React Flow 注入的节点属性。
+ * @returns 图片节点浏览态或编辑态组件。
  */
 export function ImageNode({ data, id }: NodeProps) {
   const edit = useContext(EnterEditContext);
@@ -129,7 +152,9 @@ export function ImageEditPanel() {
   const [quality, setQuality] = useState(normalizeImageQuality(data?.quality));
   const [resolution, setResolution] = useState(data?.resolution ?? "2K");
   const [count, setCount] = useState(data?.count ?? 1);
-  const [model, setModel] = useState(data?.model ?? "Weavl Image");
+  const [model, setModel] = useState(data?.model ?? "weavl-image");
+  const [models, setModels] = useState<GenerationModelOption[]>(FALLBACK_IMAGE_MODELS);
+  const [busy, setBusy] = useState(false);
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const syncedNodeIdRef = useRef<string | null>(null);
   const dimensions = getMediaDimensions("image", model);
@@ -139,6 +164,12 @@ export function ImageEditPanel() {
   useEffect(() => {
     setShowRatioMenu(false);
   }, [editingId]);
+  useEffect(() => {
+    if (!isImage) return;
+    void studioApi<GenerationModelOption[]>("/studio/generations/models?kind=image")
+      .then(setModels)
+      .catch(() => setModels(FALLBACK_IMAGE_MODELS));
+  }, [isImage]);
 
   /** 节点变更（切到不同图片节点编辑）时同步字段初值 */
   useEffect(() => {
@@ -153,10 +184,16 @@ export function ImageEditPanel() {
     setQuality(normalizeImageQuality(data.quality));
     setResolution(data.resolution ?? "2K");
     setCount(data.count ?? 1);
-    setModel(data.model ?? "Weavl Image");
+    setModel(data.model ?? "weavl-image");
     syncedNodeIdRef.current = editingId;
   }, [editingId, data]);
 
+  /**
+   * 同步图片生成尺寸与画布卡片比例，卡片展示尺寸由统一缩放规则计算。
+   *
+   * @param nextDimension - 用户选择的模型输出规格。
+   * @returns 无返回值。
+   */
   const changeDimension = useCallback(
     (nextDimension: MediaDimensionOption) => {
       setRatio(nextDimension.ratio);
@@ -181,6 +218,12 @@ export function ImageEditPanel() {
     [editingId, setNodes],
   );
 
+  /**
+   * 切换模型，并在原比例不受新模型支持时选择该模型的首个规格。
+   *
+   * @param nextModel - 新的稳定模型标识。
+   * @returns 无返回值。
+   */
   const changeModel = useCallback(
     (nextModel: string) => {
       setModel(nextModel);
@@ -208,24 +251,52 @@ export function ImageEditPanel() {
     };
   }, [prompt, ratio, quality, resolution, count, model, selectedDimension, edit]);
 
-  /** 发送：写入节点 data，保留编辑栏在屏上的同时更新预览（提示用户"已生成"）—— 简化：直接退出编辑态 */
-  const onGenerate = useCallback(() => {
-    if (!edit.editingId) return;
-    edit.commitImageEdit?.(edit.editingId, {
-      prompt,
-      ratio,
-      quality,
-      resolution,
-      count,
-      model,
-      generationSize: selectedDimension
-        ? { width: selectedDimension.width, height: selectedDimension.height }
-        : undefined,
-      title: undefined,
-    });
-  }, [edit, prompt, ratio, quality, resolution, count, model, selectedDimension]);
-
-  const modelOptions = ["Weavl Image", "Lib Image", "SDXL", "DALL·E 3"];
+  /**
+   * 生成图片，首个产物写回当前节点，其余产物创建为相邻节点。
+   *
+   * @returns 图片生成和节点写回完成后的 Promise。
+   */
+  const onGenerate = useCallback(async () => {
+    const nodeId = edit.editingId;
+    if (!nodeId || !prompt.trim() || busy) return;
+    setBusy(true);
+    try {
+      const result = await studioApi<{ assets: Asset[] }>("/studio/generations/image", {
+        method: "POST",
+        body: jsonBody({
+          model,
+          prompt,
+          ratio,
+          quality: quality === "低画质" ? "low" : quality === "高画质" ? "high" : "medium",
+          count,
+          size: selectedDimension ? `${selectedDimension.width}x${selectedDimension.height}` : undefined,
+          resolution,
+        }),
+      });
+      const generatedAsset = result.assets[0];
+      const generatedVersion = generatedAsset?.versions.at(-1);
+      if (!generatedAsset || !generatedVersion?.content) throw new Error("图片模型没有返回可用产物");
+      edit.commitImageEdit?.(nodeId, {
+        prompt,
+        ratio,
+        quality,
+        resolution,
+        count,
+        model,
+        url: generatedVersion.content,
+        assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
+        generationSize: selectedDimension
+          ? { width: selectedDimension.width, height: selectedDimension.height }
+          : undefined,
+      });
+      setNodes((current) => appendGeneratedMediaNodes(current, nodeId, result.assets.slice(1)));
+      toast(result.assets.length > 1 ? `${result.assets.length} 张图片已生成` : "图片已生成", "success");
+    } catch (cause) {
+      toast((cause as Error).message || "图片生成失败");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, count, edit, model, prompt, quality, ratio, resolution, selectedDimension, setNodes]);
 
   if (!edit.editingId || !isImage) return null;
 
@@ -235,9 +306,14 @@ export function ImageEditPanel() {
       prompt={prompt}
       placeholder="描述想生成的图片，或输入对当前图片的修改要求…"
       model={model}
-      models={modelOptions.map((item) => ({ id: item, label: item }))}
+      models={models.map((item) => ({
+        id: item.id,
+        label: item.label,
+        detail: item.configured ? item.maker : `${item.maker} · 未配置`,
+      }))}
       modelMenuLabel="图片模型"
       cost={count * (resolution === "4K" ? 24 : resolution === "2K" ? 12 : 6)}
+      busy={busy}
       rows={3}
       header={
         <div className={styles.imageEditBarHead}>
@@ -256,6 +332,7 @@ export function ImageEditPanel() {
               风格
             </button>
           </div>
+          {/* TODO(canvas-media): 实现图片沉浸式编辑器后启用放大编辑入口。 */}
           <button className={styles.imageEditExpand} title="放大编辑（即将上线）" aria-label="放大编辑">
             <Maximize2 size={14} />
           </button>
@@ -286,7 +363,7 @@ export function ImageEditPanel() {
       onPromptChange={setPrompt}
       onModelChange={changeModel}
       onModelMenuOpenChange={(open) => open && setShowRatioMenu(false)}
-      onSubmit={onGenerate}
+      onSubmit={() => void onGenerate()}
       onEscape={edit.exitEdit}
     />
   );
@@ -296,6 +373,7 @@ export function ImageEditPanel() {
  * 渲染图片节点编辑态的卡片，并初始化外置编辑面板所需的共享状态。
  *
  * @param props - 当前图片节点标识与数据。
+ * @returns 图片节点编辑态组件。
  */
 function ImageNodeEditor({ data }: { data: ImageNodeData }) {
   const edit = useContext(EnterEditContext);
@@ -309,7 +387,7 @@ function ImageNodeEditor({ data }: { data: ImageNodeData }) {
         quality: normalizeImageQuality(data.quality),
         resolution: data.resolution ?? "2K",
         count: data.count ?? 1,
-        model: data.model ?? "Weavl Image",
+        model: data.model ?? "weavl-image",
         url: data.url,
         title: edit.buffer.title,
       };

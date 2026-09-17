@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type MutableRefObject } from "react";
+import type { AssetRef } from "@weavl/shared";
 
 /**
  * 画布编辑态共享 context：
@@ -34,6 +35,7 @@ export interface EditCtx {
           count?: number;
           model?: string;
           url?: string;
+          assetRef?: AssetRef;
           title?: string;
         },
       ) => void)
@@ -50,6 +52,7 @@ export interface EditCtx {
           count?: number;
           model?: string;
           url?: string;
+          assetRef?: AssetRef;
           title?: string;
         },
       ) => void)
@@ -68,6 +71,7 @@ export interface EditCtx {
     count?: number;
     model?: string;
     url?: string;
+    assetRef?: AssetRef;
     title?: string;
   } | null>;
   videoEditStateRef: MutableRefObject<{
@@ -79,6 +83,7 @@ export interface EditCtx {
     count?: number;
     model?: string;
     url?: string;
+    assetRef?: AssetRef;
     title?: string;
   } | null>;
 }

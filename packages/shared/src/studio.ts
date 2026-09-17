@@ -1,7 +1,20 @@
-/** 产品层契约。Mock 存储和未来 PG/对象存储实现共用这些对象。 */
+/** 前后端共享的产品层契约，独立于 Prisma、Redis 和对象存储实现。 */
 export type AssetKind = "text" | "image" | "video" | "audio" | "pdf" | "word" | "ppt" | "file";
 export type ModelKind = "text" | "image" | "video" | "audio" | "avatar";
+
+/** 前后端共享的模型选择项；configured 表示当前至少有一条已配置密钥的渠道。 */
+export interface GenerationModelOption {
+  id: string;
+  kind: ModelKind;
+  label: string;
+  maker: string;
+  description: string;
+  configured: boolean;
+  isAuto?: boolean;
+}
 export type AssetSource = "personal" | "agent" | "workflow" | "canvas";
+
+/** 画布节点对已持久化资产版本的稳定引用，避免只依赖会过期的访问地址。 */
 export type AssetRef = { assetId: string; versionId: string };
 
 export interface StudioUser {
@@ -52,7 +65,7 @@ export interface AssetVersion {
   name: string;
   mimeType: string;
   size: number;
-  /** Mock 中为文本或 data URL；生产环境由对象存储适配器替换。 */
+  /** 文本内容、Data URL 或由对象存储解析出的临时访问地址。 */
   content: string;
 }
 
