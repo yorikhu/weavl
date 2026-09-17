@@ -9,16 +9,31 @@ import { ProviderRegistryService } from "./provider-registry.service";
 import { ProviderPriceSyncService } from "./provider-price-sync.service";
 
 const providerSchema = z.object({
-  code: z.string().trim().min(1).max(50).regex(/^[a-z0-9][a-z0-9-]*$/),
+  code: z
+    .string()
+    .trim()
+    .min(1)
+    .max(50)
+    .regex(/^[a-z0-9][a-z0-9-]*$/),
   label: z.string().trim().min(1).max(100),
-  apiKeyEnv: z.string().trim().min(1).max(100).regex(/^[A-Z][A-Z0-9_]*$/),
+  apiKeyEnv: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .regex(/^[A-Z][A-Z0-9_]*$/),
   enabled: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   pricingAdapter: z.string().trim().max(50).nullable().optional(),
   pricingUrl: z.string().trim().url().max(500).nullable().optional(),
 });
 const modelSchema = z.object({
-  id: z.string().trim().min(1).max(100).regex(/^[a-z0-9][a-z0-9._-]*$/),
+  id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9][a-z0-9._-]*$/),
   kind: z.enum(["text", "image", "video", "audio", "avatar"]),
   label: z.string().trim().min(1).max(120),
   maker: z.string().trim().min(1).max(100),
@@ -30,10 +45,12 @@ const modelSchema = z.object({
 const channelSchema = z.object({
   providerId: z.string().trim().min(1),
   modelId: z.string().trim().min(1),
-  protocol: z.enum(["openai-chat", "vertex-image", "vertex-generate-content", "vertex-video"]),
+  protocol: z.enum(["openai-chat", "openai-image", "vertex-image", "vertex-generate-content", "vertex-video"]),
   remoteModel: z.string().trim().min(1).max(200),
   label: z.string().trim().min(1).max(120),
   baseUrl: z.string().trim().url().max(500),
+  capabilities: z.record(z.string(), z.unknown()).optional(),
+  weight: z.number().int().min(0).max(10000).optional(),
   priority: z.number().int().min(0).max(10000).optional(),
   enabled: z.boolean().optional(),
   failureThreshold: z.number().int().min(1).max(100).optional(),
@@ -72,6 +89,7 @@ export class IntegrationsController {
         modelKind: x.modelKind,
         modelId: x.modelId,
         label: x.label,
+        weight: x.weight,
         priority: x.priority,
         configured: Boolean(process.env[x.apiKeyEnv]),
         active: x.enabled,
@@ -141,10 +159,7 @@ export class IntegrationsController {
    * @param rawTake - 可选返回数量。
    * @returns 最近的同步状态和变更统计。
    */
-  @Get("providers/:id/prices/history") providerPriceHistory(
-    @Param("id") id: string,
-    @Query("take") rawTake?: string,
-  ) {
+  @Get("providers/:id/prices/history") providerPriceHistory(@Param("id") id: string, @Query("take") rawTake?: string) {
     return this.priceSync.history(id, this.take(rawTake));
   }
 

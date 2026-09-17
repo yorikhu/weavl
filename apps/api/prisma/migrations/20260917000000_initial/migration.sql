@@ -260,6 +260,8 @@ CREATE TABLE "provider_channels" (
     "cost_pricing" JSONB,
     "cost_currency" TEXT,
     "cost_updated_at" TIMESTAMPTZ(6),
+    "capabilities" JSONB NOT NULL DEFAULT '{}',
+    "weight" INTEGER NOT NULL DEFAULT 100,
     "priority" INTEGER NOT NULL DEFAULT 100,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
     "failure_threshold" INTEGER NOT NULL DEFAULT 3,
@@ -447,7 +449,7 @@ CREATE UNIQUE INDEX "model_providers_code_key" ON "model_providers"("code");
 CREATE INDEX "model_definitions_kind_idx" ON "model_definitions"("kind", "enabled");
 
 -- CreateIndex
-CREATE INDEX "provider_channel_route_idx" ON "provider_channels"("model_id", "enabled", "priority");
+CREATE INDEX "provider_channel_route_idx" ON "provider_channels"("model_id", "enabled", "weight", "priority");
 
 -- CreateIndex
 CREATE INDEX "provider_channel_provider_idx" ON "provider_channels"("provider_id", "enabled");
@@ -618,6 +620,7 @@ VALUES
   ('atria-dawn-preview', 'text', 'Atria Dawn Preview (Free)', 'Atria', '面向复杂任务执行与研究工作的免费预览模型', false),
   ('ling-3.0-flash-vl', 'text', 'Ling-3.0-flash-VL', 'inclusionAI', '支持视觉理解的快速多模态模型', false),
   ('kimi-k2.8-preview', 'text', 'Kimi K2.8 Preview', 'MoonshotAI', '支持长上下文与可调推理强度的预览模型', false),
+  ('gpt-image-2', 'image', 'GPT Image 2', 'OpenAI', '支持灵活尺寸与高质量图片生成、编辑的 OpenAI 图像模型', false),
   ('gpt-image-2.5-flare', 'image', 'GPT-Image-2.5-Flare', 'OpenAI', '偏速度与高频创作的图片生成模型', false),
   ('gpt-image-2.5-sunburst', 'image', 'GPT-Image-2.5-Sunburst', 'OpenAI', '偏高质量输出的图片生成模型', false),
   ('doubao-seedance-2.0', 'video', 'Doubao-Seedance-2.0', 'ByteDance', '支持文生视频、图生视频和参考音频的视频模型', false),
@@ -632,6 +635,8 @@ VALUES
   ('channel.zenmux.text.atria-dawn-preview', 'provider.zenmux', 'openai-chat', 'atria-dawn-preview', 'atria-asi/atria-dawn-preview', 'ZenMux · Atria Dawn Preview (Free)', 'https://zenmux.ai/api/v1', 20),
   ('channel.zenmux.text.ling-3.0-flash-vl', 'provider.zenmux', 'openai-chat', 'ling-3.0-flash-vl', 'inclusionai/ling-3.0-flash-vl', 'ZenMux · Ling-3.0-flash-VL', 'https://zenmux.ai/api/v1', 30),
   ('channel.zenmux.text.kimi-k2.8-preview', 'provider.zenmux', 'openai-chat', 'kimi-k2.8-preview', 'moonshotai/kimi-k2.8-preview', 'ZenMux · Kimi K2.8 Preview', 'https://zenmux.ai/api/v1', 40),
+  ('channel.zenmux.image.gpt-image-2', 'provider.zenmux', 'vertex-image', 'gpt-image-2', 'openai/gpt-image-2', 'ZenMux · GPT Image 2', 'https://zenmux.ai/api/vertex-ai', 30),
+  ('channel.zenmux.image.gpt-image-2.edit', 'provider.zenmux', 'openai-image', 'gpt-image-2', 'openai/gpt-image-2', 'ZenMux · GPT Image 2 Edit', 'https://zenmux.ai/api/v1', 5),
   ('channel.zenmux.image.gpt-image-2.5-flare', 'provider.zenmux', 'vertex-image', 'gpt-image-2.5-flare', 'openai/gpt-image-2.5-flare', 'ZenMux · GPT-Image-2.5-Flare', 'https://zenmux.ai/api/vertex-ai', 10),
   ('channel.zenmux.image.gpt-image-2.5-sunburst', 'provider.zenmux', 'vertex-image', 'gpt-image-2.5-sunburst', 'openai/gpt-image-2.5-sunburst', 'ZenMux · GPT-Image-2.5-Sunburst', 'https://zenmux.ai/api/vertex-ai', 20),
   ('channel.zenmux.video.doubao-seedance-2.0', 'provider.zenmux', 'vertex-video', 'doubao-seedance-2.0', 'bytedance/doubao-seedance-2.0', 'ZenMux · Doubao-Seedance-2.0', 'https://zenmux.ai/api/vertex-ai', 10),
@@ -640,11 +645,15 @@ VALUES
   ('channel.zenmux.video.wan3.0-video-prime', 'provider.zenmux', 'vertex-video', 'wan3.0-video-prime', 'alibaba/wan3.0-video-prime', 'ZenMux · Wan3.0-Video-Prime', 'https://zenmux.ai/api/vertex-ai', 40);
 
 UPDATE "model_definitions"
-SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"1:1","width":1024,"height":1024},{"ratio":"3:2","width":1536,"height":1024},{"ratio":"2:3","width":1024,"height":1536}],"qualities":["低画质","标准画质","高画质"],"resolutions":[],"counts":[1,2,4]}'::jsonb
+SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"1:1","width":1024,"height":1024},{"ratio":"3:2","width":1536,"height":1024},{"ratio":"2:3","width":1024,"height":1536}],"qualities":["低画质","标准画质","高画质"],"resolutions":["1K","2K","4K"],"counts":[1,2,4]}'::jsonb
 WHERE "id" IN ('gpt-image-2.5-flare', 'gpt-image-2.5-sunburst');
 
 UPDATE "model_definitions"
-SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["480P","720P","1080P"],"durations":[5,8,10],"counts":[1]}'::jsonb
+SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"1:1","width":1024,"height":1024},{"ratio":"1:2","width":768,"height":1536},{"ratio":"2:1","width":1536,"height":768},{"ratio":"9:16","width":1152,"height":2048},{"ratio":"16:9","width":2048,"height":1152},{"ratio":"3:4","width":1152,"height":1536},{"ratio":"4:3","width":1536,"height":1152},{"ratio":"3:2","width":1536,"height":1024},{"ratio":"2:3","width":1024,"height":1536},{"ratio":"5:4","width":1600,"height":1280},{"ratio":"4:5","width":1280,"height":1600},{"ratio":"21:9","width":2240,"height":960},{"ratio":"9:21","width":960,"height":2240}],"qualities":["低画质","标准画质","高画质"],"resolutions":["1K","2K","4K"],"counts":[1,2,4]}'::jsonb
+WHERE "id" = 'gpt-image-2';
+
+UPDATE "model_definitions"
+SET "capabilities" = '{"verified":true,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["480P","720P","1080P"],"durations":[5,8,10],"counts":[1],"generateAudio":true}'::jsonb
 WHERE "id" = 'doubao-seedance-2.0';
 
 UPDATE "model_definitions"
@@ -652,12 +661,27 @@ SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":19
 WHERE "id" = 'doubao-seedance-2.5';
 
 UPDATE "model_definitions"
-SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1280,"height":720},{"ratio":"9:16","width":720,"height":1280}],"resolutions":["720P"],"durations":[5,10],"counts":[1]}'::jsonb
+SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1366,"height":768},{"ratio":"9:16","width":768,"height":1366}],"resolutions":["480P","768P"],"durations":[5,10],"counts":[1]}'::jsonb
 WHERE "id" = 'minimax-h3-max';
 
 UPDATE "model_definitions"
-SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["720P","1080P"],"durations":[5,10],"counts":[1]}'::jsonb
+SET "capabilities" = '{"verified":false,"dimensions":[{"ratio":"16:9","width":1920,"height":1080},{"ratio":"9:16","width":1080,"height":1920}],"resolutions":["720P","1080P"],"durations":[5,30],"counts":[1],"generateAudio":true}'::jsonb
 WHERE "id" = 'wan3.0-video-prime';
+
+-- 首批每个模型只有一条 ZenMux 渠道，先以模型规格初始化渠道能力；新增服务商时独立维护该渠道参数。
+UPDATE "provider_channels" AS "channel"
+SET "capabilities" = "model"."capabilities"
+FROM "model_definitions" AS "model"
+WHERE "channel"."model_id" = "model"."id";
+
+-- GPT Image 2 文生图继续使用支持任意尺寸的 Vertex 路径；参考图请求强制进入高保真 Images Edit 路径。
+UPDATE "provider_channels"
+SET "capabilities" = "capabilities" || '{"referenceImages":false}'::jsonb
+WHERE "id" = 'channel.zenmux.image.gpt-image-2';
+
+UPDATE "provider_channels"
+SET "capabilities" = "capabilities" || '{"referenceImages":true,"referenceOnly":true}'::jsonb
+WHERE "id" = 'channel.zenmux.image.gpt-image-2.edit';
 
 INSERT INTO "billing_policies"
   ("id", "credit_value_cny", "markup_rate", "usd_cny_rate")

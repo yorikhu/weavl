@@ -85,6 +85,35 @@ export class ObjectStorageService implements OnModuleInit {
   }
 
   /**
+   * 将客户端上传流直接写入对象存储，不在 API 进程中构造 Data URL 或完整文件缓冲区。
+   *
+   * @param stream - 客户端请求提供的可读文件流。
+   * @param mimeType - 客户端声明并由控制器校验过的媒体类型。
+   * @param contentLength - 可选的请求体字节数；未知时由 MinIO 流式分片处理。
+   * @param prefix - 对象存储键前缀。
+   * @returns 已写入对象的位置、实际字节数和 MIME 类型。
+   */
+  async persistStream(
+    stream: Readable,
+    mimeType: string,
+    contentLength: number | undefined,
+    prefix = "assets",
+  ): Promise<StoredContent> {
+    const storageKey = `${prefix}/${new Date().toISOString().slice(0, 10)}/${newId("file")}${this.extension(mimeType)}`;
+    let streamedSize = 0;
+    const counter = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        streamedSize += chunk.length;
+        callback(null, chunk);
+      },
+    });
+    await this.client.putObject(this.bucket, storageKey, stream.pipe(counter), contentLength, {
+      "Content-Type": mimeType,
+    });
+    return { content: null, storageKey, size: contentLength ?? streamedSize, mimeType };
+  }
+
+  /**
    * 解析对象存储访问地址。
    *
    * @param content - 内联文本或 Data URL 内容。
@@ -94,6 +123,35 @@ export class ObjectStorageService implements OnModuleInit {
   async resolve(content: string | null, storageKey: string | null): Promise<string> {
     if (storageKey) return this.client.presignedGetObject(this.bucket, storageKey, 24 * 60 * 60);
     return content || "";
+  }
+
+  /**
+   * 读取已持久化媒体的原始字节，供模型参考图等服务端调用使用。
+   *
+   * @param content - 旧数据中的 Data URL 或远程内容地址。
+   * @param storageKey - MinIO 对象键。
+   * @param fallbackMimeType - 数据未携带类型时使用的 MIME 类型。
+   * @returns 媒体字节与最终 MIME 类型。
+   * @throws {Error} 内容不存在或远程内容无法读取时抛出。
+   */
+  async read(content: string | null, storageKey: string | null, fallbackMimeType: string) {
+    if (storageKey) {
+      const stream = await this.client.getObject(this.bucket, storageKey);
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      return { data: Buffer.concat(chunks), mimeType: fallbackMimeType };
+    }
+    const inline = /^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.+)$/s.exec(content || "");
+    if (inline) return { data: Buffer.from(inline[2]!, "base64"), mimeType: inline[1] || fallbackMimeType };
+    if (/^https?:\/\//i.test(content || "")) {
+      const response = await fetch(content!);
+      if (!response.ok) throw new Error(`读取参考素材失败：${response.status}`);
+      return {
+        data: Buffer.from(await response.arrayBuffer()),
+        mimeType: response.headers.get("content-type")?.split(";")[0] || fallbackMimeType,
+      };
+    }
+    throw new Error("参考素材没有可读取的媒体内容");
   }
 
   /**

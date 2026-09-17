@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import type { Asset as StudioAsset, AssetKind, AssetSource, Folder } from "@weavl/shared";
 import { newId } from "../../common/id";
 import type { Asset, AssetVersion } from "@prisma/client";
+import type { Readable } from "node:stream";
 import { PrismaService } from "../../infrastructure/database/prisma.service";
 import { ObjectStorageService } from "../../infrastructure/storage/object-storage.service";
 
@@ -82,6 +83,35 @@ export class AssetsService {
   }
 
   /**
+   * 按给定顺序读取用户图片资产，转换为供应商适配器可消费的 Base64 参考图。
+   *
+   * @param ids - 画布节点引用的图片资产 ID。
+   * @param ownerId - 当前用户 ID。
+   * @returns 已完成权限校验的参考图片数据。
+   * @throws {BadRequestException} 资产缺失、已删除、类型错误或没有版本时抛出。
+   */
+  async readImageInputs(ids: string[], ownerId: string) {
+    const orderedIds = [...new Set(ids)];
+    if (!orderedIds.length) return [];
+    const rows = await this.prisma.asset.findMany({
+      where: { id: { in: orderedIds }, ownerId, deletedAt: null },
+      include: { versions: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    const byId = new Map(rows.map((asset) => [asset.id, asset]));
+    return Promise.all(
+      orderedIds.map(async (id) => {
+        const asset = byId.get(id);
+        const version = asset?.versions[0];
+        if (!asset || asset.kind !== "image" || !version) {
+          throw new BadRequestException("参考图片不存在、已删除或无权访问");
+        }
+        const media = await this.storage.read(version.content, version.storageKey, version.mimeType);
+        return { assetId: id, data: media.data.toString("base64"), mimeType: media.mimeType, size: media.data.length };
+      }),
+    );
+  }
+
+  /**
    * 创建资产及首个版本。
    * copyRemote 用于生成产物，开启后会先把供应商临时地址复制到平台对象存储。
    *
@@ -137,6 +167,63 @@ export class AssetsService {
       include: { versions: true },
     });
     return this.hydrate(asset);
+  }
+
+  /**
+   * 接收图片或视频请求流并创建资产。文件全程流向对象存储，不设置应用层体积上限。
+   *
+   * @param input - 上传元数据、用户归属和原始请求流。
+   * @returns 已创建并解析访问地址的资产。
+   * @throws {BadRequestException} 指定文件夹不存在或数据库写入失败时抛出。
+   */
+  async createMediaUpload(input: {
+    ownerId: string;
+    name: string;
+    kind: "image" | "video";
+    mimeType: string;
+    contentLength?: number;
+    folderId?: string | null;
+    inLibrary: boolean;
+    stream: Readable;
+  }): Promise<StudioAsset> {
+    if (input.folderId) await this.assertFolder(input.folderId, input.ownerId);
+    const stored = await this.storage.persistStream(
+      input.stream,
+      input.mimeType,
+      input.contentLength,
+      `assets/${input.ownerId}`,
+    );
+    const stamp = new Date();
+    try {
+      const asset = await this.prisma.asset.create({
+        data: {
+          id: newId("asset"),
+          ownerId: input.ownerId,
+          folderId: input.folderId || null,
+          name: input.name,
+          kind: input.kind,
+          source: "personal",
+          inLibrary: input.inLibrary,
+          createdAt: stamp,
+          updatedAt: stamp,
+          versions: {
+            create: {
+              id: newId("version"),
+              name: input.name,
+              mimeType: stored.mimeType,
+              size: BigInt(stored.size),
+              storageKey: stored.storageKey,
+              createdAt: stamp,
+            },
+          },
+        },
+        include: { versions: true },
+      });
+      return this.hydrate(asset);
+    } catch (error) {
+      await this.storage.remove(stored.storageKey).catch(() => undefined);
+      throw error;
+    }
   }
 
   /**

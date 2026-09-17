@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import type { Readable } from "node:stream";
 import type { AssetSource } from "@weavl/shared";
 import { z } from "zod";
 import { AuthRequest, parseBody } from "../../common/http";
@@ -13,6 +14,17 @@ const assetSchema = z.object({
   folderId: z.string().nullable().optional(),
   inLibrary: z.boolean().optional(),
 });
+
+const mediaUploadHeadersSchema = z
+  .object({
+    name: z.string().min(1).max(720),
+    kind: z.enum(["image", "video"]),
+    mimeType: z.string().regex(/^(image|video)\/[a-z0-9.+-]+$/i),
+    folderId: z.string().nullable().optional(),
+    inLibrary: z.enum(["0", "1"]).default("1"),
+    contentLength: z.coerce.number().int().nonnegative().optional(),
+  })
+  .transform((input) => ({ ...input, name: decodeURIComponent(input.name) }));
 
 @Controller("studio/assets")
 @UseGuards(SessionGuard)
@@ -56,6 +68,47 @@ export class AssetsController {
       ownerId: req.studioUser.id,
       source: "personal",
       inLibrary: input.inLibrary ?? true,
+    });
+  }
+  /**
+   * 流式上传图片或视频资产，绕开 JSON/Data URL 对二进制资源造成的体积限制。
+   *
+   * @param req - 已通过认证的请求对象，同时也是未缓冲的媒体数据流。
+   * @param encodedName - URI 编码后的原始文件名。
+   * @param kind - 图片或视频资产类型。
+   * @param mimeType - 媒体 MIME 类型。
+   * @param folderId - 可选目标文件夹。
+   * @param inLibrary - 是否加入全局资产库。
+   * @param contentLength - 浏览器提供的可选请求体字节数。
+   * @returns 创建完成的资产。
+   */
+  @Post("upload")
+  upload(
+    @Req() req: AuthRequest,
+    @Headers("x-file-name") encodedName?: string,
+    @Headers("x-asset-kind") kind?: string,
+    @Headers("content-type") mimeType?: string,
+    @Headers("x-folder-id") folderId?: string,
+    @Headers("x-in-library") inLibrary?: string,
+    @Headers("content-length") contentLength?: string,
+  ) {
+    const input = parseBody(mediaUploadHeadersSchema, {
+      name: encodedName,
+      kind,
+      mimeType: mimeType?.split(";")[0],
+      folderId: folderId || null,
+      inLibrary: inLibrary || "1",
+      contentLength,
+    });
+    return this.assets.createMediaUpload({
+      ownerId: req.studioUser.id,
+      name: input.name,
+      kind: input.kind,
+      mimeType: input.mimeType,
+      folderId: input.folderId,
+      inLibrary: input.inLibrary === "1",
+      contentLength: input.contentLength,
+      stream: req as Readable,
     });
   }
   /**

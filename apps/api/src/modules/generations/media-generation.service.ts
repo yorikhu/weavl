@@ -8,6 +8,8 @@ import { ModelGatewayService } from "../integrations/model-gateway.service";
 import { ProviderRegistryService } from "../integrations/provider-registry.service";
 import type { ImageGenerationRequest, ProviderChannel, VideoGenerationRequest } from "../integrations/provider.types";
 
+type ImageGenerationInput = ImageGenerationRequest & { referenceAssetIds?: string[] };
+
 /**
  * 图片和视频生成的业务编排层。
  * 负责模型校验、任务持久化和项目资产落库，供应商调用由 ModelGatewayService 处理。
@@ -41,11 +43,34 @@ export class MediaGenerationService {
    * @returns 生成状态、实际渠道及已固化的项目资产。
    * @throws {BadRequestException} 模型不存在或类型不匹配时抛出。
    */
-  async generateImage(ownerId: string, modelId: string, request: ImageGenerationRequest) {
+  async generateImage(ownerId: string, modelId: string, request: ImageGenerationInput) {
     await this.assertModel("image", modelId);
-    const billing = await this.pricing.reserve(ownerId, modelId, request as unknown as Record<string, unknown>);
+    const { referenceAssetIds = [], ...providerRequest } = request;
+    const referenceImages = await this.assets.readImageInputs(referenceAssetIds, ownerId);
+    const generationRequest: ImageGenerationRequest = {
+      ...providerRequest,
+      ...(referenceImages.length ? { referenceImages } : {}),
+    };
+    const billing = await this.pricing.reserve(ownerId, modelId, providerRequest as unknown as Record<string, unknown>);
+    let job: GenerationJob | null = null;
     try {
-      const result = await this.gateway.generateImage(modelId, request);
+      job = await this.prisma.generationJob.create({
+        data: {
+          id: newId("generation"),
+          ownerId,
+          modelKind: "image",
+          modelId,
+          status: "running",
+          request: {
+            ...providerRequest,
+            referenceAssetIds,
+            referenceInputs: referenceImages.map(({ assetId, mimeType, size }) => ({ assetId, mimeType, size })),
+          } as unknown as Prisma.InputJsonValue,
+        },
+      });
+      const jobId = job.id;
+      await this.pricing.attach(billing.usageId, { jobId });
+      const result = await this.gateway.generateImage(modelId, generationRequest);
       const assets = await Promise.all(
         result.outputs.map((output, index) =>
           this.assets.create({
@@ -55,14 +80,25 @@ export class MediaGenerationService {
             content: output.content,
             mimeType: output.mimeType,
             source: "canvas",
-            sourceId: result.channelId,
+            sourceId: jobId,
             inLibrary: false,
             copyRemote: true,
           }),
         ),
       );
-      await this.pricing.settle(billing.usageId, { channelId: result.channelId });
+      await this.prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          channelId: result.channelId,
+          status: "succeeded",
+          result: { assetIds: assets.map((asset) => asset.id) },
+          errorMessage: null,
+          updatedAt: new Date(),
+        },
+      });
+      await this.pricing.settle(billing.usageId, { channelId: result.channelId, jobId });
       return {
+        jobId,
         status: "succeeded" as const,
         model: result.model,
         provider: result.provider,
@@ -71,6 +107,14 @@ export class MediaGenerationService {
         assets,
       };
     } catch (error) {
+      if (job) {
+        await this.prisma.generationJob
+          .update({
+            where: { id: job.id },
+            data: { status: "failed", errorMessage: (error as Error).message, updatedAt: new Date() },
+          })
+          .catch(() => undefined);
+      }
       await this.pricing.refund(billing.usageId, (error as Error).message || "图片生成失败");
       throw error;
     }

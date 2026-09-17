@@ -312,6 +312,8 @@ model ProviderChannel {
   costPricing      Json?                @map("cost_pricing")
   costCurrency     String?              @map("cost_currency")
   costUpdatedAt    DateTime?            @map("cost_updated_at") @db.Timestamptz(6)
+  capabilities     Json                 @default("{}")
+  weight           Int                  @default(100)
   priority         Int                  @default(100)
   enabled          Boolean              @default(true)
   failureThreshold Int                  @default(3) @map("failure_threshold")
@@ -325,7 +327,7 @@ model ProviderChannel {
   provider         ModelProvider        @relation(fields: [providerId], references: [id], onDelete: Restrict)
   model            ModelDefinition      @relation(fields: [modelId], references: [id], onDelete: Restrict)
 
-  @@index([modelId, enabled, priority], map: "provider_channel_route_idx")
+  @@index([modelId, enabled, weight, priority], map: "provider_channel_route_idx")
   @@index([providerId, enabled], map: "provider_channel_provider_idx")
   @@map("provider_channels")
 }

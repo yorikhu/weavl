@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import { newId } from "../../common/id";
 import { PrismaService } from "../../infrastructure/database/prisma.service";
+import { channelSupports } from "../integrations/provider-registry.service";
 
 interface PricingInput {
   [key: string]: unknown;
@@ -42,6 +43,8 @@ export class PricingService {
     });
     const rule = rules.find((candidate) => this.matches(candidate.conditions, input));
     if (!rule) return this.costBasedQuote(modelId, input, channelId);
+    if (!(await this.supportsRequest(modelId, input, channelId)))
+      return this.unavailableQuote(modelId, "当前规格没有可用渠道");
 
     const units = rule.unitField ? this.numericValue(input, rule.unitField) : 1;
     const credits = Math.max(rule.minimumCredits, Math.ceil(rule.creditsPerUnit * units));
@@ -285,6 +288,23 @@ export class PricingService {
     });
   }
 
+  /** 确认手工价格规则对应的请求仍有至少一条渠道可以执行。 */
+  private async supportsRequest(modelId: string, input: PricingInput, channelId?: string) {
+    const model = await this.prisma.modelDefinition.findUnique({ where: { id: modelId } });
+    if (!model) return false;
+    const channels = await this.prisma.providerChannel.findMany({
+      where: channelId
+        ? { id: channelId, enabled: true, provider: { enabled: true } }
+        : model.isAuto
+          ? { enabled: true, provider: { enabled: true }, model: { kind: model.kind, enabled: true, isAuto: false } }
+          : { modelId, enabled: true, provider: { enabled: true } },
+      select: { capabilities: true, model: { select: { capabilities: true } } },
+    });
+    return channels.some((channel) =>
+      channelSupports(this.channelCapabilities(channel.capabilities, channel.model.capabilities), input),
+    );
+  }
+
   /** 根据同步后的供应商成本、积分价值和加价率生成保守报价。 */
   private async costBasedQuote(modelId: string, input: PricingInput, channelId?: string) {
     const model = await this.prisma.modelDefinition.findUnique({ where: { id: modelId } });
@@ -296,12 +316,17 @@ export class PricingService {
           ? { enabled: true, provider: { enabled: true }, model: { kind: model.kind, enabled: true, isAuto: false } }
           : { modelId, enabled: true, provider: { enabled: true } },
       orderBy: [{ priority: "asc" }, { id: "asc" }],
+      include: { model: { select: { capabilities: true } } },
     });
     const policy = await this.prisma.billingPolicy.findUnique({ where: { id: "default" } });
     const creditValueCny = Number(policy?.creditValueCny ?? 0.035);
     const markupRate = Number(policy?.markupRate ?? 0.1);
     const usdCnyRate = Number(policy?.usdCnyRate ?? 7.2);
-    const estimates = channels.flatMap((channel) => {
+    const eligibleChannels = channels.filter((channel) =>
+      channelSupports(this.channelCapabilities(channel.capabilities, channel.model.capabilities), input),
+    );
+    if (!eligibleChannels.length) return this.unavailableQuote(modelId, "当前规格没有可用渠道");
+    const estimates = eligibleChannels.flatMap((channel) => {
       const estimate = this.estimateChannel(model.kind, channel.costPricing, input);
       return estimate
         ? [{ ...estimate, channelId: channel.id, channelLabel: channel.label, costPricing: channel.costPricing }]
@@ -309,7 +334,7 @@ export class PricingService {
     });
     if (!estimates.length) {
       return this.platformEstimateQuote(modelId, model.kind, input, {
-        configured: channels.length > 0,
+        configured: true,
         creditValueCny,
         markupRate,
         usdCnyRate,
@@ -365,6 +390,17 @@ export class PricingService {
       policy: { creditValueCny, markupRate, usdCnyRate },
       snapshot,
     };
+  }
+
+  /** 将 Prisma JSON 能力配置收敛为渠道匹配需要的普通对象。 */
+  private objectValue(value: Prisma.JsonValue): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  }
+
+  /** 返回渠道能力；尚未迁移的旧渠道沿用所属模型的默认能力。 */
+  private channelCapabilities(channelValue: Prisma.JsonValue, modelValue: Prisma.JsonValue) {
+    const capabilities = this.objectValue(channelValue);
+    return Object.keys(capabilities).length ? capabilities : this.objectValue(modelValue);
   }
 
   /** 将单条渠道的供应商计费项换算为一次调用的成本。 */

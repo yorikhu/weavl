@@ -6,7 +6,7 @@ import { SessionGuard } from "../auth/session.guard";
 import { MediaGenerationService } from "./media-generation.service";
 
 const imageSchema = z.object({
-  model: z.string().trim().min(1).default("gpt-image-2.5-flare"),
+  model: z.string().trim().min(1).default("gpt-image-2"),
   prompt: z.string().trim().min(1).max(5000),
   count: z.number().int().min(1).max(4).default(1),
   ratio: z.string().trim().max(20).optional(),
@@ -16,6 +16,7 @@ const imageSchema = z.object({
     .optional(),
   resolution: z.enum(["1K", "2K", "4K"]).optional(),
   quality: z.string().trim().max(30).optional(),
+  referenceAssetIds: z.array(z.string().trim().min(1)).max(16).default([]),
 });
 
 const videoSchema = z.object({

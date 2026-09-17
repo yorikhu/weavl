@@ -2,6 +2,7 @@ import { BadGatewayException, Injectable } from "@nestjs/common";
 import { newId } from "../../common/id";
 import { PrismaService } from "../../infrastructure/database/prisma.service";
 import { OpenAiCompatibleAdapter } from "./providers/openai-compatible.adapter";
+import { OpenAiImageAdapter } from "./providers/openai-image.adapter";
 import { VertexImageAdapter } from "./providers/vertex-image.adapter";
 import { VertexVideoAdapter } from "./providers/vertex-video.adapter";
 import { ProviderRegistryService } from "./provider-registry.service";
@@ -17,6 +18,7 @@ export class ModelGatewayService {
     private readonly prisma: PrismaService,
     private readonly registry: ProviderRegistryService,
     private readonly textAdapter: OpenAiCompatibleAdapter,
+    private readonly openAiImageAdapter: OpenAiImageAdapter,
     private readonly imageAdapter: VertexImageAdapter,
     private readonly videoAdapter: VertexVideoAdapter,
   ) {}
@@ -30,7 +32,7 @@ export class ModelGatewayService {
    * @throws {BadGatewayException} 所有候选渠道均失败或不存在可用渠道时抛出。
    */
   async generateText(modelId: string, request: TextGenerationRequest) {
-    const channels = await this.registry.candidates("text", modelId);
+    const channels = await this.registry.candidates("text", modelId, request as unknown as Record<string, unknown>);
     const errors: string[] = [];
     for (const channel of channels) {
       const started = Date.now();
@@ -72,7 +74,8 @@ export class ModelGatewayService {
    * @throws {BadGatewayException} 所有图片渠道均失败时抛出。
    */
   async generateImage(modelId: string, request: ImageGenerationRequest) {
-    return this.execute("image", modelId, async (channel) => {
+    return this.execute("image", modelId, request as unknown as Record<string, unknown>, async (channel) => {
+      if (channel.protocol === "openai-image") return this.openAiImageAdapter.generate(channel, request);
       if (channel.protocol !== "vertex-image" && channel.protocol !== "vertex-generate-content")
         throw new Error(`图片渠道协议不受支持：${channel.protocol}`);
       return this.imageAdapter.generate(channel, request);
@@ -88,7 +91,7 @@ export class ModelGatewayService {
    * @throws {BadGatewayException} 所有视频渠道均失败时抛出。
    */
   async submitVideo(modelId: string, request: VideoGenerationRequest) {
-    return this.execute("video", modelId, async (channel) => {
+    return this.execute("video", modelId, request as unknown as Record<string, unknown>, async (channel) => {
       if (channel.protocol !== "vertex-video") throw new Error(`视频渠道协议不受支持：${channel.protocol}`);
       return this.videoAdapter.submit(channel, request);
     });
@@ -131,6 +134,7 @@ export class ModelGatewayService {
    * @template T - 适配器返回类型，必须包含 HTTP 状态码。
    * @param kind - 本次调用的媒体类型。
    * @param modelId - 平台稳定模型标识或自动路由标识。
+   * @param parameters - 用于匹配渠道能力的标准化生成参数。
    * @param call - 针对单条候选渠道执行的协议调用。
    * @returns 首个成功渠道的结果和渠道元数据。
    * @throws {BadGatewayException} 所有候选渠道均失败时抛出。
@@ -138,9 +142,10 @@ export class ModelGatewayService {
   private async execute<T extends { statusCode: number }>(
     kind: "image" | "video",
     modelId: string,
+    parameters: Record<string, unknown>,
     call: (channel: Awaited<ReturnType<ProviderRegistryService["candidates"]>>[number]) => Promise<T>,
   ) {
-    const channels = await this.registry.candidates(kind, modelId);
+    const channels = await this.registry.candidates(kind, modelId, parameters);
     const errors: string[] = [];
     for (const channel of channels) {
       const started = Date.now();
@@ -162,7 +167,7 @@ export class ModelGatewayService {
       }
     }
     throw new BadGatewayException(
-      errors.length ? `所有可用渠道均调用失败：${errors.join("；")}` : "当前模型没有可用渠道",
+      errors.length ? `所有可用渠道均调用失败：${errors.join("；")}` : "当前规格没有可用渠道",
     );
   }
 

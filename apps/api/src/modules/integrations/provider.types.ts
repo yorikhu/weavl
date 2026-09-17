@@ -13,6 +13,8 @@ export interface ProviderChannel {
   label: string;
   baseUrl: string;
   apiKeyEnv: string;
+  capabilities: Record<string, unknown>;
+  weight: number;
   priority: number;
   enabled: boolean;
   failureThreshold: number;
@@ -20,7 +22,8 @@ export interface ProviderChannel {
 }
 
 /** 模型供应商当前支持的请求协议。 */
-export type ProviderProtocol = "openai-chat" | "vertex-image" | "vertex-generate-content" | "vertex-video";
+export type ProviderProtocol =
+  "openai-chat" | "openai-image" | "vertex-image" | "vertex-generate-content" | "vertex-video";
 
 /** 暴露给客户端的稳定模型元数据，不包含供应商密钥和端点。 */
 export interface GenerationModel {
@@ -68,6 +71,7 @@ export interface ImageGenerationRequest {
   resolution?: string;
   quality?: string;
   referenceImage?: { data: string; mimeType: string };
+  referenceImages?: Array<{ data: string; mimeType: string }>;
 }
 
 /** 不同视频供应商适配器共享的生成参数。 */

@@ -35,6 +35,8 @@ export interface ChannelConfigInput {
   remoteModel: string;
   label: string;
   baseUrl: string;
+  capabilities?: Record<string, unknown>;
+  weight?: number;
   priority?: number;
   enabled?: boolean;
   failureThreshold?: number;
@@ -92,7 +94,10 @@ export class IntegrationConfigService {
     await this.assertProvider(id);
     if (
       input.code &&
-      (await this.prisma.modelProvider.findFirst({ where: { code: input.code, id: { not: id } }, select: { id: true } }))
+      (await this.prisma.modelProvider.findFirst({
+        where: { code: input.code, id: { not: id } },
+        select: { id: true },
+      }))
     )
       throw new ConflictException("服务商代码已存在");
     return this.prisma.modelProvider.update({
@@ -200,7 +205,7 @@ export class IntegrationConfigService {
         provider: { select: { id: true, code: true, label: true, enabled: true, apiKeyEnv: true } },
         model: { select: { id: true, kind: true, label: true, enabled: true } },
       },
-      orderBy: [{ model: { kind: "asc" } }, { modelId: "asc" }, { priority: "asc" }],
+      orderBy: [{ model: { kind: "asc" } }, { modelId: "asc" }, { weight: "desc" }, { priority: "asc" }],
     });
   }
 
@@ -213,7 +218,13 @@ export class IntegrationConfigService {
   async createChannel(input: ChannelConfigInput) {
     const [, model] = await Promise.all([this.assertProvider(input.providerId), this.assertModel(input.modelId)]);
     if (model.isAuto) throw new BadRequestException("自动路由模型不能直接绑定供应渠道");
-    return this.prisma.providerChannel.create({ data: { id: newId("channel"), ...input } });
+    return this.prisma.providerChannel.create({
+      data: {
+        id: newId("channel"),
+        ...input,
+        capabilities: (input.capabilities || {}) as Prisma.InputJsonValue,
+      },
+    });
   }
 
   /**
@@ -230,7 +241,14 @@ export class IntegrationConfigService {
       input.modelId ? this.assertModel(input.modelId) : Promise.resolve(),
     ]);
     if (model?.isAuto) throw new BadRequestException("自动路由模型不能直接绑定供应渠道");
-    return this.prisma.providerChannel.update({ where: { id }, data: { ...input, updatedAt: new Date() } });
+    return this.prisma.providerChannel.update({
+      where: { id },
+      data: {
+        ...input,
+        capabilities: input.capabilities as Prisma.InputJsonValue | undefined,
+        updatedAt: new Date(),
+      },
+    });
   }
 
   /**

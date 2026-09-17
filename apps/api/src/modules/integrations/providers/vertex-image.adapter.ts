@@ -53,10 +53,11 @@ export class VertexImageAdapter {
     }
 
     const instance: Record<string, unknown> = { prompt: request.prompt };
-    if (request.referenceImage) {
+    const referenceImage = request.referenceImages?.[0] ?? request.referenceImage;
+    if (referenceImage) {
       instance.image = {
-        bytesBase64Encoded: request.referenceImage.data,
-        mimeType: request.referenceImage.mimeType,
+        bytesBase64Encoded: referenceImage.data,
+        mimeType: referenceImage.mimeType,
       };
     }
     const { data, statusCode } = await this.http.post<{ predictions?: VertexImage[] }>(
@@ -66,8 +67,11 @@ export class VertexImageAdapter {
         instances: [instance],
         parameters: {
           sampleCount: request.count || 1,
-          ...(request.ratio ? { aspectRatio: request.ratio } : {}),
+          /* 精确尺寸已经包含比例，避免供应商同时收到两个尺寸约束后采用错误方向。 */
+          ...(!request.size && request.ratio ? { aspectRatio: request.ratio } : {}),
+          /* OpenAI 图片模型使用精确 imageSize；其他模型没有尺寸时才回退到分辨率档位。 */
           ...(request.size ? { imageSize: request.size } : {}),
+          ...(!request.size && request.resolution ? { sampleImageSize: request.resolution } : {}),
           ...(request.quality ? { quality: request.quality } : {}),
         },
       },
