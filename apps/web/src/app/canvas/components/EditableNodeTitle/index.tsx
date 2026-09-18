@@ -51,7 +51,6 @@ export function EditableNodeTitle({ nodeId, value, fallback, className }: Editab
         className={`${styles.input} ${className ?? ""} nodrag nopan`}
         value={draft}
         autoFocus
-        style={{ width: `${Math.max(4, (draft.length || fallback.length) + 1)}ch` }}
         aria-label="节点名称"
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
