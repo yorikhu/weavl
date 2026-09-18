@@ -1,4 +1,5 @@
 .editor {
+  position: relative;
   width: 100%;
   min-height: 72px;
   max-height: 170px;
@@ -12,9 +13,14 @@
   cursor: text;
 }
 .editor[data-empty="true"]::before {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: inherit;
   content: attr(data-placeholder);
   color: var(--muted-foreground);
   pointer-events: none;
+  white-space: pre-wrap;
 }
 .token {
   box-sizing: border-box;

@@ -155,6 +155,16 @@ function readText(root: HTMLElement) {
   return (clone.textContent || "").replaceAll("\u200b", "");
 }
 
+/** 判断文本是否包含空白、换行和编辑器控制字符之外的可见内容。 */
+function hasVisibleText(value: string) {
+  return value.replace(/[\s\u200b-\u200d\ufeff]/gu, "").length > 0;
+}
+
+/** 判断结构化文档是否包含可见文字或标签。 */
+function hasVisibleParts(parts: ComposerPart[]) {
+  return parts.some((part) => part.type === "token" || hasVisibleText(part.text));
+}
+
 /** 将 contentEditable DOM 转换为不依赖 HTML 的有序文档。 */
 function readParts(root: HTMLElement): ComposerPart[] {
   const parts: ComposerPart[] = [];
@@ -343,9 +353,11 @@ export const InlineComposer = forwardRef<InlineComposerHandle, InlineComposerPro
     }
     knownTokensRef.current = tokens;
     const text = readText(editor);
-    editor.dataset.empty = text || tokens.length ? "false" : "true";
-    callbacksRef.current.onValueChange(text);
-    callbacksRef.current.onPartsChange?.(readParts(editor));
+    const parts = readParts(editor);
+    const empty = !tokens.length && !hasVisibleText(text);
+    editor.dataset.empty = empty ? "true" : "false";
+    callbacksRef.current.onValueChange(empty ? "" : text);
+    callbacksRef.current.onPartsChange?.(empty ? [] : parts);
     if (!preserveRange) saveRange();
     callbacksRef.current.onMentionQueryChange?.(mentionQueryAtCaret(editor));
     requestAnimationFrame(() => {
@@ -533,7 +545,7 @@ export const InlineComposer = forwardRef<InlineComposerHandle, InlineComposerPro
       });
       editor.replaceChildren(fragment);
       knownTokensRef.current = [...editor.querySelectorAll("[data-token-type]")].map(tokenFromNode);
-      editor.dataset.empty = parts.length ? "false" : "true";
+      editor.dataset.empty = hasVisibleParts(parts) ? "false" : "true";
       rangeRef.current = null;
     },
     focus() {
@@ -574,7 +586,7 @@ export const InlineComposer = forwardRef<InlineComposerHandle, InlineComposerPro
     const editor = editorRef.current;
     if (!editor || document.activeElement === editor || readText(editor) === value) return;
     editor.replaceChildren(document.createTextNode(value));
-    editor.dataset.empty = value ? "false" : "true";
+    editor.dataset.empty = hasVisibleText(value) ? "false" : "true";
   }, [value]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -628,6 +640,8 @@ export const InlineComposer = forwardRef<InlineComposerHandle, InlineComposerPro
       title={submitOnEnter ? "Enter 发送；Shift / Ctrl / Command + Enter 换行" : "Enter 换行；点击发送按钮提交"}
       onCompositionStart={() => {
         composingRef.current = true;
+        /* 拼音组合文字已进入 DOM，但完整同步会打断输入法；先单独隐藏空态占位。 */
+        if (editorRef.current) editorRef.current.dataset.empty = "false";
       }}
       onCompositionEnd={() => {
         composingRef.current = false;
