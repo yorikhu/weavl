@@ -19,6 +19,8 @@ import { newId } from "../../common/id";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
 import { ObjectStorageService } from "../storage/object-storage.service";
+
+/** 旧版 JSON 数据文件的完整结构，仅用于首次迁移到 PostgreSQL。 */
 type LegacyState = {
   users: Array<{ id: string; email: string; name: string; passwordHash: string; createdAt: string }>;
   sessions: Array<{ id: string; userId: string; tokenHash: string; expiresAt: string }>;
@@ -38,7 +40,16 @@ type LegacyState = {
   workflows: WorkflowDefinition[];
   workflowRuns: WorkflowRunRecord[];
 };
-/** One-time bridge for local installations. It imports the former JSON store only when PostgreSQL is empty. */
+
+/**
+ * 在空数据库首次启动时导入旧版 JSON 数据，或创建最小演示账号。
+ *
+ * @remarks
+ * 这是旧存储向 PostgreSQL 与对象存储迁移的一次性兼容层，不参与正常业务
+ * 读写，也不会持续同步 JSON 文件。只要 PostgreSQL 已存在任意用户，启动时便
+ * 直接跳过。旧数据中的 Data URL 资产与项目封面会写入对象存储，其余结构化
+ * 数据会按依赖顺序写入 PostgreSQL。
+ */
 @Injectable()
 export class LegacyImportService implements OnApplicationBootstrap {
   constructor(
@@ -46,9 +57,14 @@ export class LegacyImportService implements OnApplicationBootstrap {
     private readonly storage: ObjectStorageService,
   ) {}
   /**
-   * 在应用启动后执行兼容数据导入。
+   * 在 NestJS 完成应用初始化后执行一次空库引导。
    *
-   * @returns 生命周期处理完成后的 Promise。
+   * @remarks
+   * PostgreSQL 已有用户时不做任何操作。空库时优先读取
+   * `WEAVL_MOCK_DATA_FILE` 指定的旧数据文件；未配置时读取
+   * `./data/weavl.mock.json`。文件不存在则创建演示账号。
+   *
+   * @returns 数据导入、演示账号创建或空库检查完成后的 Promise。
    */
   async onApplicationBootstrap() {
     if (await this.prisma.user.count()) return;
@@ -56,6 +72,16 @@ export class LegacyImportService implements OnApplicationBootstrap {
     if (existsSync(path)) await this.import(JSON.parse(await readFile(path, "utf8")) as LegacyState);
     else await this.seedDemo();
   }
+
+  /**
+   * 为全新安装创建可登录的演示账号、免费账户与初始积分流水。
+   *
+   * @remarks
+   * 账号密码优先读取 `WEAVL_DEMO_EMAIL` 与 `WEAVL_DEMO_PASSWORD`；默认值仅
+   * 用于本地开发。该方法只会由空库引导流程调用。
+   *
+   * @returns 演示账号及其关联记录写入完成后的 Promise。
+   */
   private async seedDemo() {
     await this.prisma.user.create({
       data: {
@@ -76,6 +102,18 @@ export class LegacyImportService implements OnApplicationBootstrap {
       },
     });
   }
+
+  /**
+   * 将旧版 JSON 状态按外键依赖顺序迁移到 PostgreSQL 与对象存储。
+   *
+   * @remarks
+   * 导入顺序为用户与会话、账户、资产目录与资产、项目与画布、Agent 会话、
+   * Skill、工作流及运行记录。资产版本和 Data URL 项目封面会先持久化到对象
+   * 存储，再把返回的 URL 与 storage key 写入数据库。
+   *
+   * @param state - 从旧版 `weavl.mock.json` 解析出的完整应用状态。
+   * @returns 全部旧数据迁移完成后的 Promise。
+   */
   private async import(state: LegacyState) {
     await this.prisma.user.createMany({
       data: state.users.map((x) => ({

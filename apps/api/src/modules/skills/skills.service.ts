@@ -66,6 +66,10 @@ export class SkillsService {
   /**
    * 读取可用 Skill。
    *
+   * @remarks
+   * 查询同时要求 Skill 位于请求的 ID 集合中，并满足以下任一访问条件：属于
+   * 当前用户，或由平台标记为官方 Skill。
+   *
    * @param ids - 资源标识列表。
    * @param userId - 当前用户 ID。
    * @returns 读取可用 Skill后的结果。
