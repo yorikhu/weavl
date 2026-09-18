@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Handle, NodeToolbar, Position, useReactFlow, useStore, type NodeProps } from "@xyflow/react";
-import type { Asset, GenerationModelOption } from "@weavl/shared";
+import { Handle, NodeToolbar, Position, useReactFlow, useStore, type Node, type NodeProps } from "@xyflow/react";
+import type { GenerationModelOption } from "@weavl/shared";
 import { Download, Image as ImageIcon, Maximize2, Palette } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { toast } from "@/hooks/useToast";
@@ -10,6 +10,7 @@ import { useGenerationQuote } from "@/hooks/useGenerationQuote";
 import { formatGenerationPrice } from "@/lib/generationPricing";
 import { API } from "@/lib/env";
 import { jsonBody, studioApi } from "@/lib/studioApi";
+import { useAccount } from "@/provider/AccountProvider";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
 import { NodeGenerationOverlay } from "../NodeGenerationOverlay";
@@ -28,6 +29,7 @@ import { getGenerationErrorMessage, updateNodeGenerationState } from "../../../.
 import { compilePromptDocument } from "../../../../utils/promptDocument";
 import { downloadFile } from "@/utils/downloadFile";
 import { CanvasActionToolbar } from "../../../CanvasActionToolbar";
+import { waitForImageGeneration, type ImageGenerationJobView } from "../../../../utils/imageGenerationJobs";
 import sharedStyles from "../../index.module.scss";
 
 const styles = sharedStyles;
@@ -44,6 +46,34 @@ const FALLBACK_IMAGE_MODELS: GenerationModelOption[] = [
     configured: false,
   },
 ];
+
+/** 将已完成的异步图片任务写回发起任务的节点。 */
+function applyCompletedImageJob(nodes: Node[], nodeId: string, job: ImageGenerationJobView) {
+  const generatedAsset = job.assets?.[0];
+  const generatedVersion = generatedAsset?.versions.at(-1);
+  if (!generatedAsset || !generatedVersion?.content) return nodes;
+  const variants = (job.assets || []).flatMap((asset) => {
+    const version = asset.versions.at(-1);
+    return version?.content
+      ? [{ url: version.content, assetRef: { assetId: asset.id, versionId: version.id } }]
+      : [];
+  });
+  return nodes.map((node) =>
+    node.id === nodeId
+      ? {
+          ...node,
+          data: {
+            ...node.data,
+            url: generatedVersion.content,
+            assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
+            variants,
+            generationStatus: "succeeded",
+            generationError: undefined,
+          },
+        }
+      : node,
+  );
+}
 
 /**
  * 将历史图片质量值归一化为当前参数面板支持的三档文案。
@@ -162,6 +192,39 @@ export function ImageNode({ data, id, selected }: NodeProps) {
   const groupMemberFocused = useStore((state) =>
     Boolean(state.nodeLookup.get(id)?.className?.split(/\s+/).includes("canvas-group-member-focused")),
   );
+  useEffect(() => {
+    const jobId = d.generationJobId;
+    if (!jobId || !["queued", "running", "finalizing"].includes(d.generationStatus || "")) return;
+    let active = true;
+    void waitForImageGeneration(jobId)
+      .then((job) => {
+        if (!active) return;
+        if (job.status === "failed") {
+          setNodes((current) =>
+            updateNodeGenerationState(current, id, {
+              generationStatus: "failed",
+              generationJobId: jobId,
+              generationError: job.error || "图片生成失败",
+            }),
+          );
+          return;
+        }
+        setNodes((current) => applyCompletedImageJob(current, id, job));
+      })
+      .catch((cause) => {
+        if (!active) return;
+        setNodes((current) =>
+          updateNodeGenerationState(current, id, {
+            generationStatus: "queued",
+            generationJobId: jobId,
+            generationError: getGenerationErrorMessage(cause, "图片任务查询失败"),
+          }),
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [d.generationJobId, d.generationStatus, id, setNodes]);
   useEffect(() => {
     if (d.url || d.ratio) return;
     setNodes((current) =>
@@ -282,6 +345,7 @@ export function ImageNode({ data, id, selected }: NodeProps) {
  */
 export function ImageEditPanel() {
   const edit = useContext(EnterEditContext);
+  const { refresh: refreshAccount } = useAccount();
   const { getNodes, setNodes } = useReactFlow();
   /** 当前编辑的图片节点（editingId）—— 字段初值取自节点的 data */
   const editingId = edit.editingId;
@@ -301,7 +365,11 @@ export function ImageEditPanel() {
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const syncedNodeIdRef = useRef<string | null>(null);
   const generatingNodeIdsRef = useRef(new Set<string>());
-  const busy = Boolean(editingId && data?.generationStatus === "running");
+  const latestEditingIdRef = useRef(editingId);
+  latestEditingIdRef.current = editingId;
+  const busy = Boolean(
+    editingId && ["queued", "running", "finalizing"].includes(data?.generationStatus || ""),
+  );
   const selectedModel = models.find((item) => item.id === model);
   const capabilities = resolveMediaCapabilities("image", selectedModel?.capabilities);
   const dimensions = capabilities.dimensions;
@@ -454,6 +522,7 @@ export function ImageEditPanel() {
   const onGenerate = useCallback(async () => {
     const nodeId = edit.editingId;
     if (!nodeId || !prompt.trim() || generatingNodeIdsRef.current.has(nodeId)) return;
+    let submittedJobId: string | null = null;
     generatingNodeIdsRef.current.add(nodeId);
     setNodes((nodes) =>
       updateNodeGenerationState(nodes, nodeId, { generationStatus: "running", generationError: undefined }),
@@ -468,7 +537,7 @@ export function ImageEditPanel() {
           ? [materialData.assetRef.assetId]
           : [];
       });
-      const result = await studioApi<{ assets: Asset[] }>("/studio/generations/image", {
+      const submittedJob = await studioApi<ImageGenerationJobView>("/studio/generations/image", {
         method: "POST",
         body: jsonBody({
           model,
@@ -481,38 +550,61 @@ export function ImageEditPanel() {
           referenceAssetIds,
         }),
       });
-      const generatedAsset = result.assets[0];
-      const generatedVersion = generatedAsset?.versions.at(-1);
-      if (!generatedAsset || !generatedVersion?.content) throw new Error("图片模型没有返回可用产物");
-      const variants = result.assets.flatMap((asset) => {
-        const version = asset.versions.at(-1);
-        return version?.content
-          ? [{ url: version.content, assetRef: { assetId: asset.id, versionId: version.id } }]
-          : [];
-      });
-      edit.commitImageEdit?.(nodeId, {
-        prompt,
-        ratio: effectiveRatio,
-        quality: effectiveQuality,
-        resolution: effectiveResolution,
-        count: effectiveCount,
-        model,
-        url: generatedVersion.content,
-        assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
-        variants,
-        size: generationDimension ? getMediaCardSize(generationDimension) : undefined,
-        generationSize: generationDimension
-          ? { width: generationDimension.width, height: generationDimension.height }
-          : undefined,
-        generationStatus: "succeeded",
-      });
-      toast(result.assets.length > 1 ? `${result.assets.length} 张图片已生成` : "图片已生成", "success");
+      submittedJobId = submittedJob.id;
+      void refreshAccount();
+      setNodes((currentNodes) =>
+        currentNodes.map((currentNode) =>
+          currentNode.id === nodeId
+            ? {
+                ...currentNode,
+                data: {
+                  ...currentNode.data,
+                  prompt,
+                  ratio: effectiveRatio,
+                  quality: effectiveQuality,
+                  resolution: effectiveResolution,
+                  count: effectiveCount,
+                  model,
+                  size: generationDimension ? getMediaCardSize(generationDimension) : currentData?.size,
+                  generationSize: generationDimension
+                    ? { width: generationDimension.width, height: generationDimension.height }
+                    : currentData?.generationSize,
+                  generationStatus: "queued",
+                  generationJobId: submittedJob.id,
+                  generationError: undefined,
+                },
+              }
+            : currentNode,
+        ),
+      );
+      const completedJob = await waitForImageGeneration(submittedJob.id);
+      if (completedJob.status === "failed" || !completedJob.assets?.[0]?.versions.at(-1)?.content) {
+        const message = completedJob.error || "图片模型没有返回可用产物";
+        setNodes((nodes) =>
+          updateNodeGenerationState(nodes, nodeId, {
+            generationStatus: "failed",
+            generationJobId: submittedJob.id,
+            generationError: message,
+          }),
+        );
+        void refreshAccount();
+        toast(message);
+        return;
+      }
+      setNodes((currentNodes) => applyCompletedImageJob(currentNodes, nodeId, completedJob));
+      if (latestEditingIdRef.current === nodeId) edit.exitEdit();
+      toast(completedJob.assets.length > 1 ? `${completedJob.assets.length} 张图片已生成` : "图片已生成", "success");
     } catch (cause) {
       const message = getGenerationErrorMessage(cause, "图片生成失败");
+      void refreshAccount();
       setNodes((nodes) =>
-        updateNodeGenerationState(nodes, nodeId, { generationStatus: "failed", generationError: message }),
+        updateNodeGenerationState(nodes, nodeId, {
+          generationStatus: submittedJobId ? "queued" : "failed",
+          generationJobId: submittedJobId || undefined,
+          generationError: message,
+        }),
       );
-      toast(message);
+      toast(submittedJobId ? "任务已提交，状态查询暂时中断，重新打开画布后会继续恢复" : message);
     } finally {
       generatingNodeIdsRef.current.delete(nodeId);
     }
@@ -526,6 +618,7 @@ export function ImageEditPanel() {
     model,
     prompt,
     generationDimension,
+    refreshAccount,
     setNodes,
   ]);
 
