@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useReactFlow, type Connection, type Edge, type Node } from "@xyflow/react";
+import { createClientId } from "@/utils/createClientId";
 import type { BasicNodeKind } from "../types/nodes";
 import { CANVAS_HANDLE_MAGNET_RADIUS } from "../constants/viewport";
 import { createBasicNode } from "../utils/nodeFactory";
@@ -117,7 +118,7 @@ export function useCanvasConnections(
         .map(
           (source) =>
             ({
-              id: `e_${crypto.randomUUID()}`,
+              id: createClientId("e"),
               source,
               target,
               type: "default",
@@ -572,7 +573,7 @@ export function useCanvasConnections(
         ...sources.map(
           (source) =>
             ({
-              id: `e_${crypto.randomUUID()}`,
+              id: createClientId("e"),
               source,
               target: newNode.id,
               type: "default",

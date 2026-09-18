@@ -4,6 +4,7 @@ import type { Edge, Node, Viewport } from "@xyflow/react";
 import { toast } from "@/hooks/useToast";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { assetToCanvasNode } from "@/utils/assetNode";
+import { createClientId } from "@/utils/createClientId";
 import { uploadAsset } from "@/utils/uploadAsset";
 import type { CanvasAddMenuPosition } from "../components/CanvasAddMenus";
 import { createBasicNode } from "../utils/nodeFactory";
@@ -57,7 +58,7 @@ function createNodeCopy(source: Node, position: { x: number; y: number }): Node 
   data.title = `${title} 副本`;
   return {
     ...source,
-    id: `node_${crypto.randomUUID()}`,
+    id: createClientId("node"),
     position,
     data,
     selectable: true,
@@ -110,7 +111,7 @@ function createNodeCopyBundle(
   const top = Math.min(...sources.map((node) => node.position.y));
   const firstLayer = Math.max(0, ...current.map((node) => node.zIndex ?? 0)) + 1;
   const groupIds = new Map<string, string>();
-  const idMap = new Map(sources.map((node) => [node.id, `node_${crypto.randomUUID()}`]));
+  const idMap = new Map(sources.map((node) => [node.id, createClientId("node")]));
   const copies = sources.map((source) => {
     const sourceData = structuredClone(source.data as Record<string, unknown>);
     const originalGroupId = typeof sourceData.groupId === "string" ? sourceData.groupId : null;
@@ -121,7 +122,7 @@ function createNodeCopyBundle(
     const data = clonesCompleteGroup || preservesMembership ? sourceData : stripNodeGroup(sourceData);
     data.title = copyTitle(data);
     if (originalGroupId && clonesCompleteGroup) {
-      const copiedGroupId = groupIds.get(originalGroupId) ?? `group_${crypto.randomUUID()}`;
+      const copiedGroupId = groupIds.get(originalGroupId) ?? createClientId("group");
       groupIds.set(originalGroupId, copiedGroupId);
       data.groupId = copiedGroupId;
       data.groupName = `${typeof data.groupName === "string" ? data.groupName : "Group"} 副本`;
@@ -276,7 +277,7 @@ export function useCanvasAssets(options: UseCanvasAssetsOptions) {
         ...current,
         ...upstreamEdges.map((edge) => ({
           ...edge,
-          id: `e_${crypto.randomUUID()}`,
+          id: createClientId("e"),
           source: bundle.idMap.get(edge.source) ?? edge.source,
           target: bundle.idMap.get(edge.target)!,
           selected: false,
