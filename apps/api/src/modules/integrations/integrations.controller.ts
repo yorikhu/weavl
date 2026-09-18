@@ -45,7 +45,14 @@ const modelSchema = z.object({
 const channelSchema = z.object({
   providerId: z.string().trim().min(1),
   modelId: z.string().trim().min(1),
-  protocol: z.enum(["openai-chat", "openai-image", "vertex-image", "vertex-generate-content", "vertex-video"]),
+  protocol: z.enum([
+    "openai-chat",
+    "openai-image",
+    "gemini-generate-content",
+    "vertex-image",
+    "vertex-generate-content",
+    "vertex-video",
+  ]),
   remoteModel: z.string().trim().min(1).max(200),
   label: z.string().trim().min(1).max(120),
   baseUrl: z.string().trim().url().max(500),

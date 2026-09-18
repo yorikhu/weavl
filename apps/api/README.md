@@ -43,9 +43,9 @@ pnpm --filter @weavl/api db:studio
 
 `integrations` 将前端使用的逻辑模型与供应商的实际模型分开。一项逻辑模型可以配置多个渠道；路由按 `priority` 从小到大尝试，记录耗时、状态码和失败原因。渠道连续失败达到 `failureThreshold` 后，会在 `cooldownSeconds` 内暂时跳过，并自动尝试下一渠道。
 
-首批文本、图片和视频模型已通过 ZenMux 接入。模型、服务商、远端模型名、协议、BaseURL 和路由参数全部维护在 PostgreSQL；服务启动不会从环境变量覆盖这些配置。`.env` 只保存 `ZENMUX_API_KEY` 等密钥和请求超时。
+GPT Image 2 使用 GeekNow 的 OpenAI Images 兼容接口 `https://api.geeknow.ai/v1`。ZenMux 的历史服务商和渠道配置暂时保留在数据库中，但服务商与全部渠道均已停用，不会参与生成或价格同步。模型、服务商、远端模型名、协议、BaseURL 和路由参数全部维护在 PostgreSQL；服务启动不会从环境变量覆盖这些配置。`.env` 只保存当前启用服务商的密钥和请求超时。未配置密钥的服务商不会进入候选路由。
 
-平台使用稳定的内部 `modelId`。同一模型可以关联多个供应渠道，每条渠道分别维护 `remoteModel`、`protocol`、`baseUrl`、优先级和熔断参数，因此后续接入直连供应商不需要修改画布数据。`protocol` 首批支持 `openai-chat`、`vertex-image`、`vertex-generate-content` 和 `vertex-video`。
+平台使用稳定的内部 `modelId`。同一模型可以关联多个供应渠道，每条渠道分别维护 `remoteModel`、`protocol`、`baseUrl`、优先级和熔断参数，因此后续接入直连供应商不需要修改画布数据。`protocol` 首批支持 `openai-chat`、`openai-image`、`vertex-image`、`vertex-generate-content` 和 `vertex-video`。
 
 基础配置接口位于 `/api/studio/integrations`，当前由登录会话保护；后台账号体系完成后需替换为管理员权限守卫：
 

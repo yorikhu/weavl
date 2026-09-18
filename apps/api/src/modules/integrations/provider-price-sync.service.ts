@@ -26,6 +26,7 @@ export class ProviderPriceSyncService {
       include: { channels: true },
     });
     if (!provider) throw new NotFoundException("服务商不存在");
+    if (!provider.enabled) throw new BadRequestException("服务商已停用");
     if (!provider.pricingUrl || !provider.pricingAdapter)
       throw new BadRequestException("服务商尚未配置价格目录接口");
     if (provider.pricingAdapter !== "zenmux-models")

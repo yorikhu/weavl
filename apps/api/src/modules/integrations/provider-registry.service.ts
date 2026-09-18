@@ -6,7 +6,13 @@ import type { GenerationModel, ProviderChannel, ProviderProtocol } from "./provi
 type DatabaseChannel = Prisma.ProviderChannelGetPayload<{ include: { provider: true; model: true } }>;
 
 /** 首批模型的产品展示顺序；未列出的新模型保持数据库原顺序并排列在后。 */
-const MODEL_DISPLAY_ORDER = new Map([["gpt-image-2", 0]]);
+const MODEL_DISPLAY_ORDER = new Map([
+  ["gpt-image-2", 0],
+  ["gemini-3.1-flash-image", 1],
+  ["gemini-3-pro-image", 2],
+  ["gpt-image-2.5-flare", 3],
+  ["gpt-image-2.5-sunburst", 4],
+]);
 
 type GenerationParameters = Record<string, unknown>;
 
@@ -16,6 +22,9 @@ function normalizedQuality(value: string) {
     低画质: "low",
     标准画质: "medium",
     高画质: "high",
+    超高画质: "xhigh",
+    极致画质: "max",
+    自动: "auto",
   };
   return aliases[value] || value.toLowerCase();
 }
@@ -95,9 +104,30 @@ export function mergeChannelCapabilities(fallback: Record<string, unknown>, prof
       });
     }
   }
+  const dimensionTiers = new Map<string, Map<string, { ratio: string; width: number; height: number }>>();
+  for (const profile of configured) {
+    const tiers = profile.dimensionTiers;
+    if (!tiers || typeof tiers !== "object" || Array.isArray(tiers)) continue;
+    for (const [resolution, rawValues] of Object.entries(tiers)) {
+      if (!Array.isArray(rawValues)) continue;
+      const tier = dimensionTiers.get(resolution) ?? new Map();
+      for (const value of rawValues) {
+        if (!value || typeof value !== "object") continue;
+        const item = value as { ratio?: unknown; width?: unknown; height?: unknown };
+        if (typeof item.ratio !== "string" || typeof item.width !== "number" || typeof item.height !== "number") {
+          continue;
+        }
+        if (!tier.has(item.ratio)) tier.set(item.ratio, { ratio: item.ratio, width: item.width, height: item.height });
+      }
+      dimensionTiers.set(resolution, tier);
+    }
+  }
   return {
     verified: configured.every((profile) => profile.verified === true),
     dimensions: [...dimensions.values()],
+    dimensionTiers: Object.fromEntries(
+      [...dimensionTiers.entries()].map(([resolution, values]) => [resolution, [...values.values()]]),
+    ),
     qualities: mergeStrings("qualities"),
     resolutions: mergeStrings("resolutions"),
     durations: mergeNumbers("durations"),
@@ -143,6 +173,7 @@ export class ProviderRegistryService {
     });
 
     return rows
+      .filter((row) => Boolean(process.env[row.provider.apiKeyEnv]))
       .filter((row) => {
         const window = row.requestLogs.slice(0, row.failureThreshold);
         const failed = window.length >= row.failureThreshold && window.every((log) => log.status === "failed");

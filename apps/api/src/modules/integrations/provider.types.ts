@@ -23,7 +23,12 @@ export interface ProviderChannel {
 
 /** 模型供应商当前支持的请求协议。 */
 export type ProviderProtocol =
-  "openai-chat" | "openai-image" | "vertex-image" | "vertex-generate-content" | "vertex-video";
+  | "openai-chat"
+  | "openai-image"
+  | "gemini-generate-content"
+  | "vertex-image"
+  | "vertex-generate-content"
+  | "vertex-video";
 
 /** 暴露给客户端的稳定模型元数据，不包含供应商密钥和端点。 */
 export interface GenerationModel {

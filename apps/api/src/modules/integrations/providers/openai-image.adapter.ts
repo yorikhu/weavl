@@ -23,8 +23,10 @@ export class OpenAiImageAdapter {
   async generate(channel: ProviderChannel, request: ImageGenerationRequest) {
     const references = request.referenceImages ?? (request.referenceImage ? [request.referenceImage] : []);
     const editing = references.length > 0;
+    const jsonReferences = editing && channel.capabilities.referenceTransport === "json";
+    const multipartEditing = editing && !jsonReferences;
     const root = channel.baseUrl.replace(/\/$/, "");
-    const body = editing
+    const body = multipartEditing
       ? this.editForm(channel, request, references)
       : {
           model: channel.remoteModel,
@@ -32,10 +34,11 @@ export class OpenAiImageAdapter {
           n: request.count || 1,
           ...(request.size ? { size: request.size } : {}),
           ...(request.quality ? { quality: request.quality } : {}),
+          ...(jsonReferences ? { image: references.map((image) => image.data) } : {}),
         };
     const { data, statusCode } = await this.http.post<OpenAiImageResponse>(
       channel,
-      `${root}/images/${editing ? "edits" : "generations"}`,
+      `${root}/images/${multipartEditing ? "edits" : "generations"}`,
       body,
     );
     const mimeType = this.mimeType(data.output_format);

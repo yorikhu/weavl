@@ -76,7 +76,11 @@ export class ModelGatewayService {
   async generateImage(modelId: string, request: ImageGenerationRequest) {
     return this.execute("image", modelId, request as unknown as Record<string, unknown>, async (channel) => {
       if (channel.protocol === "openai-image") return this.openAiImageAdapter.generate(channel, request);
-      if (channel.protocol !== "vertex-image" && channel.protocol !== "vertex-generate-content")
+      if (
+        channel.protocol !== "gemini-generate-content" &&
+        channel.protocol !== "vertex-image" &&
+        channel.protocol !== "vertex-generate-content"
+      )
         throw new Error(`图片渠道协议不受支持：${channel.protocol}`);
       return this.imageAdapter.generate(channel, request);
     });
