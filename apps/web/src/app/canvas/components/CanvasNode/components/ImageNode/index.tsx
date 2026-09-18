@@ -18,6 +18,7 @@ import { EditableNodeTitle } from "../../../EditableNodeTitle";
 import type { ImageNodeData } from "../../../../types/nodes";
 import {
   DEFAULT_IMAGE_DIMENSION,
+  getGenerationDimension,
   getMediaCardSize,
   getResolutionTier,
   resolveMediaCapabilities,
@@ -51,8 +52,24 @@ const FALLBACK_IMAGE_MODELS: GenerationModelOption[] = [
  * @returns 参数面板支持的标准质量文案。
  */
 function normalizeImageQuality(quality?: string) {
-  if (quality === "低画质" || quality === "标准画质" || quality === "高画质") return quality;
+  if (["低画质", "标准画质", "高画质", "超高画质", "极致画质", "自动"].includes(quality || "")) {
+    return quality!;
+  }
   return quality === "高清" ? "高画质" : "标准画质";
+}
+
+/** 将产品层画质文案转换为 GeekNow/OpenAI Images 协议枚举。 */
+function toProviderImageQuality(quality: string) {
+  return (
+    {
+      低画质: "low",
+      标准画质: "medium",
+      高画质: "high",
+      超高画质: "xhigh",
+      极致画质: "max",
+      自动: "auto",
+    } as Record<string, string>
+  )[quality];
 }
 
 /**
@@ -281,20 +298,26 @@ export function ImageEditPanel() {
   const [count, setCount] = useState(data?.count ?? 1);
   const [model, setModel] = useState(data?.model ?? "gpt-image-2");
   const [models, setModels] = useState<GenerationModelOption[]>(FALLBACK_IMAGE_MODELS);
-  const [busy, setBusy] = useState(false);
   const [showRatioMenu, setShowRatioMenu] = useState(false);
   const syncedNodeIdRef = useRef<string | null>(null);
+  const generatingNodeIdsRef = useRef(new Set<string>());
+  const busy = Boolean(editingId && data?.generationStatus === "running");
   const selectedModel = models.find((item) => item.id === model);
   const capabilities = resolveMediaCapabilities("image", selectedModel?.capabilities);
   const dimensions = capabilities.dimensions;
   const selectedDimension = dimensions.find((item) => item.ratio === ratio) ?? dimensions[0];
   const effectiveRatio = selectedDimension?.ratio ?? ratio;
-  const effectiveQuality = capabilities.qualities.includes(quality) ? quality : (capabilities.qualities[0] ?? quality);
+  const effectiveQuality = capabilities.qualities.length
+    ? capabilities.qualities.includes(quality)
+      ? quality
+      : capabilities.qualities[0]!
+    : "";
   const effectiveResolution = capabilities.resolutions.length
     ? capabilities.resolutions.includes(resolution)
       ? resolution
       : capabilities.resolutions[0]!
     : getResolutionTier(selectedDimension);
+  const generationDimension = getGenerationDimension(capabilities, effectiveRatio, effectiveResolution);
   const effectiveCount = capabilities.counts.includes(count) ? count : (capabilities.counts[0] ?? count);
   const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
     modelId: model,
@@ -302,8 +325,8 @@ export function ImageEditPanel() {
       count: effectiveCount,
       ratio: effectiveRatio,
       resolution: effectiveResolution,
-      quality: effectiveQuality === "低画质" ? "low" : effectiveQuality === "高画质" ? "high" : "medium",
-      size: selectedDimension ? `${selectedDimension.width}x${selectedDimension.height}` : undefined,
+      ...(toProviderImageQuality(effectiveQuality) ? { quality: toProviderImageQuality(effectiveQuality) } : {}),
+      size: generationDimension ? `${generationDimension.width}x${generationDimension.height}` : undefined,
     },
     enabled: isImage,
   });
@@ -408,11 +431,20 @@ export function ImageEditPanel() {
       resolution: effectiveResolution,
       count: effectiveCount,
       model,
-      generationSize: selectedDimension
-        ? { width: selectedDimension.width, height: selectedDimension.height }
+      generationSize: generationDimension
+        ? { width: generationDimension.width, height: generationDimension.height }
         : undefined,
     };
-  }, [prompt, effectiveRatio, effectiveQuality, effectiveResolution, effectiveCount, model, selectedDimension, edit]);
+  }, [
+    prompt,
+    effectiveRatio,
+    effectiveQuality,
+    effectiveResolution,
+    effectiveCount,
+    model,
+    generationDimension,
+    edit,
+  ]);
 
   /**
    * 生成图片并把全部产物版本归入当前节点，画布只更新原节点。
@@ -421,8 +453,8 @@ export function ImageEditPanel() {
    */
   const onGenerate = useCallback(async () => {
     const nodeId = edit.editingId;
-    if (!nodeId || !prompt.trim() || busy) return;
-    setBusy(true);
+    if (!nodeId || !prompt.trim() || generatingNodeIdsRef.current.has(nodeId)) return;
+    generatingNodeIdsRef.current.add(nodeId);
     setNodes((nodes) =>
       updateNodeGenerationState(nodes, nodeId, { generationStatus: "running", generationError: undefined }),
     );
@@ -442,9 +474,9 @@ export function ImageEditPanel() {
           model,
           prompt: compiledPrompt.prompt,
           ratio: effectiveRatio,
-          quality: effectiveQuality === "低画质" ? "low" : effectiveQuality === "高画质" ? "high" : "medium",
+          ...(toProviderImageQuality(effectiveQuality) ? { quality: toProviderImageQuality(effectiveQuality) } : {}),
           count: effectiveCount,
-          size: selectedDimension ? `${selectedDimension.width}x${selectedDimension.height}` : undefined,
+          size: generationDimension ? `${generationDimension.width}x${generationDimension.height}` : undefined,
           resolution: effectiveResolution,
           referenceAssetIds,
         }),
@@ -468,9 +500,9 @@ export function ImageEditPanel() {
         url: generatedVersion.content,
         assetRef: { assetId: generatedAsset.id, versionId: generatedVersion.id },
         variants,
-        size: selectedDimension ? getMediaCardSize(selectedDimension) : undefined,
-        generationSize: selectedDimension
-          ? { width: selectedDimension.width, height: selectedDimension.height }
+        size: generationDimension ? getMediaCardSize(generationDimension) : undefined,
+        generationSize: generationDimension
+          ? { width: generationDimension.width, height: generationDimension.height }
           : undefined,
         generationStatus: "succeeded",
       });
@@ -482,10 +514,9 @@ export function ImageEditPanel() {
       );
       toast(message);
     } finally {
-      setBusy(false);
+      generatingNodeIdsRef.current.delete(nodeId);
     }
   }, [
-    busy,
     edit,
     effectiveCount,
     effectiveQuality,
@@ -494,7 +525,7 @@ export function ImageEditPanel() {
     getNodes,
     model,
     prompt,
-    selectedDimension,
+    generationDimension,
     setNodes,
   ]);
 

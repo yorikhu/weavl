@@ -240,7 +240,9 @@ export function MediaSettingsControl({
         }
       >
         <div className={styles.panelBody}>
-          <ChoiceGroup label={qualityLabel} values={qualities} value={quality} onChange={onQualityChange} />
+          {qualities.length > 0 && (
+            <ChoiceGroup label={qualityLabel} values={qualities} value={quality} onChange={onQualityChange} />
+          )}
           {resolution && resolutions && onResolutionChange && (
             <ChoiceGroup
               label="清晰度"
@@ -270,13 +272,15 @@ export function MediaSettingsControl({
           {duration !== undefined && durations && onDurationChange && (
             <DurationControl value={duration} values={durations} onChange={onDurationChange} />
           )}
-          <ChoiceGroup
-            label="生成数量"
-            values={counts.map(String)}
-            value={String(count)}
-            format={(item) => `${item}${countUnit}`}
-            onChange={(item) => onCountChange(Number(item))}
-          />
+          {counts.length > 1 && (
+            <ChoiceGroup
+              label="生成数量"
+              values={counts.map(String)}
+              value={String(count)}
+              format={(item) => `${item}${countUnit}`}
+              onChange={(item) => onCountChange(Number(item))}
+            />
+          )}
         </div>
       </Popover>
     </div>

@@ -19,6 +19,7 @@ export const DEFAULT_IMAGE_DIMENSION: MediaDimensionOption = { ratio: "3:2", wid
 export interface ResolvedMediaCapabilities {
   verified: boolean;
   dimensions: MediaDimensionOption[];
+  dimensionTiers: Record<string, MediaDimensionOption[]>;
   qualities: string[];
   resolutions: string[];
   durations: number[];
@@ -40,14 +41,16 @@ const FALLBACKS: Record<MediaCapabilityKind, ResolvedMediaCapabilities> = {
   image: {
     verified: false,
     dimensions: IMAGE_DIMENSIONS,
+    dimensionTiers: {},
     qualities: ["低画质", "标准画质", "高画质"],
     resolutions: ["1K", "2K", "4K"],
     durations: [],
-    counts: [1, 2, 4],
+    counts: [1],
   },
   video: {
     verified: false,
     dimensions: VIDEO_DIMENSIONS,
+    dimensionTiers: {},
     qualities: [],
     resolutions: ["720P"],
     durations: [5, 10],
@@ -69,12 +72,26 @@ export function resolveMediaCapabilities(
   const fallback = FALLBACKS[kind];
   return {
     verified: capabilities?.verified ?? fallback.verified,
-    dimensions: capabilities?.dimensions?.length ? capabilities.dimensions : fallback.dimensions,
-    qualities: capabilities?.qualities?.length ? capabilities.qualities : fallback.qualities,
-    resolutions: capabilities?.resolutions?.length ? capabilities.resolutions : fallback.resolutions,
-    durations: capabilities?.durations?.length ? capabilities.durations : fallback.durations,
-    counts: capabilities?.counts?.length ? capabilities.counts : fallback.counts,
+    dimensions: capabilities?.dimensions ?? fallback.dimensions,
+    dimensionTiers: capabilities?.dimensionTiers ?? fallback.dimensionTiers,
+    qualities: capabilities?.qualities ?? fallback.qualities,
+    resolutions: capabilities?.resolutions ?? fallback.resolutions,
+    durations: capabilities?.durations ?? fallback.durations,
+    counts: capabilities?.counts ?? fallback.counts,
   };
+}
+
+/**
+ * 返回当前比例和分辨率档位实际提交给供应商的图片尺寸。
+ * 渠道未提供档位尺寸表时回退到比例本身的默认尺寸。
+ */
+export function getGenerationDimension(
+  capabilities: ResolvedMediaCapabilities,
+  ratio: string,
+  resolution?: string,
+) {
+  const tier = resolution ? capabilities.dimensionTiers[resolution] : undefined;
+  return tier?.find((item) => item.ratio === ratio) ?? capabilities.dimensions.find((item) => item.ratio === ratio);
 }
 
 /**

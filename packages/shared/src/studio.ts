@@ -12,6 +12,8 @@ export interface MediaDimensionCapability {
 export interface MediaGenerationCapabilities {
   verified?: boolean;
   dimensions?: MediaDimensionCapability[];
+  /** 分辨率档位对应的真实输出尺寸；同一比例在不同档位可映射到不同 WxH。 */
+  dimensionTiers?: Record<string, MediaDimensionCapability[]>;
   qualities?: string[];
   resolutions?: string[];
   durations?: number[];
