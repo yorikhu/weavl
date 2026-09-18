@@ -3,6 +3,7 @@ import type { ModelKind } from "@weavl/shared";
 import { z } from "zod";
 import { parseBody, type AuthRequest } from "../../common/http";
 import { SessionGuard } from "../auth/session.guard";
+import { ImageGenerationService } from "./image-generation.service";
 import { MediaGenerationService } from "./media-generation.service";
 
 const imageSchema = z.object({
@@ -31,11 +32,14 @@ const videoSchema = z.object({
 
 const modelKinds = new Set<ModelKind>(["text", "image", "video", "audio", "avatar"]);
 
-/** 提供模型目录、同步图片生成和异步视频任务 API。 */
+/** 提供模型目录以及图片、视频异步生成任务 API。 */
 @Controller("studio/generations")
 @UseGuards(SessionGuard)
 export class MediaGenerationController {
-  constructor(private readonly generation: MediaGenerationService) {}
+  constructor(
+    private readonly generation: MediaGenerationService,
+    private readonly images: ImageGenerationService,
+  ) {}
 
   /**
    * 获取全部模型，或通过 kind 查询参数过滤指定生成类型。
@@ -50,16 +54,27 @@ export class MediaGenerationController {
   }
 
   /**
-   * 校验图片参数并执行同步生成。
+   * 校验图片参数并创建 BullMQ 异步任务。
    *
    * @param request - 包含当前登录用户的请求对象。
    * @param body - 尚未校验的请求体。
-   * @returns 图片生成结果和已持久化资产。
+   * @returns 已进入队列的图片任务。
    */
   @Post("image")
-  generateImage(@Req() request: AuthRequest, @Body() body: unknown) {
+  submitImage(@Req() request: AuthRequest, @Body() body: unknown) {
     const input = parseBody(imageSchema, body);
-    return this.generation.generateImage(request.studioUser.id, input.model, input);
+    return this.images.submit(request.studioUser.id, input.model, input);
+  }
+
+  /**
+   * 查询属于当前用户的图片任务，完成时返回生成资产。
+   *
+   * @param request - 包含当前登录用户的请求对象。
+   * @param jobId - 平台图片任务 ID。
+   */
+  @Get("image/:jobId")
+  pollImage(@Req() request: AuthRequest, @Param("jobId") jobId: string) {
+    return this.images.poll(request.studioUser.id, jobId);
   }
 
   /**

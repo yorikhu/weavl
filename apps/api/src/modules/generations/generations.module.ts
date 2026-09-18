@@ -6,10 +6,21 @@ import { MediaGenerationController } from "./media-generation.controller";
 import { MediaGenerationService } from "./media-generation.service";
 import { TextGenerationController } from "./text-generation.controller";
 import { TextGenerationService } from "./text-generation.service";
+import { GenerationTaskQueue } from "./generation-task.queue";
+import { GenerationTaskDispatcher } from "./generation-task.dispatcher";
+import { GenerationTaskWorker } from "./generation-task.worker";
+import { ImageGenerationService } from "./image-generation.service";
 @Module({
   imports: [IntegrationsModule, AssetsModule, BillingModule],
   controllers: [TextGenerationController, MediaGenerationController],
-  providers: [TextGenerationService, MediaGenerationService],
+  providers: [
+    TextGenerationService,
+    MediaGenerationService,
+    ImageGenerationService,
+    GenerationTaskQueue,
+    GenerationTaskDispatcher,
+    GenerationTaskWorker,
+  ],
   exports: [TextGenerationService],
 })
 export class GenerationsModule {}

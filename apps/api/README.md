@@ -65,9 +65,12 @@ GPT Image 2 使用 GeekNow 的 OpenAI Images 兼容接口 `https://api.geeknow.a
 媒体生成接口：
 
 - `GET /api/studio/generations/models?kind=image|video`：获取模型目录与配置状态。
-- `POST /api/studio/generations/image`：同步生成图片并保存为项目产物，不会自动进入全局资产库。
+- `POST /api/studio/generations/image`：创建图片任务、预扣积分并写入 BullMQ，立即返回 `jobId`。
+- `GET /api/studio/generations/image/:jobId`：查询图片任务，完成后返回项目产物；不会自动进入全局资产库。
 - `POST /api/studio/generations/video`：提交视频任务并持久化到 `generation_jobs`。
 - `GET /api/studio/generations/video/:jobId`：轮询任务，完成后落库产物。
+
+所有后台任务共用 `generation-tasks` 队列，载荷通过 `kind` 区分文本、图片、视频、音频、数字人、文档和工作流；当前图片处理器已接入，其他处理器可以按相同契约注册。任务状态以 PostgreSQL 的业务任务表为准，BullMQ 和 Redis 只承担可靠调度。生产环境由 Compose 中独立的 `worker` 服务消费任务，API 通过 `WEAVL_RUN_GENERATION_WORKER=false` 禁止抢占消费；本地开发默认由 API 进程内置消费。Worker 重启时会恢复尚未完成的队列任务，任务完成、失败退款和积分结算均按任务 ID 幂等处理。
 
 ## 模型积分计费
 
