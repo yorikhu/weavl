@@ -305,6 +305,13 @@
   }
 }
 
+.status {
+  margin-left: auto;
+  color: #85858d;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .costLoadingIcon {
   animation: prompt-loading-spin 760ms linear infinite;
 }

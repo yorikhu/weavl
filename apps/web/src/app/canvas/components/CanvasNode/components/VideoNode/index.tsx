@@ -5,8 +5,6 @@ import { Handle, Position, useReactFlow, useStore, type NodeProps } from "@xyflo
 import type { Asset, GenerationModelOption } from "@weavl/shared";
 import { ChevronDown, Film, Layers, Maximize2, Video as VideoIcon } from "lucide-react";
 import { toast } from "@/hooks/useToast";
-import { useGenerationQuote } from "@/hooks/useGenerationQuote";
-import { formatGenerationPrice } from "@/lib/generationPricing";
 import { jsonBody, studioApi } from "@/lib/studioApi";
 import { MediaSettingsControl } from "../../../MediaSettingsControl";
 import { NodePromptPanel } from "../../../NodePromptPanel";
@@ -208,17 +206,6 @@ export function VideoEditPanel() {
   const minimumDuration = Math.min(...capabilities.durations);
   const maximumDuration = Math.max(...capabilities.durations);
   const effectiveDuration = Math.min(maximumDuration, Math.max(minimumDuration, duration));
-  const { quote: priceQuote, loading: priceLoading } = useGenerationQuote({
-    modelId: model,
-    parameters: {
-      count: effectiveCount,
-      ratio: effectiveRatio,
-      resolution: effectiveQuality.toLowerCase(),
-      durationSeconds: effectiveDuration,
-      generateAudio: false,
-    },
-    enabled: isVideo,
-  });
   /** 编辑目标变化时清理所有附属菜单，避免新提示词面板继承旧节点状态。 */
   useEffect(() => {
     setShowRatioMenu(false);
@@ -430,9 +417,10 @@ export function VideoEditPanel() {
         detail: item.configured ? item.maker : `${item.maker} · 未配置`,
       }))}
       modelMenuLabel="视频模型"
-      cost={formatGenerationPrice(priceQuote)}
-      costLoading={priceLoading}
       busy={busy}
+      status="视频生成暂未开放"
+      submitDisabled
+      submitTitle="视频生成暂未开放"
       header={
         <div className={styles.imageEditBarHead}>
           <div className={styles.imageEditBarTags}>

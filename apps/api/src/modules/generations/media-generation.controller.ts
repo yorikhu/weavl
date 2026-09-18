@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Req, ServiceUnavailableException, UseGuards } from "@nestjs/common";
 import type { ModelKind } from "@weavl/shared";
 import { z } from "zod";
 import { parseBody, type AuthRequest } from "../../common/http";
@@ -8,7 +8,7 @@ import { MediaGenerationService } from "./media-generation.service";
 const imageSchema = z.object({
   model: z.string().trim().min(1).default("gpt-image-2"),
   prompt: z.string().trim().min(1).max(5000),
-  count: z.number().int().min(1).max(4).default(1),
+  count: z.literal(1).default(1),
   ratio: z.string().trim().max(20).optional(),
   size: z
     .string()
@@ -71,6 +71,9 @@ export class MediaGenerationController {
    */
   @Post("video")
   submitVideo(@Req() request: AuthRequest, @Body() body: unknown) {
+    if (process.env.WEAVL_VIDEO_GENERATION_ENABLED !== "true") {
+      throw new ServiceUnavailableException("视频生成暂未开放");
+    }
     const input = parseBody(videoSchema, body);
     return this.generation.submitVideo(request.studioUser.id, input.model, input);
   }

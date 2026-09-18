@@ -26,6 +26,9 @@ interface NodePromptPanelProps {
   cost?: number | string;
   costLoading?: boolean;
   busy?: boolean;
+  status?: ReactNode;
+  submitDisabled?: boolean;
+  submitTitle?: string;
   header?: ReactNode;
   footerMiddle?: ReactNode;
   onPromptChange: (value: string) => void;
@@ -108,6 +111,9 @@ export function NodePromptPanel({
   cost,
   costLoading = false,
   busy = false,
+  status,
+  submitDisabled = false,
+  submitTitle = "生成",
   header,
   footerMiddle,
   onPromptChange,
@@ -473,6 +479,7 @@ export function NodePromptPanel({
           )}
         </div>
         {footerMiddle}
+        {status && <span className={styles.status}>{status}</span>}
         {(cost !== undefined || costLoading) && (
           <span className={styles.cost} aria-live="polite" aria-label={costLoading ? "正在计算积分" : undefined}>
             <Coins size={10} />
@@ -481,9 +488,9 @@ export function NodePromptPanel({
         )}
         <button
           className={styles.submit}
-          disabled={busy || !prompt.trim()}
-          title={busy ? "生成中" : "生成"}
-          aria-label={busy ? "生成中" : "生成"}
+          disabled={busy || submitDisabled || !prompt.trim()}
+          title={busy ? "生成中" : submitTitle}
+          aria-label={busy ? "生成中" : submitTitle}
           onClick={onSubmit}
         >
           {busy ? <LoaderCircle size={13} className={styles.loadingIcon} /> : <Send size={13} />}
