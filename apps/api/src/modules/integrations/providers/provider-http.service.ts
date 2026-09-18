@@ -30,7 +30,7 @@ export class ProviderHttpService {
     const timeout = Number(kindTimeout || process.env.WEAVL_PROVIDER_TIMEOUT_MS || 30000);
     const multipart = body instanceof FormData;
     const requestBody = multipart ? body : JSON.stringify(body);
-    const maxAttempts = this.maxAttempts();
+    const maxAttempts = this.maxAttempts(channel);
     let lastError: ProviderRequestError | undefined;
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -81,10 +81,20 @@ export class ProviderHttpService {
     throw lastError ?? new BadGatewayException(`渠道 ${channel.label} 请求失败`);
   }
 
-  /** 返回单个渠道的最大请求次数，限制在 1 至 4 次以避免配置错误造成请求风暴。 */
-  private maxAttempts() {
-    const configured = Number(process.env.WEAVL_PROVIDER_MAX_ATTEMPTS || 2);
-    return Number.isFinite(configured) ? Math.min(4, Math.max(1, Math.trunc(configured))) : 2;
+  /**
+   * 返回当前模型类型的单渠道最大请求次数。
+   *
+   * 图片、视频等非幂等生成应单独配置为一次：客户端超时只会中断等待，无法保证供应商停止生成，
+   * 此时自动重提会产生重复产物和额外费用。
+   *
+   * @param channel - 当前供应渠道，用于读取模型类型专属配置。
+   * @returns 限制在 1 至 4 次的请求次数。
+   */
+  private maxAttempts(channel: ProviderChannel) {
+    const kindAttempts = process.env[`WEAVL_${channel.modelKind.toUpperCase()}_MAX_ATTEMPTS`];
+    const fallbackAttempts = channel.modelKind === "image" ? 1 : Number(process.env.WEAVL_PROVIDER_MAX_ATTEMPTS || 2);
+    const configured = Number(kindAttempts || fallbackAttempts);
+    return Number.isFinite(configured) ? Math.min(4, Math.max(1, Math.trunc(configured))) : fallbackAttempts;
   }
 
   /** 判断供应商错误是否适合在同一渠道短暂退避后重试。 */
