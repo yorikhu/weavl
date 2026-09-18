@@ -49,7 +49,7 @@ export class ImageGenerationService {
         },
       });
       await this.pricing.attach(billing.usageId, { jobId: job.id });
-      await this.queue.enqueue({ jobId: job.id, kind: "image" });
+      await this.queue.enqueue({ jobId: job.id, kind: "image", ownerId });
       return { ...this.jobView(job), billing };
     } catch (error) {
       const message = (error as Error).message || "图片任务入队失败";
@@ -157,12 +157,12 @@ export class ImageGenerationService {
   }
 
   /** 返回需要在 Worker 启动时恢复进队列的图片任务。 */
-  async pendingJobIds() {
+  async pendingJobs() {
     const jobs = await this.prisma.generationJob.findMany({
       where: { modelKind: "image", status: { in: ["queued", "running", "finalizing"] } },
-      select: { id: true },
+      select: { id: true, ownerId: true },
     });
-    return jobs.map((job) => job.id);
+    return jobs;
   }
 
   /**

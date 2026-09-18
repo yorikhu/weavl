@@ -9,6 +9,8 @@ export type GenerationTaskKind = "text" | "image" | "video" | "audio" | "avatar"
 export interface GenerationTaskPayload {
   jobId: string;
   kind: GenerationTaskKind;
+  /** 任务所属用户；Worker 使用它实施跨实例的单用户并发限制。 */
+  ownerId: string;
 }
 
 /** BullMQ 通用任务生产者，供各类内容生成和工作流长任务复用。 */
@@ -32,22 +34,16 @@ export class GenerationTaskQueue implements OnApplicationShutdown {
   enqueue(task: GenerationTaskPayload) {
     const kindAttempts = process.env[`WEAVL_${task.kind.toUpperCase()}_QUEUE_ATTEMPTS`];
     const configuredAttempts = Number(kindAttempts || process.env.WEAVL_GENERATION_QUEUE_ATTEMPTS || 2);
-    const attempts = Number.isFinite(configuredAttempts)
-      ? Math.min(5, Math.max(1, Math.trunc(configuredAttempts)))
-      : 2;
+    const attempts = Number.isFinite(configuredAttempts) ? Math.min(5, Math.max(1, Math.trunc(configuredAttempts))) : 2;
     const configuredDelay = Number(process.env.WEAVL_GENERATION_QUEUE_RETRY_DELAY_MS || 2000);
     const retryDelay = Number.isFinite(configuredDelay) ? Math.max(0, configuredDelay) : 2000;
-    return this.queue.add(
-      task.kind,
-      task,
-      {
-        jobId: task.jobId,
-        attempts,
-        backoff: { type: "exponential", delay: retryDelay },
-        removeOnComplete: { age: 24 * 60 * 60, count: 1000 },
-        removeOnFail: { age: 7 * 24 * 60 * 60, count: 2000 },
-      },
-    );
+    return this.queue.add(task.kind, task, {
+      jobId: task.jobId,
+      attempts,
+      backoff: { type: "exponential", delay: retryDelay },
+      removeOnComplete: { age: 24 * 60 * 60, count: 1000 },
+      removeOnFail: { age: 7 * 24 * 60 * 60, count: 2000 },
+    });
   }
 
   /** 关闭生产者连接，保证进程可以平滑退出。 */

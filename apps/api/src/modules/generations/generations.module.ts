@@ -10,6 +10,7 @@ import { GenerationTaskQueue } from "./generation-task.queue";
 import { GenerationTaskDispatcher } from "./generation-task.dispatcher";
 import { GenerationTaskWorker } from "./generation-task.worker";
 import { ImageGenerationService } from "./image-generation.service";
+import { GenerationUserConcurrencyService } from "./generation-user-concurrency.service";
 @Module({
   imports: [IntegrationsModule, AssetsModule, BillingModule],
   controllers: [TextGenerationController, MediaGenerationController],
@@ -20,6 +21,7 @@ import { ImageGenerationService } from "./image-generation.service";
     GenerationTaskQueue,
     GenerationTaskDispatcher,
     GenerationTaskWorker,
+    GenerationUserConcurrencyService,
   ],
   exports: [TextGenerationService],
 })

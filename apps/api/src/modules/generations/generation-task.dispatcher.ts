@@ -33,7 +33,7 @@ export class GenerationTaskDispatcher {
 
   /** 返回 Worker 启动时需要重新送入队列的持久化任务。 */
   async recoverableTasks(): Promise<GenerationTaskPayload[]> {
-    const imageJobIds = await this.images.pendingJobIds();
-    return imageJobIds.map((jobId) => ({ jobId, kind: "image" }));
+    const imageJobs = await this.images.pendingJobs();
+    return imageJobs.map((job) => ({ jobId: job.id, kind: "image", ownerId: job.ownerId }));
   }
 }
