@@ -222,12 +222,7 @@
 }
 
 .projectCard.editing,
-.projectCard.editing:hover,
-.projectCard.interactionPaused,
-.projectCard.interactionPaused:hover {
-  z-index: auto;
-  border-color: var(--surface-border);
-  box-shadow: none;
+.projectCard.editing:hover {
   transform: none;
 }
 

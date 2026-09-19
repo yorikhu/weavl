@@ -1,11 +1,5 @@
 import type { PointerEventHandler } from "react";
 
-/** 将倾斜卡片恢复到静止角度。 */
-export function resetTiltCard(element: HTMLElement | null) {
-  element?.style.setProperty("--tilt-x", "0deg");
-  element?.style.setProperty("--tilt-y", "0deg");
-}
-
 /**
  * 创建卡片倾斜交互所需的指针事件处理器。
  *
@@ -31,7 +25,9 @@ export function createTiltCardHandlers<T extends HTMLElement>(
       card.style.setProperty("--tilt-y", `${((x - 0.5) * range).toFixed(2)}deg`);
     },
     onPointerLeave(event) {
-      resetTiltCard(event.currentTarget);
+      const card = event.currentTarget;
+      card.style.setProperty("--tilt-x", "0deg");
+      card.style.setProperty("--tilt-y", "0deg");
     },
   };
 }
