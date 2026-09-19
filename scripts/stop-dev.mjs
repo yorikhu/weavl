@@ -82,6 +82,11 @@ async function stopApplicationProcesses() {
 }
 
 function stopInfrastructure() {
+  const dockerInfo = spawnSync("docker", ["info"], { stdio: "ignore", timeout: 3_000 });
+  if (dockerInfo.error || dockerInfo.status !== 0) {
+    console.log("[weavl/dev] Docker daemon 未运行，基础设施已经停止。");
+    return;
+  }
   const result = spawnSync(
     "docker",
     [

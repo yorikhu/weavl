@@ -26,7 +26,7 @@ pnpm --filter @weavl/api db:deploy
 pnpm dev
 ```
 
-`pnpm dev` 会先检查 PostgreSQL、Redis 和 MinIO：已经健康运行的容器会直接复用，缺失或停止的服务才会启动。只需启动应用进程时可运行 `pnpm dev:apps`。运行 `pnpm dev:stop` 可释放前后端的 3000、3001 端口，并停止 PostgreSQL、Redis 和 MinIO；数据卷会继续保留。只停止基础设施时可运行 `pnpm dev:infra:stop`。
+`pnpm dev` 会先检查 Docker、PostgreSQL、Redis 和 MinIO：macOS 上 Docker Desktop 未运行时会自动后台启动并等待就绪；已经健康运行的容器会直接复用，缺失或停止的服务才会启动。只需启动应用进程时可运行 `pnpm dev:apps`。运行 `pnpm dev:stop` 可释放前后端的 3000、3001 端口，并停止 PostgreSQL、Redis 和 MinIO；数据卷会继续保留。只停止基础设施时可运行 `pnpm dev:infra:stop`。
 
 Web 地址为 `http://localhost:3000`，API 地址为 `http://localhost:3001/api`。内部测试阶段不开放注册；空数据库首次启动时会建立本地演示账号，账号和密码由 `WEAVL_DEMO_EMAIL`、`WEAVL_DEMO_PASSWORD` 配置。
 
