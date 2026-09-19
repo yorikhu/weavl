@@ -15,15 +15,18 @@
 
 ## 本地运行
 
-需要 Node.js 22+、pnpm 11，以及可用的 PostgreSQL、Redis 和 MinIO。复制环境配置后先执行迁移：
+需要 Node.js 22+、pnpm 11 和 Docker。复制环境配置后先执行迁移：
 
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
+pnpm dev:infra
 pnpm --filter @weavl/api db:deploy
 pnpm dev
 ```
+
+`pnpm dev` 会先检查 PostgreSQL、Redis 和 MinIO：已经健康运行的容器会直接复用，缺失或停止的服务才会启动。只需启动应用进程时可运行 `pnpm dev:apps`；需要停止本地基础设施时运行 `pnpm dev:infra:stop`，数据卷会继续保留。
 
 Web 地址为 `http://localhost:3000`，API 地址为 `http://localhost:3001/api`。内部测试阶段不开放注册；空数据库首次启动时会建立本地演示账号，账号和密码由 `WEAVL_DEMO_EMAIL`、`WEAVL_DEMO_PASSWORD` 配置。
 
