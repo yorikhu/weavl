@@ -12,6 +12,7 @@
     "dev:apps": "pnpm -r --parallel run dev",
     "dev:infra": "docker compose --env-file deploy/dev.env -f compose.yaml -f compose.dev.yaml up -d --wait postgres redis minio",
     "dev:infra:stop": "docker compose --env-file deploy/dev.env -f compose.yaml -f compose.dev.yaml stop postgres redis minio",
+    "dev:stop": "node scripts/stop-dev.mjs",
     "dev:web": "pnpm -F @weavl/web dev",
     "dev:api": "pnpm -F @weavl/api dev",
     "build": "pnpm -r run build",
