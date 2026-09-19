@@ -18,7 +18,8 @@ export class OpenAiCompatibleAdapter implements TextProviderAdapter {
     const root = channel.baseUrl.replace(/\/$/, "");
     const url = root.endsWith("/chat/completions") ? root : `${root}/chat/completions`;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Number(process.env.WEAVL_PROVIDER_TIMEOUT_MS || 30000));
+    const timeout = Number(process.env.WEAVL_TEXT_TIMEOUT_MS || process.env.WEAVL_PROVIDER_TIMEOUT_MS || 30000);
+    const timer = setTimeout(() => controller.abort(), timeout);
     try {
       const response = await fetch(url, {
         method: "POST",

@@ -33,7 +33,7 @@ export class GenerationTaskQueue implements OnApplicationShutdown {
    */
   enqueue(task: GenerationTaskPayload) {
     const kindAttempts = process.env[`WEAVL_${task.kind.toUpperCase()}_QUEUE_ATTEMPTS`];
-    const fallbackAttempts = task.kind === "image" ? 1 : Number(process.env.WEAVL_GENERATION_QUEUE_ATTEMPTS || 2);
+    const fallbackAttempts = Number(process.env.WEAVL_GENERATION_QUEUE_ATTEMPTS || 2);
     const configuredAttempts = Number(kindAttempts || fallbackAttempts);
     const attempts = Number.isFinite(configuredAttempts)
       ? Math.min(5, Math.max(1, Math.trunc(configuredAttempts)))

@@ -84,15 +84,12 @@ export class ProviderHttpService {
   /**
    * 返回当前模型类型的单渠道最大请求次数。
    *
-   * 图片、视频等非幂等生成应单独配置为一次：客户端超时只会中断等待，无法保证供应商停止生成，
-   * 此时自动重提会产生重复产物和额外费用。
-   *
    * @param channel - 当前供应渠道，用于读取模型类型专属配置。
    * @returns 限制在 1 至 4 次的请求次数。
    */
   private maxAttempts(channel: ProviderChannel) {
     const kindAttempts = process.env[`WEAVL_${channel.modelKind.toUpperCase()}_MAX_ATTEMPTS`];
-    const fallbackAttempts = channel.modelKind === "image" ? 1 : Number(process.env.WEAVL_PROVIDER_MAX_ATTEMPTS || 2);
+    const fallbackAttempts = Number(process.env.WEAVL_PROVIDER_MAX_ATTEMPTS || 2);
     const configured = Number(kindAttempts || fallbackAttempts);
     return Number.isFinite(configured) ? Math.min(4, Math.max(1, Math.trunc(configured))) : fallbackAttempts;
   }
