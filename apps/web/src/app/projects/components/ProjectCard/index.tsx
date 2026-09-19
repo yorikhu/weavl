@@ -7,7 +7,7 @@ import type { CanvasProject } from "@weavl/shared";
 import { Popover } from "@/components/Popover";
 import { Form } from "@/components/Form";
 import { canvasHref } from "@/utils/openCanvas";
-import { createTiltCardHandlers } from "@/utils/tiltCard";
+import { createTiltCardHandlers, resetTiltCard } from "@/utils/tiltCard";
 import styles from "../../page.module.scss";
 
 export type ProjectAction =
@@ -90,14 +90,15 @@ export function ProjectCard({
   const [draft, setDraft] = useState(project.name);
   const [renameError, setRenameError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [interactionPaused, setInteractionPaused] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   const cancelRenameRef = useRef(false);
   const firstCanvas = project.canvases[0];
   const href = firstCanvas ? canvasHref({ projectId: project.id, canvasId: firstCanvas.id }) : undefined;
+  const resetInteraction = () => resetTiltCard(cardRef.current);
   const startRename = () => {
     if (trash) return;
-    cardRef.current?.style.setProperty("--tilt-x", "0deg");
-    cardRef.current?.style.setProperty("--tilt-y", "0deg");
+    resetInteraction();
     setDraft(project.name);
     setRenameError("");
     cancelRenameRef.current = false;
@@ -149,9 +150,22 @@ export function ProjectCard({
   return (
     <article
       ref={cardRef}
-      className={`${styles.projectCard} ${href && !trash ? styles.openable : ""} ${editing ? styles.editing : ""}`}
-      onPointerMove={href && !trash && !editing ? tiltHandlers.onPointerMove : undefined}
-      onPointerLeave={tiltHandlers.onPointerLeave}
+      className={`${styles.projectCard} ${href && !trash ? styles.openable : ""} ${editing ? styles.editing : ""} ${interactionPaused ? styles.interactionPaused : ""}`}
+      onPointerMove={
+        href && !trash && !editing
+          ? (event) => {
+              if (interactionPaused) {
+                setInteractionPaused(false);
+                return;
+              }
+              tiltHandlers.onPointerMove(event);
+            }
+          : undefined
+      }
+      onPointerLeave={(event) => {
+        tiltHandlers.onPointerLeave(event);
+        setInteractionPaused(false);
+      }}
     >
       {href && !trash && (
         <a
@@ -160,11 +174,14 @@ export function ProjectCard({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`打开项目${project.name}`}
+          onClick={(event) => {
+            event.currentTarget.blur();
+            resetInteraction();
+            setInteractionPaused(true);
+          }}
         />
       )}
-      <div className={styles.cover}>
-        {artwork}
-      </div>
+      <div className={styles.cover}>{artwork}</div>
       <div className={styles.cardFooter}>
         <div className={styles.cardInfo}>
           <h2 className={editing ? styles.nameEditing : undefined}>
@@ -189,7 +206,8 @@ export function ProjectCard({
                 disabled={saving}
               />
             ) : (
-              <Popover variant="action"
+              <Popover
+                variant="action"
                 mode="hover"
                 side="top"
                 openWhen={isOverflowing}
@@ -210,7 +228,8 @@ export function ProjectCard({
             {new Date(trash ? project.deletedAt || project.updatedAt : project.updatedAt).toLocaleString("zh-CN")}
           </p>
         </div>
-        <Popover variant="action"
+        <Popover
+          variant="action"
           mode="click"
           side="bottom"
           align="end"
