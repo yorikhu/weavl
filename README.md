@@ -15,20 +15,20 @@
 
 ## 本地运行
 
-需要 Node.js 22+、pnpm 11 和 Docker。复制环境配置后先执行迁移：
+需要 Node.js 22+、pnpm 11 和 Docker。全新克隆后运行：
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-pnpm dev:infra
-pnpm --filter @weavl/api db:deploy
 pnpm dev
 ```
 
-`pnpm dev` 会先检查 Docker、PostgreSQL、Redis 和 MinIO：macOS 上 Docker Desktop 未运行时会自动后台启动并等待就绪；已经健康运行的容器会直接复用，缺失或停止的服务才会启动。只需启动应用进程时可运行 `pnpm dev:apps`。运行 `pnpm dev:stop` 可释放前后端的 3000、3001 端口，并停止 PostgreSQL、Redis 和 MinIO；数据卷会继续保留。只停止基础设施时可运行 `pnpm dev:infra:stop`。
+`pnpm dev` 会在首次运行时从示例创建本地 `.env`（不会覆盖已有配置），检查并按需启动 Docker，构建项目固定版本的 MinIO，然后等待 PostgreSQL、Redis、MinIO 健康并自动应用数据库迁移。macOS 上 Docker Desktop 未运行时会自动后台启动并等待就绪。
 
-Web 地址为 `http://localhost:3000`，API 地址为 `http://localhost:3001/api`。内部测试阶段不开放注册；空数据库首次启动时会建立本地演示账号，账号和密码由 `WEAVL_DEMO_EMAIL`、`WEAVL_DEMO_PASSWORD` 配置。
+MinIO 从官方源码的固定 release 和 commit 在本地构建，不依赖已停止公开分发的 `minio/minio` 镜像。首次构建需要下载 Go 构建镜像和源码，之后会复用 Docker 构建缓存。网络环境需要自定义 Go 模块代理时，可在根目录 `.env` 中设置 `GOPROXY`。
+
+只需启动应用进程时可运行 `pnpm dev:apps`。运行 `pnpm dev:stop` 可释放前后端的 3000、3001 端口，并停止 PostgreSQL、Redis 和 MinIO；数据卷会继续保留。只停止基础设施时可运行 `pnpm dev:infra:stop`。
+
+Web 地址为 `http://localhost:3000`，API 地址为 `http://localhost:3001/api`，MinIO Console 地址为 `http://localhost:19001`。为避免与宿主机上常见服务冲突，开发环境默认将 PostgreSQL、Redis、MinIO API 和 MinIO Console 分别映射到 `15432`、`16379`、`19000`、`19001`；可在 `deploy/dev.env` 中调整。内部测试阶段不开放注册；空数据库首次启动时会建立本地演示账号，账号和密码由 `WEAVL_DEMO_EMAIL`、`WEAVL_DEMO_PASSWORD` 配置。
 
 如果本地保留旧版 `apps/api/data/weavl.mock.json`，首次连接空数据库时会自动导入一次。后续所有读写都进入 PostgreSQL、Redis 和 MinIO，JSON 文件不再参与运行。
 

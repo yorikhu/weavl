@@ -9,6 +9,8 @@
 - `redis`：Session、登录限制和短期缓存。
 - `minio`：图片、视频及文档对象存储。
 
+MinIO 镜像由 `deploy/minio/Dockerfile` 从固定的官方源码 release 和 commit 构建，避免依赖已经停止公开分发的上游预构建镜像。更新版本时必须同时更新并核对 release 与完整 commit。
+
 PostgreSQL、Redis、MinIO S3 API 和 MinIO Console 均不直接暴露公网端口。Nginx 通过 `/weavl/*` 代理带签名的媒体访问，服务器安全组只需开放 `22` 和 `80`。
 
 ## 首次部署

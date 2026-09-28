@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,9 +7,24 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dockerInfoTimeoutMs = 3_000;
 const dockerStartupTimeoutMs = 90_000;
 
+const localEnvironmentFiles = [
+  ["apps/api/.env", "apps/api/.env.example"],
+  ["apps/web/.env", "apps/web/.env.example"],
+];
+
 /** 等待指定时间，不阻塞 Node.js 事件循环。 */
 function wait(milliseconds) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+}
+
+/** 首次启动时从安全的开发默认值创建本地环境文件，不覆盖已有配置。 */
+function ensureLocalEnvironment() {
+  for (const [target, example] of localEnvironmentFiles) {
+    const targetPath = resolve(workspaceRoot, target);
+    if (existsSync(targetPath)) continue;
+    copyFileSync(resolve(workspaceRoot, example), targetPath);
+    console.log(`[weavl/dev] 已创建 ${target}`);
+  }
 }
 
 /** 检查 Docker CLI 是否存在。 */
@@ -73,6 +89,7 @@ function startInfrastructure() {
       "compose.dev.yaml",
       "up",
       "-d",
+      "--build",
       "--wait",
       "postgres",
       "redis",
@@ -84,6 +101,18 @@ function startInfrastructure() {
   if (result.status !== 0) throw new Error(`启动本地基础设施失败，退出码 ${result.status}`);
 }
 
+/** 基础设施健康后应用所有已提交的数据库迁移。 */
+function deployDatabaseMigrations() {
+  const result = spawnSync("pnpm", ["--filter", "@weavl/api", "db:deploy"], {
+    cwd: workspaceRoot,
+    stdio: "inherit",
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`应用数据库迁移失败，退出码 ${result.status}`);
+}
+
+ensureLocalEnvironment();
 await ensureDockerReady();
 startInfrastructure();
-console.log("[weavl/dev] PostgreSQL、Redis 和 MinIO 已就绪。");
+deployDatabaseMigrations();
+console.log("[weavl/dev] PostgreSQL、Redis、MinIO 和数据库迁移已就绪。");
